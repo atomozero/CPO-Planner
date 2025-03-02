@@ -22,3 +22,5 @@ media
 .vscode/ 
 *.swp 
 *.swo 
+core/migrations/0001_initial.py
+financial/migrations/0001_initial.py

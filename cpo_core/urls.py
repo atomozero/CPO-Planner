@@ -1,31 +1,42 @@
+#cpo_core/urls.py
 from django.urls import path
 from . import views
+from .views import (
+    OrganizationListView, OrganizationDetailView, OrganizationCreateView, 
+    OrganizationUpdateView, OrganizationDeleteView,
+    ProjectListView, ProjectDetailView, ProjectCreateView, 
+    ProjectUpdateView, ProjectDeleteView,
+    MunicipalityListView, ChargingStationListView
+)
 
 urlpatterns = [
     # Dashboard
     path('', views.dashboard, name='dashboard'),
     
-    # Organization URLs
-    path('organizations/', views.OrganizationListView.as_view(), name='organization_list'),
-    path('organizations/<int:pk>/', views.OrganizationDetailView.as_view(), name='organization_detail'),
-    path('organizations/create/', views.OrganizationCreateView.as_view(), name='organization_create'),
-    path('organizations/<int:pk>/update/', views.OrganizationUpdateView.as_view(), name='organization_update'),
-    path('organizations/<int:pk>/delete/', views.OrganizationDeleteView.as_view(), name='organization_delete'),
+    # Organizzazioni
+    path('organizations/', OrganizationListView.as_view(), name='organization_list'),
+    path('organizations/<int:pk>/', OrganizationDetailView.as_view(), name='organization_detail'),
+    path('organizations/new/', OrganizationCreateView.as_view(), name='organization_create'),
+    path('organizations/<int:pk>/edit/', OrganizationUpdateView.as_view(), name='organization_update'),
+    path('organizations/<int:pk>/delete/', OrganizationDeleteView.as_view(), name='organization_delete'),
     
-    # Project URLs
-    path('projects/', views.ProjectListView.as_view(), name='project_list'),
-    path('projects/<int:pk>/', views.ProjectDetailView.as_view(), name='project_detail'),
-    path('projects/create/', views.ProjectCreateView.as_view(), name='project_create'),
-    path('projects/<int:pk>/update/', views.ProjectUpdateView.as_view(), name='project_update'),
-    path('projects/<int:pk>/delete/', views.ProjectDeleteView.as_view(), name='project_delete'),
+    # Progetti
+    path('projects/', ProjectListView.as_view(), name='project_list'),
+    path('projects/<int:pk>/', ProjectDetailView.as_view(), name='project_detail'),
+    path('projects/new/', ProjectCreateView.as_view(), name='project_create'),
+    path('projects/<int:pk>/edit/', ProjectUpdateView.as_view(), name='project_update'),
+    path('projects/<int:pk>/delete/', ProjectDeleteView.as_view(), name='project_delete'),
     
-    # Municipality URLs
-    path('municipalities/', views.MunicipalityListView.as_view(), name='municipality_list'),
+    # Proiezioni finanziarie
+    path('financial/', views.financial_overview, name='financial_overview'),
+    path('financial/project/<int:pk>/', views.project_financial_detail, name='project_financial_detail'),
+    path('financial/project/<int:project_id>/create/', views.financial_projection_create, name='financial_projection_create'),
+    path('financial/projection/<int:pk>/update/', views.financial_projection_update, name='financial_projection_update'),
+    path('financial/roi-calculator/', views.roi_calculator, name='roi_calculator'),
     
-    # ChargingStation URLs
-    path('stations/', views.ChargingStationListView.as_view(), name='station_list'),
+    # Comuni
+    path('municipalities/', MunicipalityListView.as_view(), name='municipality_list'),
     
-    # Placeholder URLs per navigazione (da implementare)
-    path('profile/', lambda request: None, name='profile'),
-    path('settings/', lambda request: None, name='settings'),
+    # Stazioni di ricarica
+    path('stations/', ChargingStationListView.as_view(), name='station_list'),
 ]

@@ -1,0 +1,432 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dashboard - CPO Planner{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
+        <a href="{% url 'project_create' %}" class="d-none d-sm-inline-block btn btn-primary shadow-sm">
+            <i class="fas fa-plus fa-sm text-white-50"></i> Nuovo Progetto
+        </a>
+    </div>
+
+    <!-- Content Row -->
+    <div class="row">
+        <!-- Progetti Totali Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Progetti Totali</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_projects }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-project-diagram fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0">
+                    <a href="{% url 'project_list' %}" class="small text-primary">Vedi tutti</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progetti Attivi Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Progetti Attivi</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_projects }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-rocket fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0">
+                    <a href="{% url 'project_list' %}?status=operational" class="small text-success">Vedi attivi</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stazioni Totali Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Stazioni di Ricarica</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_stations }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-charging-station fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0">
+                    <a href="{% url 'station_list' %}" class="small text-info">Vedi tutte</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ROI Medio Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                ROI Medio</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {% if avg_roi %}
+                                    {{ avg_roi|floatformat:2 }}%
+                                {% else %}
+                                    N/D
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-percentage fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0">
+                    <a href="{% url 'financial_overview' %}" class="small text-warning">Analisi finanziaria</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Row -->
+    <div class="row">
+        <!-- Grafico Proiezioni Mensili -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Proiezioni Finanziarie (12 mesi)</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <canvas id="monthlyProjectionsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grafico Stato Stazioni -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Stato Stazioni</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-pie pt-4 pb-2">
+                        <canvas id="stationStatusChart"></canvas>
+                    </div>
+                    <div class="mt-4 text-center small">
+                        {% for status, count in station_status_data.items %}
+                        <span class="mr-2">
+                            <i class="fas fa-circle" style="color: #{{ forloop.counter0|add:1 }}{{ forloop.counter|add:3 }}{{ forloop.counter0|add:5 }}"></i> {{ status }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Row -->
+    <div class="row">
+        <!-- Progetti recenti -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Progetti Recenti</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Stato</th>
+                                    <th>Budget</th>
+                                    <th>Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for project in projects %}
+                                <tr>
+                                    <td>{{ project.name }}</td>
+                                    <td>
+                                        {% if project.status == 'planning' %}
+                                            <span class="badge badge-secondary">Pianificazione</span>
+                                        {% elif project.status == 'approval' %}
+                                            <span class="badge badge-info">Approvazione</span>
+                                        {% elif project.status == 'construction' %}
+                                            <span class="badge badge-warning">Costruzione</span>
+                                        {% elif project.status == 'operational' %}
+                                            <span class="badge badge-success">Operativo</span>
+                                        {% elif project.status == 'maintenance' %}
+                                            <span class="badge badge-danger">Manutenzione</span>
+                                        {% elif project.status == 'closed' %}
+                                            <span class="badge badge-dark">Chiuso</span>
+                                        {% else %}
+                                            <span class="badge badge-light">{{ project.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>€ {{ project.budget|floatformat:2 }}</td>
+                                    <td>
+                                        <a href="{% url 'project_detail' project.id %}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'project_update' project.id %}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center">Nessun progetto presente</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stazioni recenti -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Stazioni Recenti</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Tipo</th>
+                                    <th>Stato</th>
+                                    <th>Potenza</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for station in stations %}
+                                <tr>
+                                    <td>{{ station.name }}</td>
+                                    <td>{{ station.get_station_type_display }}</td>
+                                    <td>
+                                        {% if station.status == 'planned' %}
+                                            <span class="badge badge-secondary">Pianificata</span>
+                                        {% elif station.status == 'permitting' %}
+                                            <span class="badge badge-info">Autorizzazione</span>
+                                        {% elif station.status == 'installing' %}
+                                            <span class="badge badge-warning">Installazione</span>
+                                        {% elif station.status == 'testing' %}
+                                            <span class="badge badge-primary">Test</span>
+                                        {% elif station.status == 'operational' %}
+                                            <span class="badge badge-success">Operativa</span>
+                                        {% elif station.status == 'maintenance' %}
+                                            <span class="badge badge-danger">Manutenzione</span>
+                                        {% elif station.status == 'offline' %}
+                                            <span class="badge badge-dark">Offline</span>
+                                        {% else %}
+                                            <span class="badge badge-light">{{ station.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ station.power_kw }} kW</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center">Nessuna stazione presente</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+<script>
+    // Grafico per proiezioni mensili
+    var monthlyCtx = document.getElementById('monthlyProjectionsChart').getContext('2d');
+    var monthlyChart = new Chart(monthlyCtx, {
+        type: 'line',
+        data: {
+            labels: [
+                {% for projection in monthly_projections %}
+                "{{ projection.month|date:'M Y' }}",
+                {% endfor %}
+            ],
+            datasets: [{
+                label: 'Ricavi Previsti',
+                data: [
+                    {% for projection in monthly_projections %}
+                    {{ projection.projected_revenue }},
+                    {% endfor %}
+                ],
+                backgroundColor: 'rgba(78, 115, 223, 0.05)',
+                borderColor: 'rgba(78, 115, 223, 1)',
+                pointRadius: 3,
+                pointBackgroundColor: 'rgba(78, 115, 223, 1)',
+                pointBorderColor: 'rgba(78, 115, 223, 1)',
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: 'rgba(78, 115, 223, 1)',
+                pointHoverBorderColor: 'rgba(78, 115, 223, 1)',
+                pointHitRadius: 10,
+                pointBorderWidth: 2,
+                tension: 0.3
+            },
+            {
+                label: 'Costi Previsti',
+                data: [
+                    {% for projection in monthly_projections %}
+                    {{ projection.projected_costs }},
+                    {% endfor %}
+                ],
+                backgroundColor: 'rgba(231, 74, 59, 0.05)',
+                borderColor: 'rgba(231, 74, 59, 1)',
+                pointRadius: 3,
+                pointBackgroundColor: 'rgba(231, 74, 59, 1)',
+                pointBorderColor: 'rgba(231, 74, 59, 1)',
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: 'rgba(231, 74, 59, 1)',
+                pointHoverBorderColor: 'rgba(231, 74, 59, 1)',
+                pointHitRadius: 10,
+                pointBorderWidth: 2,
+                tension: 0.3
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    left: 10,
+                    right: 25,
+                    top: 25,
+                    bottom: 0
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false,
+                        drawBorder: false
+                    }
+                },
+                y: {
+                    ticks: {
+                        maxTicksLimit: 5,
+                        padding: 10,
+                        callback: function(value, index, values) {
+                            return '€' + value;
+                        }
+                    },
+                    grid: {
+                        color: "rgb(234, 236, 244)",
+                        drawBorder: false,
+                        borderDash: [2],
+                        zeroLineBorderDash: [2]
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    backgroundColor: "rgb(255, 255, 255)",
+                    bodyColor: "#858796",
+                    titleMarginBottom: 10,
+                    titleColor: '#6e707e',
+                    titleFontSize: 14,
+                    borderColor: '#dddfeb',
+                    borderWidth: 1,
+                    xPadding: 15,
+                    yPadding: 15,
+                    displayColors: false,
+                    intersect: false,
+                    mode: 'index',
+                    caretPadding: 10,
+                    callbacks: {
+                        label: function(context) {
+                            var label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += '€' + context.parsed.y;
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Grafico stato stazioni
+    var statusCtx = document.getElementById('stationStatusChart').getContext('2d');
+    var statusChart = new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: [
+                {% for status, count in station_status_data.items %}
+                "{{ status }}",
+                {% endfor %}
+            ],
+            datasets: [{
+                data: [
+                    {% for status, count in station_status_data.items %}
+                    {{ count }},
+                    {% endfor %}
+                ],
+                backgroundColor: [
+                    '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#5a5c69', '#858796'
+                ],
+                hoverBackgroundColor: [
+                    '#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#be2617', '#3a3b45', '#60616f'
+                ],
+                hoverBorderColor: "rgba(234, 236, 244, 1)",
+            }],
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: "rgb(255, 255, 255)",
+                    bodyColor: "#858796",
+                    borderColor: '#dddfeb',
+                    borderWidth: 1,
+                    xPadding: 15,
+                    yPadding: 15,
+                    displayColors: false,
+                    caretPadding: 10,
+                }
+            },
+            cutout: '70%',
+        },
+    });
+</script>
+{% endblock %}

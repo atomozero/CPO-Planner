@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Panoramica Finanziaria - CPO Planner{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Panoramica Finanziaria</h1>
+        <a href="{% url 'roi_calculator' %}" class="d-none d-sm-inline-block btn btn-primary shadow-sm">
+            <i class="fas fa-calculator fa-sm text-white-50"></i> Calcolatore ROI
+        </a>
+    </div>
+
+    <!-- Content Row -->
+    <div class="row">
+        <!-- Progetti con Finanziamenti Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Progetti con Finanziamenti</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ projects_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-project-diagram fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Investimento Totale Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Investimento Totale</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">€ {{ total_investment|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-euro-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ROI Medio Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                ROI Medio</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ avg_roi|floatformat:2 }}%</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-percentage fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payback Medio Card -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Payback Medio</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ avg_payback|floatformat:1 }} anni</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-hourglass-half fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Row -->
+    <div class="row">
+        <!-- Grafico Proiezioni Annuali -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Proiezioni Finanziarie (10 anni)</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <canvas id="yearlyProjectionsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progetti con ROI migliore -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Progetti con ROI migliore</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Progetto</th>
+                                    <th>ROI</th>
+                                    <th>Payback</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for project in top_roi_projects %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'project_financial_detail' project.id %}">
+                                            {{ project.name }}
+                                        </a>
+                                    </td>
+                                    <td>{{ project.financial_projection.roi|floatformat:2 }}%</td>
+                                    <td>{{ project.financial_projection.payback_period|floatformat:1 }} anni</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center">Nessun progetto con proiezioni finanziarie</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Row -->
+    <div class="row">
+        <!-- Progetti senza proiezioni finanziarie -->
+        <div class="col-lg-12 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Progetti senza proiezioni finanziarie</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Organizzazione</th>
+                                    <th>Budget</th>
+                                    <th>Stato</th>
+                                    <th>Data inizio</th>
+                                    <th>Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for project in projects_without_financials %}
+                                <tr>
+                                    <td>{{ project.name }}</td>
+                                    <td>{{ project.organization.name }}</td>
+                                    <td>€ {{ project.budget|floatformat:2 }}</td>
+                                    <td>{{ project.get_status_display }}</td>
+                                    <td>{{ project.start_date }}</td>
+                                    <td>
+                                        <a href="{% url 'financial_projection_create' project.id %}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-plus"></i> Aggiungi proiezione
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center">Tutti i progetti hanno proiezioni finanziarie</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+<script>
+    // Grafico per proiezioni annuali
+    var yearlyCtx = document.getElementById('yearlyProjectionsChart').getContext('2d');
+    var yearlyData = {{ yearly_chart_data|safe }};
+    
+    var yearlyLabels = yearlyData.map(function(item) {
+        return "Anno " + item.year;
+    });
+    
+    var yearlyChart = new Chart(yearlyCtx, {
+        type: 'bar',
+        data: {
+            labels: yearlyLabels,
+            datasets: [
+                {
+                    label: 'Ricavi',
+                    data: yearlyData.map(function(item) {
+                        return item.revenue;
+                    }),
+                    backgroundColor: 'rgba(28, 200, 138, 0.7)',
+                    borderColor: 'rgba(28, 200, 138, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Spese Operative',
+                    data: yearlyData.map(function(item) {
+                        return item.expenses;
+                    }),
+                    backgroundColor: 'rgba(231, 74, 59, 0.7)',
+                    borderColor: 'rgba(231, 74, 59, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Profitto',
+                    data: yearlyData.map(function(item) {
+                        return item.profit;
+                    }),
+                    type: 'line',
+                    backgroundColor: 'rgba(78, 115, 223, 0.05)',
+                    borderColor: 'rgba(78, 115, 223, 1)',
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointBackgroundColor: 'rgba(78, 115, 223, 1)',
+                    pointBorderColor: '#fff',
+                    pointHoverRadius: 6,
+                

@@ -1,6 +1,6 @@
 from django.db import models
 from django.utils import timezone
-from core.models import Project, SubProject, ChargingStation
+from cpo_core.models import Project, SubProject, ChargingStation
 
 class ElectricitySupplyContract(models.Model):
     """Contratto di fornitura elettrica"""

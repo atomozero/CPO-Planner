@@ -37,6 +37,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    # Le nostre app
+    'cpo_core.apps.CpoCoreConfig',  # Corretto il nome della classe
+    'financial.apps.FinancialConfig',
+    'project_management.apps.ProjectManagementConfig',
+    'station_planning.apps.StationPlanningConfig', 
+    'reporting.apps.ReportingConfig',
+    'solar_integration.apps.SolarIntegrationConfig',
+    
+    # App di terze parti
+    'crispy_forms',
 ]
 
 MIDDLEWARE = [
@@ -54,7 +65,7 @@ ROOT_URLCONF = 'cpo_planner.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -122,23 +133,13 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Applicazioni installate per CPO Planner 
-INSTALLED_APPS += [ 
-    'core', 
-    'financial', 
-    'project_management', 
-    'station_planning', 
-    'reporting', 
-    'solar_integration', 
-    'crispy_forms', 
-] 
- 
+# Configurazione Crispy Forms
 CRISPY_TEMPLATE_PACK = 'bootstrap4' 
- 
+
 # Configurazione media e static files 
 MEDIA_URL = '/media/' 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media') 
  
 STATICFILES_DIRS = [ 
     os.path.join(BASE_DIR, 'static'), 
-] 
+]

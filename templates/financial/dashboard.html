@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Finanziaria - CPO Planner{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-5 mb-4"><i class="fas fa-chart-line me-2"></i>Dashboard Finanziaria</h1>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card bg-primary text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-uppercase fw-bold mb-1">Progetti</h6>
+                        <h2 class="mb-0">{{ total_projects }}</h2>
+                    </div>
+                    <div>
+                        <i class="fas fa-project-diagram fa-2x"></i>
+                    </div>
+                </div>
+                <p class="mt-2 mb-0">{{ total_projections }} con proiezioni</p>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between">
+                <a href="{% url 'project_list' %}" class="text-white text-decoration-none">Dettagli</a>
+                <i class="fas fa-arrow-circle-right text-white"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card bg-success text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-uppercase fw-bold mb-1">Investimenti</h6>
+                        <h2 class="mb-0">
+                            {% if total_investments %}
+                                {{ total_investments|floatformat:0 }} €
+                            {% else %}
+                                0 €
+                            {% endif %}
+                        </h2>
+                    </div>
+                    <div>
+                        <i class="fas fa-euro-sign fa-2x"></i>
+                    </div>
+                </div>
+                <p class="mt-2 mb-0">Totale pianificato</p>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between">
+                <span class="text-white">Portafoglio Progetti</span>
+                <i class="fas fa-arrow-circle-right text-white"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card bg-info text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-uppercase fw-bold mb-1">ROI Medio</h6>
+                        <h2 class="mb-0">
+                            {% if avg_roi %}
+                                {{ avg_roi|floatformat:2 }}%
+                            {% else %}
+                                --
+                            {% endif %}
+                        </h2>
+                    </div>
+                    <div>
+                        <i class="fas fa-percentage fa-2x"></i>
+                    </div>
+                </div>
+                <p class="mt-2 mb-0">Payback: 
+                    {% if avg_payback %}
+                        {{ avg_payback|floatformat:1 }} anni
+                    {% else %}
+                        --
+                    {% endif %}
+                </p>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between">
+                <span class="text-white">Indicatori di performance</span>
+                <i class="fas fa-arrow-circle-right text-white"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card bg-warning text-dark h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-uppercase fw-bold mb-1">Contratti</h6>
+                        <h2 class="mb-0">{{ total_contracts }}</h2>
+                    </div>
+                    <div>
+                        <i class="fas fa-file-contract fa-2x"></i>
+                    </div>
+                </div>
+                <p class="mt-2 mb-0">{{ total_exit_strategies }} strategie d'uscita</p>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between">
+                <span class="text-dark">Gestione contratti</span>
+                <i class="fas fa-arrow-circle-right text-dark"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Proiezioni Recenti -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Proiezioni Finanziarie Recenti</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_projections %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Progetto</th>
+                                    <th>Investimento</th>
+                                    <th>ROI</th>
+                                    <th>Payback</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for projection in recent_projections %}
+                                <tr>
+                                    <td>{{ projection.project.name }}</td>
+                                    <td>{{ projection.total_investment|floatformat:0 }} €</td>
+                                    <td>{{ projection.expected_roi }}%</td>
+                                    <td>{{ projection.expected_payback_years }} anni</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">Nessuna proiezione finanziaria disponibile</p>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <a href="#" class="btn btn-sm btn-primary">Tutte le proiezioni</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Contratti di Fornitura Recenti</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_contracts %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Fornitore</th>
+                                    <th>Prezzo kWh</th>
+                                    <th>Scadenza</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for contract in recent_contracts %}
+                                <tr>
+                                    <td>{{ contract.name }}</td>
+                                    <td>{{ contract.provider }}</td>
+                                    <td>{{ contract.base_price_per_kwh }} €</td>
+                                    <td>{{ co

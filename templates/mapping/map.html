@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block title %}{% translate "Mappa Stazioni di Ricarica" %}{% endblock %}
+
+{% block extra_css %}
+<link href="https://api.mapbox.com/mapbox-gl-js/v2.8.2/mapbox-gl.css" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'mapping/css/mapping.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-2">
+        <div class="col-lg-8">
+            <h1 class="h3 mb-0 text-gray-800">
+                {% if saved_map %}
+                    {% translate "Mappa" %}: {{ saved_map.name }}
+                {% elif filtered_by_project %}
+                    {% translate "Mappa Stazioni del Progetto" %}: {{ project.name }}
+                {% elif filtered_by_subproject %}
+                    {% translate "Mappa Stazioni del Sotto-progetto" %}: {{ subproject.name }}
+                {% else %}
+                    {% translate "Mappa Stazioni di Ricarica" %}
+                {% endif %}
+            </h1>
+        </div>
+        <div class="col-lg-4 text-right">
+            <div class="dropdown d-inline">
+                <button class="btn btn-primary dropdown-toggle" type="button" id="mapActionsDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="fas fa-map"></i> {% translate "Azioni" %}
+                </button>
+                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="mapActionsDropdown">
+                    <a class="dropdown-item" href="#" id="saveMapBtn">
+                        <i class="fas fa-save fa-sm fa-fw mr-2 text-gray-400"></i>
+                        {% translate "Salva Mappa Attuale" %}
+                    </a>
+                    <a class="dropdown-item" href="{% url 'mapping:saved_map_list' %}">
+                        <i class="fas fa-list fa-sm fa-fw mr-2 text-gray-400"></i>
+                        {% translate "Mappe Salvate" %}
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" href="#" id="addMarkerBtn">
+                        <i class="fas fa-map-marker-alt fa-sm fa-fw mr-2 text-gray-400"></i>
+                        {% translate "Aggiungi Marker" %}
+                    </a>
+                    <a class="dropdown-item" href="{% url 'mapping:marker_list' %}">
+                        <i class="fas fa-thumbtack fa-sm fa-fw mr-2 text-gray-400"></i>
+                        {% translate "Gestisci Marker" %}
+                    </a>
+                    {% if perms.mapping.change_mapsettings %}
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" href="{% url 'mapping:settings_list' %}">
+                        <i class="fas fa-cog fa-sm fa-fw mr-2 text-gray-400"></i>
+                        {% translate "Impostazioni Mappa" %}
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mappa e filtri -->
+    <div class="row">
+        <!-- Pannello filtri -->
+        <div class="col-lg-3">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">{% translate "Filtri" %}</h6>
+                </div>
+                <div class="card-body">
+                    <form id="mapFilterForm">
+                        <!-- Stato -->
+                        <div class="form-group">
+                            <label>{% translate "Stato Stazioni" %}</label>
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="statusPlanned" name="status[]" value="planned" checked>
+                                <label class="custom-control-label" for="statusPlanned">{% translate "Pianificate" %}</label>
+                            </div>
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="statusUnderConstruction" name="status[]" value="under_construction" checked>
+                                <label class="custom-control-label" for="statusUnderConstruction">{% translate "In Costruzione" %}</label>
+                            </div>
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="statusOperational" name="status[]" value="operational" checked>
+                                <label class="custom-control-label" for="statusOperational">{% translate "Operative" %}</label>
+                            </div>
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="statusMaintenance" name="status[]" value="maintenance">
+                                <label class="custom-control-label" for="statusMaintenance">{% translate "In Manutenzione" %}</label>
+                            </div>
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="statusOffline" name="status[]" value="offline">
+                                <label class="custom-control-label" for="statusOffline">{% translate "Non Operative" %}</label>
+                            </div>
+                        </div>
+                        
+                        <!-- Potenza -->
+                        <div class="form-group">
+                            <label for="minPower">{% translate "Potenza Minima (kW)" %}</label>
+                            <input type="number" class="form-control" id="minPower" name="min_power" min="0" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label for="maxPower">{% translate "Potenza Massima (kW)" %}</label>
+                            <input type="number" class="form-control" id="maxPower" name="max_power" min="0" step="0.1">
+                        </div>
+                        
+                        <!-- Connettori -->
+                        <div class="form-group">
+                            <label for="minConnectors">{% translate "Connettori Minimi" %}</label>
+                            <input type="number" class="form-control" id="minConnectors" name="min_connectors" min="1" step="1">
+                        </div>
+                        
+                        <!-- Filtra per progetto -->
+                        <div class="form-group">
+                            <label for="projectFilter">{% translate "Progetto" %}</label>
+                            <select class="form-control" id="projectFilter" name="project">
+                                <option value="">{% translate "Tutti i Progetti" %}</option>
+                                {% for project in projects %}
+                                <option value="{{ project.id }}">{{ project.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Filtra per sotto-progetto (dinamico in base al progetto) -->
+                        <div class="form-group">
+                            <label for="subprojectFilter">{% translate "Sotto-progetto" %}</label>
+                            <select class="form-control" id="subprojectFilter" name="subproject">
+                                <option value="">{% translate "Tutti i Sotto-progetti" %}</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Opzioni di visualizzazione -->
+                        <div class="form-group">
+                            <label>{% translate "Opzioni di Visualizzazione" %}</label>
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="showClusters" name="show_clusters" checked>
+                                <label class="custom-control-label" for="showClusters">{% translate "Mostra Cluster" %}</label>
+                            </div>
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="showCustomMarkers" name="show_custom_markers" checked>
+                                <label class="custom-control-label" for="showCustomMarkers">{% translate "Mostra Marker Personalizzati" %}</label>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i class="fas fa-filter"></i> {% translate "Applica Filtri" %}
+                        </button>
+                        
+                        <button type="button" id="resetFiltersBtn" class="btn btn-secondary btn-block mt-2">
+                            <i class="fas fa-undo"></i> {% translate "Reimposta Filtri" %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Statistiche -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">{% translate "Statistiche" %}</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center mb-3">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                {% translate "Stazioni Totali" %}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="totalStationsCount">{{ total_stations }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-charging-station fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="row no-gutters align-items-center mb-3">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                {% translate "Stazioni Operative" %}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="operationalStationsCount">{{ operational_stations }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-bolt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                {% translate "Marker Personalizzati" %}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="customMarkersCount">{{ custom_markers }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-map-marker-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="row no-gutters align-items-center mb-2">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
+                                {% translate "Stazioni Visibili" %}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="visibleStationsCount">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mappa -->
+        <div class="col-lg-9">
+            <div class="card shadow mb-4">
+                <div class="card-body p-0">
+                    <div id="map" style="height: 700px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modale per salvare la mappa -->
+<div class="modal fade" id="saveMapModal" tabindex="-1" role="dialog" aria-labelledby="saveMapModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form id="saveMapForm" method="post" action="{% url 'mapping:saved_map_create' %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="saveMapModalLabel">{% translate "Salva Mappa Attuale" %}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="mapName">{% translate "Nome della Mappa" %}</label>
+                        <input type="text" class="form-control" id="mapName" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="mapDescription">{% translate "Descrizione" %}</label>
+                        <textarea class="form-control" id="mapDescription" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <div class="custom-control custom-checkbox">
+                            <input type="checkbox" class="custom-control-input" id="mapIsPublic" name="is_public">
+                            <label class="custom-control-label" for="mapIsPublic">{% translate "Mappa Pubblica" %}</label>
+                            <small class="form-text text-muted">{% translate "Se abilitato, la mappa sarà visibile a tutti gli utenti." %}</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Campi nascosti per i dati della mappa -->
+                    <input type="hidden" id="mapCenterLat" name="center_lat">
+                    <input type="hidden" id="mapCenterLng" name="center_lng">
+                    <input type="hidden" id="mapZoom" name="zoom">
+                    <input type="hidden" id="mapFiltersJson" name="filters_json">
+                    <input type="hidden" id="mapStationIds" name="charging_station_ids">
+                    <input type="hidden" id="mapProjectIds" name="project_ids">
+                    <input type="hidden" id="mapSubprojectIds" name="subproject_ids">
+                    <input type="hidden" id="mapMarkerIds" name="custom_marker_ids">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">{% translate "Annulla" %}</button>
+                    <button type="submit" class="btn btn-primary">{% translate "Salva" %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://api.mapbox.com/mapbox-gl-js/v2.8.2/mapbox-gl.js"></script>
+<script src="https://unpkg.com/@mapbox/mapbox-gl-geocoder@5.0.0/dist/mapbox-gl-geocoder.min.js"></script>
+<script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.3.0/mapbox-gl-draw.js"></script>
+<script src="{% static 'mapping/js/mapping.js' %}"></script>
+<script>
+    // Configurazione della mappa
+    const mapConfig = {
+        apiKey: '{{ mapbox_api_key }}',
+        defaultCenter: [{{ map_settings.default_center_lng }}, {{ map_settings.default_center_lat }}],
+        defaultZoom: {{ map_settings.default_zoom }},
+        mapStyle: '{{ map_settings.map_style }}',
+        showClusters: {% if map_settings.show_clusters %}true{% else %}false{% endif %},
+        minClusterSize: {{ map_settings.min_cluster_size }},
+        stationsApiUrl: '{% url "mapping:api_stations_geojson" %}',
+        markersApiUrl: '{% url "mapping:api_markers_geojson" %}',
+        // URLs per azioni
+        addMarkerUrl: '{% url "mapping:marker_create" %}',
+        saveMapUrl: '{% url "mapping:saved_map_create" %}',
+        // Opzioni di pre-filtro
+        {% if filtered_by_project %}
+        projectFilter: {{ project.id }},
+        {% endif %}
+        {% if filtered_by_subproject %}
+        subprojectFilter: {{ subproject.id }},
+        {% endif %}
+        // Se è una mappa salvata, carica i suoi dati
+        {% if saved_map %}
+        savedMapId: {{ saved_map.id }},
+        savedMapDataUrl: '{% url "mapping:api_saved_map_data" map_id=saved_map.id %}',
+        {% endif %}
+        // Token CSRF per richieste POST
+        csrfToken: '{{ csrf_token }}',
+    };
+    
+    // Inizializza la mappa
+    document.addEventListener('DOMContentLoaded', function() {
+        initMap(mapConfig);
+    });
+</script>
+{% endblock %}

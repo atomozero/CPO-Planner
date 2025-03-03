@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block title %}{% translate "Gestione Documenti" %}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'documents/css/documents.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 mb-0 text-gray-800">
+                {% if entity %}
+                    {% if entity_type == 'project' %}
+                        {% blocktranslate with name=entity.name %}Documenti del Progetto: {{ name }}{% endblocktranslate %}
+                    {% elif entity_type == 'subproject' %}
+                        {% blocktranslate with name=entity.name %}Documenti del Sotto-progetto: {{ name }}{% endblocktranslate %}
+                    {% elif entity_type == 'chargingstation' %}
+                        {% blocktranslate with name=entity.name %}Documenti della Stazione: {{ name }}{% endblocktranslate %}
+                    {% endif %}
+                {% else %}
+                    {% translate "Gestione Documenti" %}
+                {% endif %}
+            </h1>
+        </div>
+        <div class="col text-right">
+            {% if entity %}
+                <a href="{% url 'documents:document_create_entity' entity_type=entity_type entity_id=entity.id %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> {% translate "Nuovo Documento" %}
+                </a>
+            {% else %}
+                <a href="{% url 'documents:document_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> {% translate "Nuovo Documento" %}
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Statistiche dei documenti -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                {% translate "Totale Documenti" %}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_documents }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-folder fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                {% translate "In Attesa di Approvazione" %}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_documents }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                {% translate "Documenti Scaduti" %}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ expired_documents }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">{% translate "Documenti" %}</h6>
+            <div class="dropdown no-arrow">
+                <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink"
+                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in"
+                    aria-labelledby="dropdownMenuLink">
+                    <div class="dropdown-header">{% translate "Azioni" %}:</div>
+                    <a class="dropdown-item" href="{% url 'documents:category_list' %}">
+                        <i class="fas fa-tags fa-sm fa-fw mr-2 text-gray-400"></i>
+                        {% translate "Gestisci Categorie" %}
+                    </a>
+                    {% if entity %}
+                    <a class="dropdown-item" href="{% url 'documents:document_list' %}">
+                        <i class="fas fa-list fa-sm fa-fw mr-2 text-gray-400"></i>
+                        {% translate "Tutti i Documenti" %}
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Filtri -->
+            <div class="mb-4">
+                <form method="get" class="form-inline">
+                    <div class="row w-100">
+                        <div class="col-md-2 mb-2">
+                            {{ filter_form.category }}
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            {{ filter_form.status }}
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            {{ filter_form.search }}
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            {{ filter_form.date_from }}
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            {{ filter_form.date_to }}
+                        </div>
+                        <div class="col-md-1 mb-2">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Tabella documenti -->
+            <div class="table-responsive">
+                <table class="table table-bordered" id="documentsTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>{% translate "Titolo" %}</th>
+                            <th>{% translate "Categoria" %}</th>
+                            <th>{% translate "Stato" %}</th>
+                            <th>{% translate "Entità Collegata" %}</th>
+                            <th>{% translate "Data Emissione" %}</th>
+                            <th>{% translate "Data Scadenza" %}</th>
+                            <th>{% translate "Creato da" %}</th>
+                            <th>{% translate "Azioni" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for document in documents %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'documents:document_detail' pk=document.pk %}">
+                                    {{ document.title }}
+                                </a>
+                                {% if document.version %}
+                                    <span class="badge badge-info">v{{ document.version }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ document.category.name }}</td>
+                            <td>
+                                {% if document.status == 'draft' %}
+                                    <span class="badge badge-secondary">{% translate "Bozza" %}</span>
+                                {% elif document.status == 'pending' %}
+                                    <span class="badge badge-warning">{% translate "In Attesa" %}</span>
+                                {% elif document.status == 'approved' %}
+                                    <span class="badge badge-success">{% translate "Approvato" %}</span>
+                                {% elif document.status == 'rejected' %}
+                                    <span class="badge badge-danger">{% translate "Respinto" %}</span>
+                                {% elif document.status == 'expired' %}
+                                    <span class="badge badge-danger">{% translate "Scaduto" %}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if document.content_type.model == 'project' %}
+                                    <a href="{% url 'projects:project_detail' pk=document.object_id %}">
+                                        {% with project=document.content_object %}
+                                            <i class="fas fa-project-diagram"></i> {{ project.name }}
+                                        {% endwith %}
+                                    </a>
+                                {% elif document.content_type.model == 'subproject' %}
+                                    <a href="{% url 'projects:subproject_detail' pk=document.object_id %}">
+                                        {% with subproject=document.content_object %}
+                                            <i class="fas fa-tasks"></i> {{ subproject.name }}
+                                        {% endwith %}
+                                    </a>
+                                {% elif document.content_type.model == 'chargingstation' %}
+                                    <a href="{% url 'projects:chargingstation_detail' pk=document.object_id %}">
+                                        {% with station=document.content_object %}
+                                            <i class="fas fa-charging-station"></i> {{ station.name }}
+                                        {% endwith %}
+                                    </a>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if document.issue_date %}
+                                    {{ document.issue_date|date:"d/m/Y" }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if document.expiry_date %}
+                                    {{ document.expiry_date|date:"d/m/Y" }}
+                                    {% if document.is_expired %}
+                                        <i class="fas fa-exclamation-triangle text-danger" title="{% translate 'Scaduto' %}"></i>
+                                    {% endif %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>{{ document.created_by.get_full_name }}</td>
+                            <td>
+                                <div class="dropdown no-arrow">
+                                    <a class="dropdown-toggle" href="#" role="button" id="documentActions{{ document.pk }}"
+                                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                                    </a>
+                                    <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in"
+                                        aria-labelledby="documentActions{{ document.pk }}">
+                                        <a class="dropdown-item" href="{% url 'documents:document_detail' pk=document.pk %}">
+                                            <i class="fas fa-eye fa-sm fa-fw mr-2 text-gray-400"></i>
+                                            {% translate "Visualizza" %}
+                                        </a>
+                                        <a class="dropdown-item" href="{% url 'documents:document_update' pk=document.pk %}">
+                                            <i class="fas fa-edit fa-sm fa-fw mr-2 text-gray-400"></i>
+                                            {% translate "Modifica" %}
+                                        </a>
+                                        <a class="dropdown-item" href="{% url 'documents:document_download' pk=document.pk %}">
+                                            <i class="fas fa-download fa-sm fa-fw mr-2 text-gray-400"></i>
+                                            {% translate "Scarica" %}
+                                        </a>
+                                        <div class="dropdown-divider"></div>
+                                        <a class="dropdown-item text-danger" href="{% url 'documents:document_delete' pk=document.pk %}">
+                                            <i class="fas fa-trash fa-sm fa-fw mr-2 text-gray-400"></i>
+                                            {% translate "Elimina" %}
+                                        </a>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center">
+                                {% translate "Nessun documento trovato." %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Paginazione -->
+            {% if is_paginated %}
+            <div class="mt-3">
+                <nav aria-label="{% translate 'Navigazione pagine' %}">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for i in paginator.page_range %}
+                            {% if i == page_obj.number %}
+                            <li class="page-item active"><a class="page-link" href="#">{{ i }}</a></li>
+                            {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'documents/js/documents.js' %}"></script>
+{% endblock %}

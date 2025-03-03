@@ -7,8 +7,11 @@ from django.contrib.auth import views as auth_views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('cpo_core.urls')),
-    path('financial/', include('financial.urls')),
-    
+    #path('financial/', include('financial.urls')),
+    #path('documenti/', include('cpo_planner.documents.urls')),
+    #path('report/', include('cpo_planner.reporting.urls')),
+    #path('ambiente/', include('cpo_planner.environmental.urls')),
+    #path('mappa/', include('cpo_planner.mapping.urls')),
     # Autenticazione
     path('login/', auth_views.LoginView.as_view(template_name='auth/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),

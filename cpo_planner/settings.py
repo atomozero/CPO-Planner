@@ -27,9 +27,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -39,17 +37,19 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     
     # Le nostre app
-    'cpo_core.apps.CpoCoreConfig',  # Corretto il nome della classe
+    'cpo_core.apps.CpoCoreConfig',
+    'cpo_planner.documents',
+    'cpo_planner.reporting.apps.ReportingConfig',
+    'cpo_planner.environmental',
+    'cpo_planner.mapping',
+    'cpo_planner.projects.apps.ProjectsConfig',
     'financial.apps.FinancialConfig',
-    'project_management.apps.ProjectManagementConfig',
     'station_planning.apps.StationPlanningConfig', 
-    'reporting.apps.ReportingConfig',
     'solar_integration.apps.SolarIntegrationConfig',
     
     # App di terze parti
     'crispy_forms',
 ]
-
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -80,6 +80,13 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'cpo_planner.wsgi.application'
 
+# Add Mapbox API key (for mapping)
+MAPBOX_API_KEY = os.environ.get('MAPBOX_API_KEY', '')
+
+# Configure Celery for async tasks (optional, for reporting)
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+USE_CELERY = os.environ.get('USE_CELERY', 'False') == 'True'
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases

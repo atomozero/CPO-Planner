@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'financial.apps.FinancialConfig',
     'station_planning.apps.StationPlanningConfig', 
     'solar_integration.apps.SolarIntegrationConfig',
+    'infrastructure', 
     
     # App di terze parti
     'crispy_forms',

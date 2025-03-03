@@ -1,0 +1,83 @@
+<!-- templates/projects/project_gantt.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'jsgantt/jsgantt.css' %}">
+<style>
+    #gantt-container {
+        position: relative;
+        height: 600px;
+        width: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>{{ project.name }} - Cronoprogramma</h1>
+    
+    <div class="mb-3">
+        <a href="{% url 'project-tasks' project.id %}" class="btn btn-outline-primary">
+            <i class="bi bi-list-task"></i> Elenco attività
+        </a>
+        <a href="{% url 'project-task-create' project.id %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Aggiungi attività
+        </a>
+        <a href="{% url 'project-detail' project.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Torna al progetto
+        </a>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5>Grafico Gantt del progetto</h5>
+        </div>
+        <div class="card-body">
+            <div id="gantt-container"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'jsgantt/jsgantt.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var g = new JSGantt.GanttChart(document.getElementById('gantt-container'), 'week');
+        
+        g.setOptions({
+            vCaptionType: 'Complete',
+            vQuarterColWidth: 36,
+            vDateTaskDisplayFormat: 'day dd month yyyy',
+            vDayMajorDateDisplayFormat: 'mon yyyy - Week ww',
+            vWeekMinorDateDisplayFormat: 'dd mon',
+            vShowTaskInfoLink: 1,
+            vShowEndWeekDate: 0,
+            vUseSingleCell: 10000,
+            vFormatArr: ['Day', 'Week', 'Month', 'Quarter']
+        });
+        
+        // Aggiungi le attività del progetto
+        {% for task in tasks %}
+        g.AddTaskItem({
+            pID: {{ task.id }},
+            pName: "{{ task.name }}",
+            pStart: "{{ task.planned_start_date|date:'Y-m-d' }}",
+            pEnd: "{{ task.planned_end_date|date:'Y-m-d' }}",
+            pColor: "{% if task.status == 'completed' %}#2ecc71{% elif task.status == 'in_progress' %}#3498db{% elif task.status == 'delayed' %}#e74c3c{% else %}#95a5a6{% endif %}",
+            pLink: "{% url 'task-update' task.id %}",
+            pMile: 0,
+            pRes: "{{ task.responsible }}",
+            pComp: {{ task.completion_percentage }},
+            pGroup: 0,
+            pParent: 0,
+            pOpen: 1,
+            pDepend: "{% for dep in task.dependencies.all %}{% if not forloop.first %},{% endif %}{{ dep.id }}{% endfor %}"
+        });
+        {% endfor %}
+        
+        g.Draw();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,527 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ organization.name }} | CPO Planner{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<style>
+    #map {
+        height: 400px;
+        width: 100%;
+    }
+    .contact-info {
+        padding: 15px;
+        border-radius: 5px;
+        background-color: #f8f9fc;
+        margin-bottom: 20px;
+    }
+    .contact-info i {
+        width: 20px;
+        text-align: center;
+        margin-right: 10px;
+        color: #4e73df;
+    }
+    .project-card {
+        border-left: 4px solid #4e73df;
+        transition: transform 0.2s;
+    }
+    .project-card:hover {
+        transform: translateY(-5px);
+    }
+    .station-marker {
+        text-align: center;
+    }
+    .progress-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">{{ organization.name }}</h1>
+    <div>
+        <a href="{% url 'edit_organization' organization.id %}" class="d-none d-sm-inline-block btn btn-sm btn-warning shadow-sm mr-2">
+            <i class="fas fa-edit fa-sm text-white-50 mr-2"></i>Modifica
+        </a>
+        <a href="{% url 'delete_organization' organization.id %}" class="d-none d-sm-inline-block btn btn-sm btn-danger shadow-sm mr-2">
+            <i class="fas fa-trash fa-sm text-white-50 mr-2"></i>Elimina
+        </a>
+        <a href="{% url 'organization_list' %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50 mr-2"></i>Torna alla lista
+        </a>
+    </div>
+</div>
+
+<!-- Content Row -->
+<div class="row">
+    <!-- Organization Info -->
+    <div class="col-xl-4 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Informazioni Organizzazione</h6>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    {% if organization.logo %}
+                        <img src="{{ organization.logo.url }}" alt="{{ organization.name }}" class="img-fluid rounded-circle mb-3" style="max-width: 150px;">
+                    {% else %}
+                        <div class="mb-3 rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mx-auto" style="width: 150px; height: 150px;">
+                            <i class="fas fa-building fa-5x"></i>
+                        </div>
+                    {% endif %}
+                    <h4>{{ organization.name }}</h4>
+                    <span class="badge badge-pill {% if organization.is_active %}badge-success{% else %}badge-secondary{% endif %} px-3 py-2">
+                        {% if organization.is_active %}Attivo{% else %}Inattivo{% endif %}
+                    </span>
+                </div>
+
+                <div class="contact-info">
+                    <p><i class="fas fa-tag"></i> <strong>Tipo:</strong> {{ organization.get_type_display }}</p>
+                    <p><i class="fas fa-envelope"></i> <strong>Email:</strong> {{ organization.email|default:"Non specificata" }}</p>
+                    <p><i class="fas fa-phone"></i> <strong>Telefono:</strong> {{ organization.phone|default:"Non specificato" }}</p>
+                    <p><i class="fas fa-map-marker-alt"></i> <strong>Indirizzo:</strong> {{ organization.address|default:"Non specificato" }}</p>
+                    <p><i class="fas fa-globe"></i> <strong>Sito Web:</strong> 
+                        {% if organization.website %}
+                            <a href="{{ organization.website }}" target="_blank">{{ organization.website }}</a>
+                        {% else %}
+                            Non specificato
+                        {% endif %}
+                    </p>
+                    <p><i class="fas fa-id-card"></i> <strong>P.IVA / CF:</strong> {{ organization.tax_code|default:"Non specificato" }}</p>
+                </div>
+
+                <div class="mb-3">
+                    <p class="mb-2"><i class="fas fa-project-diagram"></i> <strong>Progetti:</strong> {{ organization.projects.count }}</p>
+                    <div class="progress mb-4">
+                        <div class="progress-bar" role="progressbar" style="width: {{ project_completion }}%;" 
+                             aria-valuenow="{{ project_completion }}" aria-valuemin="0" aria-valuemax="100">
+                            {{ project_completion }}% Completamento
+                        </div>
+                    </div>
+                    
+                    <p class="mb-2"><i class="fas fa-charging-station"></i> <strong>Stazioni di Ricarica:</strong> {{ total_stations }}</p>
+                    <p class="mb-2"><i class="fas fa-euro-sign"></i> <strong>Budget Totale:</strong> € {{ total_budget|floatformat:2 }}</p>
+                    <p class="mb-2"><i class="fas fa-calendar-alt"></i> <strong>Data Registrazione:</strong> {{ organization.created_at|date:"d/m/Y" }}</p>
+                </div>
+
+                {% if organization.notes %}
+                <div class="mt-3">
+                    <h6 class="font-weight-bold">Note:</h6>
+                    <p>{{ organization.notes }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Projects Cards -->
+    <div class="col-xl-8 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Progetti dell'Organizzazione</h6>
+                <a href="{% url 'add_project' %}?organization={{ organization.id }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus fa-sm mr-1"></i> Nuovo Progetto
+                </a>
+            </div>
+            <div class="card-body">
+                {% if projects %}
+                <div class="row">
+                    {% for project in projects %}
+                    <div class="col-lg-6 mb-4">
+                        <div class="card project-card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="card-title mb-0">{{ project.name }}</h5>
+                                    {% if project.status == 'planned' %}
+                                        <span class="badge badge-info">Pianificato</span>
+                                    {% elif project.status == 'in_progress' %}
+                                        <span class="badge badge-primary">In Corso</span>
+                                    {% elif project.status == 'completed' %}
+                                        <span class="badge badge-success">Completato</span>
+                                    {% elif project.status == 'on_hold' %}
+                                        <span class="badge badge-warning">In Pausa</span>
+                                    {% elif project.status == 'cancelled' %}
+                                        <span class="badge badge-danger">Annullato</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <i class="fas fa-map-marker-alt text-primary mr-1"></i> {{ project.municipality.name }}
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <span class="progress-title">Completamento: {{ project.completion_percentage }}%</span>
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar bg-{{ project.get_status_color }}" role="progressbar" 
+                                            style="width: {{ project.completion_percentage }}%;" 
+                                            aria-valuenow="{{ project.completion_percentage }}" 
+                                            aria-valuemin="0" aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row text-xs mb-2">
+                                    <div class="col-6">
+                                        <i class="fas fa-calendar-alt mr-1"></i> Inizio: {{ project.start_date|date:"d/m/Y" }}
+                                    </div>
+                                    <div class="col-6">
+                                        <i class="fas fa-flag-checkered mr-1"></i> Fine: {{ project.end_date|date:"d/m/Y" }}
+                                    </div>
+                                </div>
+                                
+                                <div class="row text-xs mb-3">
+                                    <div class="col-6">
+                                        <i class="fas fa-charging-station mr-1"></i> Stazioni: {{ project.chargingstation_set.count }}
+                                    </div>
+                                    <div class="col-6">
+                                        <i class="fas fa-euro-sign mr-1"></i> Budget: € {{ project.budget|floatformat:0 }}
+                                    </div>
+                                </div>
+                                
+                                <a href="{% url 'project_detail' project.id %}" class="btn btn-sm btn-primary">
+                                    Dettagli
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    Nessun progetto associato a questa organizzazione. 
+                    <a href="{% url 'add_project' %}?organization={{ organization.id }}">Aggiungi il primo progetto</a>.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Map -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Mappa delle Stazioni</h6>
+            </div>
+            <div class="card-body">
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics & Charts -->
+<div class="row">
+    <!-- Projects Status Distribution -->
+    <div class="col-xl-4 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Stato dei Progetti</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-pie pt-4 pb-2">
+                    <canvas id="projectStatusChart"></canvas>
+                </div>
+                <div class="mt-4 text-center small">
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-info"></i> Pianificato
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-primary"></i> In Corso
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-success"></i> Completato
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-warning"></i> In Pausa
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-danger"></i> Annullato
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Overview -->
+    <div class="col-xl-8 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Panoramica Finanziaria</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-area">
+                    <canvas id="financialOverviewChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stations List -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Stazioni di Ricarica</h6>
+        <div class="dropdown no-arrow">
+            <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+            </a>
+            <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in" aria-labelledby="dropdownMenuLink">
+                <div class="dropdown-header">Azioni:</div>
+                <a class="dropdown-item" href="{% url 'export_stations' organization.id %}">Esporta Stazioni</a>
+                <a class="dropdown-item" href="{% url 'print_stations' organization.id %}">Stampa Elenco</a>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item" href="{% url 'add_station' %}?organization={{ organization.id }}">Aggiungi Stazione</a>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if stations %}
+        <div class="table-responsive">
+            <table class="table table-bordered" id="stationsTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Progetto</th>
+                        <th>Comune</th>
+                        <th>Indirizzo</th>
+                        <th>Potenza (kW)</th>
+                        <th>Stato</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for station in stations %}
+                    <tr>
+                        <td>{{ station.name }}</td>
+                        <td>{{ station.project.name }}</td>
+                        <td>{{ station.project.municipality.name }}</td>
+                        <td>{{ station.address }}</td>
+                        <td>{{ station.power_kw }}</td>
+                        <td>
+                            {% if station.status == 'planned' %}
+                                <span class="badge badge-info">Pianificata</span>
+                            {% elif station.status == 'installing' %}
+                                <span class="badge badge-primary">In Installazione</span>
+                            {% elif station.status == 'active' %}
+                                <span class="badge badge-success">Attiva</span>
+                            {% elif station.status == 'maintenance' %}
+                                <span class="badge badge-warning">In Manutenzione</span>
+                            {% elif station.status == 'inactive' %}
+                                <span class="badge badge-danger">Inattiva</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'station_detail' station.id %}" class="btn btn-info btn-sm" title="Dettaglio">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'edit_station' station.id %}" class="btn btn-warning btn-sm" title="Modifica">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'delete_station' station.id %}" class="btn btn-danger btn-sm" title="Elimina">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            Nessuna stazione di ricarica associata a questa organizzazione.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+    $(document).ready(function() {
+        // Inizializza DataTables
+        $('#stationsTable').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Italian.json"
+            }
+        });
+        
+        // Inizializza la mappa
+        var map = L.map('map').setView([41.9028, 12.4964], 6); // Default centrato sull'Italia
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Aggiungi marker per le stazioni
+        {% for station in stations %}
+            {% if station.latitude and station.longitude %}
+            var marker = L.marker([{{ station.latitude }}, {{ station.longitude }}], {
+                icon: L.divIcon({
+                    className: 'station-marker',
+                    html: '<i class="fas fa-charging-station text-success" style="font-size: 20px;"></i>',
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                })
+            }).addTo(map);
+            
+            marker.bindPopup("<strong>{{ station.name }}</strong><br>{{ station.address }}<br>Potenza: {{ station.power_kw }} kW");
+            {% endif %}
+        {% endfor %}
+        
+        // Se ci sono stazioni con coordinate, adatta la vista della mappa
+        {% if stations_with_coords %}
+        var bounds = [];
+        {% for station in stations_with_coords %}
+        bounds.push([{{ station.latitude }}, {{ station.longitude }}]);
+        {% endfor %}
+        map.fitBounds(bounds);
+        {% endif %}
+        
+        // Grafico a torta per stato progetti
+        var ctxPie = document.getElementById("projectStatusChart");
+        var projectStatusChart = new Chart(ctxPie, {
+            type: 'doughnut',
+            data: {
+                labels: ["Pianificato", "In Corso", "Completato", "In Pausa", "Annullato"],
+                datasets: [{
+                    data: [
+                        {{ status_counts.planned|default:0 }}, 
+                        {{ status_counts.in_progress|default:0 }}, 
+                        {{ status_counts.completed|default:0 }}, 
+                        {{ status_counts.on_hold|default:0 }}, 
+                        {{ status_counts.cancelled|default:0 }}
+                    ],
+                    backgroundColor: ['#36b9cc', '#4e73df', '#1cc88a', '#f6c23e', '#e74a3b'],
+                    hoverBackgroundColor: ['#2c9faf', '#2e59d9', '#17a673', '#dda20a', '#be2617'],
+                    hoverBorderColor: "rgba(234, 236, 244, 1)",
+                }],
+            },
+            options: {
+                maintainAspectRatio: false,
+                tooltips: {
+                    backgroundColor: "rgb(255,255,255)",
+                    bodyFontColor: "#858796",
+                    borderColor: '#dddfeb',
+                    borderWidth: 1,
+                    xPadding: 15,
+                    yPadding: 15,
+                    displayColors: false,
+                    caretPadding: 10,
+                },
+                legend: {
+                    display: false
+                },
+                cutoutPercentage: 70,
+            },
+        });
+        
+        // Grafico area per panoramica finanziaria
+        var ctxArea = document.getElementById("financialOverviewChart");
+        var financialOverviewChart = new Chart(ctxArea, {
+            type: 'line',
+            data: {
+                labels: [{% for month in financial_data %}"{{ month.month }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+                datasets: [{
+                    label: "Budget",
+                    lineTension: 0.3,
+                    backgroundColor: "rgba(78, 115, 223, 0.05)",
+                    borderColor: "rgba(78, 115, 223, 1)",
+                    pointRadius: 3,
+                    pointBackgroundColor: "rgba(78, 115, 223, 1)",
+                    pointBorderColor: "rgba(78, 115, 223, 1)",
+                    pointHoverRadius: 3,
+                    pointHoverBackgroundColor: "rgba(78, 115, 223, 1)",
+                    pointHoverBorderColor: "rgba(78, 115, 223, 1)",
+                    pointHitRadius: 10,
+                    pointBorderWidth: 2,
+                    data: [{% for month in financial_data %}{{ month.budget }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                },
+                {
+                    label: "Spese",
+                    lineTension: 0.3,
+                    backgroundColor: "rgba(231, 74, 59, 0.05)",
+                    borderColor: "rgba(231, 74, 59, 1)",
+                    pointRadius: 3,
+                    pointBackgroundColor: "rgba(231, 74, 59, 1)",
+                    pointBorderColor: "rgba(231, 74, 59, 1)",
+                    pointHoverRadius: 3,
+                    pointHoverBackgroundColor: "rgba(231, 74, 59, 1)",
+                    pointHoverBorderColor: "rgba(231, 74, 59, 1)",
+                    pointHitRadius: 10,
+                    pointBorderWidth: 2,
+                    data: [{% for month in financial_data %}{{ month.expenses }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                }],
+            },
+            options: {
+                maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        left: 10,
+                        right: 25,
+                        top: 25,
+                        bottom: 0
+                    }
+                },
+                scales: {
+                    xAxes: [{
+                        time: {
+                            unit: 'date'
+                        },
+                        gridLines: {
+                            display: false,
+                            drawBorder: false
+                        },
+                        ticks: {
+                            maxTicksLimit: 7
+                        }
+                    }],
+                    yAxes: [{
+                        ticks: {
+                            maxTicksLimit: 5,
+                            padding: 10,
+                            callback: function(value, index, values) {
+                                return '€' + value.toLocaleString();
+                            }
+                        },
+                        gridLines: {
+                            color: "rgb(234, 236, 244)",
+                            zeroLineColor: "rgb(234, 236, 244)",
+                            drawBorder: false,
+                            borderDash: [2],
+                            zeroLineBorderDash: [2]
+                        }
+                    }],
+                },
+                legend: {
+                    display: true
+                },
+                tooltips: {
+                    backgroundColor: "rgb(255,255,255)",
+                    bodyFontColor: "#858796",
+                    titleMarginBottom: 10,
+                    titleFontColor: '#6e707e',
+                    titleFontSize: 14,
+                    borderColor: '#dddfeb',
+                    borderWidth: 1,
+                    xPadding: 15,
+                    yPadding: 15,
+                    displayColors: false,
+                    intersect: false,
+                    mode: 'index',
+                    caretPadding: 10,
+                    callbacks: {
+                        label: function(tooltipItem, chart) {
+                            var datasetLabel = chart.datasets[tooltipItem.datasetIndex].label || '';
+                            return datasetLabel + ': €' + tooltipItem.yLabel.toLocaleString();
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

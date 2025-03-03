@@ -1,0 +1,320 @@
+{% extends 'base.html' %}
+
+{% block title %}Organizzazioni | CPO Planner{% endblock %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Organizzazioni</h1>
+    <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+        <i class="fas fa-plus fa-sm text-white-50 mr-2"></i>Nuova Organizzazione
+    </a>
+</div>
+
+<!-- Content Row - Stats Cards -->
+<div class="row">
+    <!-- Totale Organizzazioni -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Totale Organizzazioni</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ organization_list|length }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-building fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Organizzazioni Attive -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Organizzazioni Attive</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_count|default:"0" }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progetti Totali -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Progetti Totali</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_projects|default:"0" }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-project-diagram fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stazioni Totali -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Stazioni Totali</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_stations|default:"0" }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-charging-station fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Organizations Table -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Lista delle Organizzazioni</h6>
+        <div class="input-group" style="width: 250px;">
+            <input type="text" id="searchOrganization" class="form-control bg-light border-0 small" placeholder="Cerca...">
+            <div class="input-group-append">
+                <button class="btn btn-primary" type="button">
+                    <i class="fas fa-search fa-sm"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if organization_list %}
+        <div class="table-responsive">
+            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Tipo</th>
+                        <th>Email</th>
+                        <th>Telefono</th>
+                        <th>Progetti</th>
+                        <th>Stazioni</th>
+                        <th>Stato</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for organization in organization_list %}
+                    <tr>
+                        <td>{{ organization.name }}</td>
+                        <td>{{ organization.get_type_display }}</td>
+                        <td>{{ organization.email }}</td>
+                        <td>{{ organization.phone }}</td>
+                        <td>{{ organization.projects.count }}</td>
+                        <td>{{ organization.total_stations|default:"0" }}</td>
+                        <td>
+                            {% if organization.is_active %}
+                                <span class="badge badge-success">Attivo</span>
+                            {% else %}
+                                <span class="badge badge-secondary">Inattivo</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="#" class="btn btn-info btn-sm" title="Dettaglio">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="#" class="btn btn-warning btn-sm" title="Modifica">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="#" class="btn btn-danger btn-sm" title="Elimina">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            Nessuna organizzazione registrata. <a href="#">Aggiungi la prima organizzazione</a>.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Distribution Chart -->
+<div class="row">
+    <div class="col-xl-6 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Distribuzione Organizzazioni per Tipo</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-pie pt-4">
+                    <canvas id="organizationTypePieChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-6 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Top 5 Organizzazioni per Stazioni</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-bar">
+                    <canvas id="organizationBarChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Inizializza DataTables
+        if ($.fn.DataTable) {
+            $('#dataTable').DataTable({
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Italian.json"
+                }
+            });
+        }
+        
+        // Gestione ricerca personalizzata
+        $("#searchOrganization").on("keyup", function() {
+            var value = $(this).val().toLowerCase();
+            $("#dataTable tbody tr").filter(function() {
+                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+            });
+        });
+        
+        // Inizializza Chart.js se disponibile e se esistono gli elementi canvas
+        if (typeof Chart !== 'undefined') {
+            // Grafico a torta per tipi di organizzazione
+            var pieElement = document.getElementById("organizationTypePieChart");
+            if (pieElement) {
+                var organizationTypePieChart = new Chart(pieElement, {
+                    type: 'doughnut',
+                    data: {
+                        labels: [{% for type in organization_types %}"{{ type.label }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+                        datasets: [{
+                            data: [{% for type in organization_types %}{{ type.count|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                            backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b'],
+                            hoverBackgroundColor: ['#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#be2617'],
+                            hoverBorderColor: "rgba(234, 236, 244, 1)",
+                        }],
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        tooltips: {
+                            backgroundColor: "rgb(255,255,255)",
+                            bodyFontColor: "#858796",
+                            borderColor: '#dddfeb',
+                            borderWidth: 1,
+                            xPadding: 15,
+                            yPadding: 15,
+                            displayColors: false,
+                            caretPadding: 10,
+                        },
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        cutoutPercentage: 70,
+                    },
+                });
+            }
+            
+            // Grafico a barre per top organizzazioni
+            var barElement = document.getElementById("organizationBarChart");
+            if (barElement) {
+                var myBarChart = new Chart(barElement, {
+                    type: 'bar',
+                    data: {
+                        labels: [{% for org in top_organizations %}"{{ org.name }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+                        datasets: [{
+                            label: "Stazioni",
+                            backgroundColor: "#4e73df",
+                            hoverBackgroundColor: "#2e59d9",
+                            borderColor: "#4e73df",
+                            data: [{% for org in top_organizations %}{{ org.total_stations|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                        }],
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        layout: {
+                            padding: {
+                                left: 10,
+                                right: 25,
+                                top: 25,
+                                bottom: 0
+                            }
+                        },
+                        scales: {
+                            xAxes: [{
+                                gridLines: {
+                                    display: false,
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    maxTicksLimit: 6
+                                },
+                                maxBarThickness: 25,
+                            }],
+                            yAxes: [{
+                                ticks: {
+                                    min: 0,
+                                    maxTicksLimit: 5,
+                                    padding: 10,
+                                },
+                                gridLines: {
+                                    color: "rgb(234, 236, 244)",
+                                    zeroLineColor: "rgb(234, 236, 244)",
+                                    drawBorder: false,
+                                    borderDash: [2],
+                                    zeroLineBorderDash: [2]
+                                }
+                            }],
+                        },
+                        legend: {
+                            display: false
+                        },
+                        tooltips: {
+                            titleMarginBottom: 10,
+                            titleFontColor: '#6e707e',
+                            titleFontSize: 14,
+                            backgroundColor: "rgb(255,255,255)",
+                            bodyFontColor: "#858796",
+                            borderColor: '#dddfeb',
+                            borderWidth: 1,
+                            xPadding: 15,
+                            yPadding: 15,
+                            displayColors: false,
+                            caretPadding: 10,
+                        },
+                    }
+                });
+            }
+        }
+    });
+</script>
+{% endblock %}

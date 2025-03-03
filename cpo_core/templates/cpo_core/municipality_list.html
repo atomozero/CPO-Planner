@@ -1,0 +1,313 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Comuni | CPO Planner{% endblock %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Comuni</h1>
+    <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+        <i class="fas fa-plus fa-sm text-white-50 mr-2"></i>Nuovo Comune
+    </a>
+</div>
+
+<!-- Content Row - Stats Cards -->
+<div class="row">
+    <!-- Totale Comuni -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Totale Comuni</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ municipality_list|length|default:"0" }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-city fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popolazione Totale -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Popolazione Totale</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_population|default:"0"|intcomma }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-users fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progetti Attivi -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Progetti Attivi</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_projects|default:"0" }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-project-diagram fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stazioni di Ricarica -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Stazioni di Ricarica</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_stations|default:"0" }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-charging-station fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Municipalities Table -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Lista dei Comuni</h6>
+        <div class="input-group" style="width: 250px;">
+            <input type="text" id="searchMunicipality" class="form-control bg-light border-0 small" placeholder="Cerca...">
+            <div class="input-group-append">
+                <button class="btn btn-primary" type="button">
+                    <i class="fas fa-search fa-sm"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if municipality_list %}
+        <div class="table-responsive">
+            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Provincia</th>
+                        <th>Regione</th>
+                        <th>Popolazione</th>
+                        <th>Progetti</th>
+                        <th>Stazioni</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for municipality in municipality_list %}
+                    <tr>
+                        <td>{{ municipality.name }}</td>
+                        <td>{{ municipality.province }}</td>
+                        <td>{{ municipality.region }}</td>
+                        <td>{{ municipality.population|default:"N/D"|intcomma }}</td>
+                        <td>{{ municipality.chargingproject_set.count }}</td>
+                        <td>{{ municipality.total_stations|default:"0" }}</td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="#" class="btn btn-info btn-sm" title="Dettaglio">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="#" class="btn btn-warning btn-sm" title="Modifica">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="#" class="btn btn-danger btn-sm" title="Elimina">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            Nessun comune registrato. <a href="#">Aggiungi il primo comune</a>.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Regional Distribution Chart -->
+<div class="row">
+    <div class="col-xl-6 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Distribuzione Comuni per Regione</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-pie pt-4">
+                    <canvas id="regionPieChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-6 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Top 5 Comuni per Stazioni di Ricarica</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-bar">
+                    <canvas id="municipalityBarChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Inizializza DataTables se disponibile
+        if ($.fn.DataTable) {
+            $('#dataTable').DataTable({
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Italian.json"
+                }
+            });
+        }
+        
+        // Gestione ricerca personalizzata
+        $("#searchMunicipality").on("keyup", function() {
+            var value = $(this).val().toLowerCase();
+            $("#dataTable tbody tr").filter(function() {
+                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+            });
+        });
+        
+        // Inizializza Chart.js se disponibile e se esistono gli elementi canvas
+        if (typeof Chart !== 'undefined') {
+            // Grafico a torta per regioni
+            var pieElement = document.getElementById("regionPieChart");
+            if (pieElement) {
+                var regionPieChart = new Chart(pieElement, {
+                    type: 'doughnut',
+                    data: {
+                        labels: [{% for region in region_data %}"{{ region.name }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+                        datasets: [{
+                            data: [{% for region in region_data %}{{ region.count|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                            backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#5a5c69', '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#5a5c69', '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#5a5c69', '#4e73df', '#1cc88a'],
+                            hoverBackgroundColor: ['#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#be2617', '#4e4f52', '#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#be2617', '#4e4f52', '#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#be2617', '#4e4f52', '#2e59d9', '#17a673'],
+                            hoverBorderColor: "rgba(234, 236, 244, 1)",
+                        }],
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        tooltips: {
+                            backgroundColor: "rgb(255,255,255)",
+                            bodyFontColor: "#858796",
+                            borderColor: '#dddfeb',
+                            borderWidth: 1,
+                            xPadding: 15,
+                            yPadding: 15,
+                            displayColors: false,
+                            caretPadding: 10,
+                        },
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        cutoutPercentage: 70,
+                    },
+                });
+            }
+            
+            // Grafico a barre per top comuni
+            var barElement = document.getElementById("municipalityBarChart");
+            if (barElement) {
+                var myBarChart = new Chart(barElement, {
+                    type: 'bar',
+                    data: {
+                        labels: [{% for mun in top_municipalities %}"{{ mun.name }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+                        datasets: [{
+                            label: "Stazioni",
+                            backgroundColor: "#4e73df",
+                            hoverBackgroundColor: "#2e59d9",
+                            borderColor: "#4e73df",
+                            data: [{% for mun in top_municipalities %}{{ mun.total_stations|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                        }],
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        layout: {
+                            padding: {
+                                left: 10,
+                                right: 25,
+                                top: 25,
+                                bottom: 0
+                            }
+                        },
+                        scales: {
+                            xAxes: [{
+                                gridLines: {
+                                    display: false,
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    maxTicksLimit: 6
+                                },
+                                maxBarThickness: 25,
+                            }],
+                            yAxes: [{
+                                ticks: {
+                                    min: 0,
+                                    maxTicksLimit: 5,
+                                    padding: 10,
+                                },
+                                gridLines: {
+                                    color: "rgb(234, 236, 244)",
+                                    zeroLineColor: "rgb(234, 236, 244)",
+                                    drawBorder: false,
+                                    borderDash: [2],
+                                    zeroLineBorderDash: [2]
+                                }
+                            }],
+                        },
+                        legend: {
+                            display: false
+                        },
+                        tooltips: {
+                            titleMarginBottom: 10,
+                            titleFontColor: '#6e707e',
+                            titleFontSize: 14,
+                            backgroundColor: "rgb(255,255,255)",
+                            bodyFontColor: "#858796",
+                            borderColor: '#dddfeb',
+                            borderWidth: 1,
+                            xPadding: 15,
+                            yPadding: 15,
+                            displayColors: false,
+                            caretPadding: 10,
+                        },
+                    }
+                });
+            }
+        }
+    });
+</script>
+{% endblock %}

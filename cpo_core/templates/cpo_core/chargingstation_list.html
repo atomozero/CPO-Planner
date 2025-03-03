@@ -1,0 +1,402 @@
+{% extends 'base.html' %}
+
+{% block title %}Stazioni di Ricarica | CPO Planner{% endblock %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Stazioni di Ricarica</h1>
+    <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+        <i class="fas fa-plus fa-sm text-white-50 mr-2"></i>Nuova Stazione
+    </a>
+</div>
+
+<!-- Content Row - Stats Cards -->
+<div class="row">
+    <!-- Totale Stazioni -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Totale Stazioni</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stations|length|default:"0" }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-charging-station fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stazioni Attive -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Stazioni Attive</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_stations|default:"0" }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Potenza Totale -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Potenza Totale (kW)</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_power|default:"0" }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-bolt fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progetti Collegati -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Progetti Collegati</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_projects|default:"0" }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-project-diagram fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charging Stations Table -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Lista delle Stazioni di Ricarica</h6>
+        <div class="dropdown no-arrow">
+            <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+            </a>
+            <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in" aria-labelledby="dropdownMenuLink">
+                <div class="dropdown-header">Azioni:</div>
+                <a class="dropdown-item" href="#">Esporta in CSV</a>
+                <a class="dropdown-item" href="#">Stampa Elenco</a>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item" href="#">Filtra per Stato</a>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if stations %}
+        <div class="table-responsive">
+            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Codice</th>
+                        <th>Nome</th>
+                        <th>Progetto</th>
+                        <th>Comune</th>
+                        <th>Indirizzo</th>
+                        <th>Potenza (kW)</th>
+                        <th>Stato</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for station in stations %}
+                    <tr>
+                        <td>{{ station.code }}</td>
+                        <td>{{ station.name }}</td>
+                        <td>{{ station.project.name }}</td>
+                        <td>{{ station.project.municipality.name }}</td>
+                        <td>{{ station.address }}</td>
+                        <td>{{ station.power_kw }}</td>
+                        <td>
+                            {% if station.status == 'planned' %}
+                                <span class="badge badge-info">Pianificata</span>
+                            {% elif station.status == 'installing' %}
+                                <span class="badge badge-primary">In Installazione</span>
+                            {% elif station.status == 'active' %}
+                                <span class="badge badge-success">Attiva</span>
+                            {% elif station.status == 'maintenance' %}
+                                <span class="badge badge-warning">In Manutenzione</span>
+                            {% elif station.status == 'inactive' %}
+                                <span class="badge badge-danger">Inattiva</span>
+                            {% else %}
+                                <span class="badge badge-secondary">{{ station.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="#" class="btn btn-info btn-sm" title="Dettaglio">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="#" class="btn btn-warning btn-sm" title="Modifica">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="#" class="btn btn-danger btn-sm" title="Elimina">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            Nessuna stazione di ricarica registrata. <a href="#">Aggiungi la prima stazione</a>.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Distribution Charts -->
+<div class="row">
+    <!-- Status Distribution Chart -->
+    <div class="col-xl-6 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Distribuzione per Stato</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-pie pt-4">
+                    <canvas id="statusPieChart"></canvas>
+                </div>
+                <div class="mt-4 text-center small">
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-info"></i> Pianificate
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-primary"></i> In Installazione
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-success"></i> Attive
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-warning"></i> In Manutenzione
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-danger"></i> Inattive
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Power Distribution Chart -->
+    <div class="col-xl-6 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Distribuzione per Potenza</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-bar">
+                    <canvas id="powerBarChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stations Map -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Mappa delle Stazioni</h6>
+    </div>
+    <div class="card-body">
+        <div id="map" style="height: 500px;"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+    $(document).ready(function() {
+        // Inizializza DataTables
+        if ($.fn.DataTable) {
+            $('#dataTable').DataTable({
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Italian.json"
+                }
+            });
+        }
+        
+        // Inizializza la mappa
+        var map = L.map('map').setView([41.9028, 12.4964], 6); // Default centrato sull'Italia
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Aggiungi marker per ogni stazione
+        {% for station in stations %}
+            {% if station.latitude and station.longitude %}
+            var marker = L.marker([{{ station.latitude }}, {{ station.longitude }}], {
+                title: "{{ station.name }}"
+            }).addTo(map);
+            
+            marker.bindPopup(
+                "<strong>{{ station.name }}</strong><br>" +
+                "Codice: {{ station.code }}<br>" +
+                "Indirizzo: {{ station.address }}<br>" +
+                "Potenza: {{ station.power_kw }} kW<br>" +
+                "Progetto: {{ station.project.name }}<br>" +
+                "Comune: {{ station.project.municipality.name }}<br>" +
+                "<a href='#' class='btn btn-primary btn-sm mt-2'>Dettagli</a>"
+            );
+            {% endif %}
+        {% endfor %}
+        
+        // Se ci sono stazioni con coordinate, adatta la vista della mappa
+        {% if stations_with_coords %}
+        var bounds = [];
+        {% for station in stations_with_coords %}
+        bounds.push([{{ station.latitude }}, {{ station.longitude }}]);
+        {% endfor %}
+        map.fitBounds(bounds);
+        {% endif %}
+        
+        // Inizializza Chart.js se disponibile
+        if (typeof Chart !== 'undefined') {
+            // Grafico a torta per lo stato delle stazioni
+            var statusCtx = document.getElementById("statusPieChart");
+            if (statusCtx) {
+                var statusPieChart = new Chart(statusCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ["Pianificate", "In Installazione", "Attive", "In Manutenzione", "Inattive"],
+                        datasets: [{
+                            data: [
+                                {{ status_counts.planned|default:0 }},
+                                {{ status_counts.installing|default:0 }},
+                                {{ status_counts.active|default:0 }},
+                                {{ status_counts.maintenance|default:0 }},
+                                {{ status_counts.inactive|default:0 }}
+                            ],
+                            backgroundColor: ['#36b9cc', '#4e73df', '#1cc88a', '#f6c23e', '#e74a3b'],
+                            hoverBackgroundColor: ['#2c9faf', '#2e59d9', '#17a673', '#dda20a', '#be2617'],
+                            hoverBorderColor: "rgba(234, 236, 244, 1)",
+                        }],
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        tooltips: {
+                            backgroundColor: "rgb(255,255,255)",
+                            bodyFontColor: "#858796",
+                            borderColor: '#dddfeb',
+                            borderWidth: 1,
+                            xPadding: 15,
+                            yPadding: 15,
+                            displayColors: false,
+                            caretPadding: 10,
+                        },
+                        legend: {
+                            display: false
+                        },
+                        cutoutPercentage: 70,
+                    },
+                });
+            }
+            
+            // Grafico a barre per la potenza
+            var powerCtx = document.getElementById("powerBarChart");
+            if (powerCtx) {
+                var powerBarChart = new Chart(powerCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: [{% for power in power_distribution %}"{{ power.range }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+                        datasets: [{
+                            label: "Numero stazioni",
+                            backgroundColor: "#4e73df",
+                            hoverBackgroundColor: "#2e59d9",
+                            borderColor: "#4e73df",
+                            data: [{% for power in power_distribution %}{{ power.count|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                        }],
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        layout: {
+                            padding: {
+                                left: 10,
+                                right: 25,
+                                top: 25,
+                                bottom: 0
+                            }
+                        },
+                        scales: {
+                            xAxes: [{
+                                gridLines: {
+                                    display: false,
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    maxTicksLimit: 6
+                                },
+                                maxBarThickness: 25,
+                            }],
+                            yAxes: [{
+                                ticks: {
+                                    min: 0,
+                                    maxTicksLimit: 5,
+                                    padding: 10,
+                                    beginAtZero: true,
+                                    callback: function(value) {
+                                        return Math.round(value);
+                                    }
+                                },
+                                gridLines: {
+                                    color: "rgb(234, 236, 244)",
+                                    zeroLineColor: "rgb(234, 236, 244)",
+                                    drawBorder: false,
+                                    borderDash: [2],
+                                    zeroLineBorderDash: [2]
+                                }
+                            }],
+                        },
+                        legend: {
+                            display: false
+                        },
+                        tooltips: {
+                            titleMarginBottom: 10,
+                            titleFontColor: '#6e707e',
+                            titleFontSize: 14,
+                            backgroundColor: "rgb(255,255,255)",
+                            bodyFontColor: "#858796",
+                            borderColor: '#dddfeb',
+                            borderWidth: 1,
+                            xPadding: 15,
+                            yPadding: 15,
+                            displayColors: false,
+                            caretPadding: 10,
+                        },
+                    }
+                });
+            }
+        }
+    });
+</script>
+{% endblock %}

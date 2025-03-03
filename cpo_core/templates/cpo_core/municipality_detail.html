@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ municipality.name }} | CPO Planner{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<style>
+    #map {
+        height: 400px;
+        width: 100%;
+    }
+    .charging-station-marker {
+        background: none;
+        border: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Comune: {{ municipality.name }}</h1>
+    <div>
+        <a href="{% url 'municipality_update' municipality.id %}" class="d-none d-sm-inline-block btn btn-sm btn-warning shadow-sm mr-2">
+            <i class="fas fa-edit fa-sm text-white-50 mr-2"></i>Modifica
+        </a>
+        <a href="{% url 'municipality_delete' municipality.id %}" class="d-none d-sm-inline-block btn btn-sm btn-danger shadow-sm mr-2">
+            <i class="fas fa-trash fa-sm text-white-50 mr-2"></i>Elimina
+        </a>
+        <a href="{% url 'municipality_list' %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50 mr-2"></i>Torna alla lista
+        </a>
+    </div>
+</div>
+
+<!-- Content Row -->
+<div class="row">
+    <!-- Informazioni generali -->
+    <div class="col-xl-6 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Informazioni Generali</h6>
+            </div>
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-gray-800 font-weight-bold">Nome:</div>
+                            <div class="col-sm-8">{{ municipality.name }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-gray-800 font-weight-bold">Provincia:</div>
+                            <div class="col-sm-8">{{ municipality.province }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-gray-800 font-weight-bold">Regione:</div>
+                            <div class="col-sm-8">{{ municipality.region }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-gray-800 font-weight-bold">Popolazione:</div>
+                            <div class="col-sm-8">{{ municipality.population|default:"N/D" }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-gray-800 font-weight-bold">Superficie (km²):</div>
+                            <div class="col-sm-8">{{ municipality.area|default:"N/D" }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiche -->
+    <div class="col-xl-6 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-success">Statistiche</h6>
+            </div>
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="row mb-3">
+                            <div class="col-sm-6 text-gray-800 font-weight-bold">Numero di Progetti:</div>
+                            <div class="col-sm-6">{{ municipality.chargingproject_set.count }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-6 text-gray-800 font-weight-bold">Totale Stazioni di Ricarica:</div>
+                            <div class="col-sm-6">{{ total_stations }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-6 text-gray-800 font-weight-bold">Costo Totale Progetti:</div>
+                            <div class="col-sm-6">€ {{ total_cost|default:"0"|floatformat:2 }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-6 text-gray-800 font-weight-bold">Densità Stazioni:</div>
+                            <div class="col-sm-6">{{ station_density|default:"0"|floatformat:2 }} per 1000 abitanti</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Progetti nel Comune -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Progetti nel Comune</h6>
+        <a href="{% url 'project_create' %}?municipality={{ municipality.id }}" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus fa-sm mr-2"></i>Nuovo Progetto
+        </a>
+    </div>
+    <div class="card-body">
+        {% if projects %}
+        <div class="table-responsive">
+            <table class="table table-bordered" id="projectsTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Data Inizio</th>
+                        <th>Data Fine</th>
+                        <th>Stato</th>
+                        <th>Stazioni</th>
+                        <th>Budget</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for project in projects %}
+                    <tr>
+                        <td>{{ project.name }}</td>
+                        <td>{{ project.start_date|date:"d/m/Y" }}</td>
+                        <td>{{ project.end_date|date:"d/m/Y" }}</td>
+                        <td>
+                            {% if project.status == 'planned' %}
+                                <span class="badge badge-info">Pianificato</span>
+                            {% elif project.status == 'in_progress' %}
+                                <span class="badge badge-primary">In Corso</span>
+                            {% elif project.status == 'completed' %}
+                                <span class="badge badge-success">Completato</span>
+                            {% elif project.status == 'on_hold' %}
+                                <span class="badge badge-warning">In Pausa</span>
+                            {% elif project.status == 'cancelled' %}
+                                <span class="badge badge-danger">Annullato</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ project.chargingstation_set.count }}</td>
+                        <td>€ {{ project.budget|floatformat:2 }}</td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'project_detail' project.id %}" class="btn btn-info btn-sm" title="Dettaglio">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'project_update' project.id %}" class="btn btn-warning btn-sm" title="Modifica">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'project_delete' project.id %}" class="btn btn-danger btn-sm" title="Elimina">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            Nessun progetto registrato in questo comune. <a href="{% url 'project_create' %}?municipality={{ municipality.id }}">Aggiungi il primo progetto</a>.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Mappa del Comune -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Mappa del Comune</h6>
+    </div>
+    <div class="card-body">
+        <div id="map"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+    $(document).ready(function() {
+        // Inizializza DataTables
+        $('#projectsTable').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Italian.json"
+            }
+        });
+        
+        // Inizializza la mappa
+        var lat = {{ municipality.latitude|default:"41.9028" }};
+        var lng = {{ municipality.longitude|default:"12.4964" }};
+        var zoom = {{ municipality.latitude|yesno:"13,6" }};
+        
+        var map = L.map('map').setView([lat, lng], zoom);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Se abbiamo coordinate specifiche, aggiungiamo un marker
+        {% if municipality.latitude and municipality.longitude %}
+        L.marker([{{ municipality.latitude }}, {{ municipality.longitude }}])
+            .addTo(map)
+            .bindPopup("{{ municipality.name }}")
+            .openPopup();
+        {% endif %}
+        
+        // Aggiungiamo marker per ogni stazione di ricarica
+        {% for project in projects %}
+            {% for station in project.chargingstation_set.all %}
+                {% if station.latitude and station.longitude %}
+                var marker = L.marker([{{ station.latitude }}, {{ station.longitude }}], {
+                    icon: L.divIcon({
+                        className: 'charging-station-marker',
+                        html: '<i class="fas fa-charging-station text-success" style="font-size: 20px;"></i>',
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 10]
+                    })
+                }).addTo(map);
+                
+                marker.bindPopup("<strong>{{ station.name }}</strong><br>{{ station.address }}<br>Potenza: {{ station.power_kw }} kW");
+                {% endif %}
+            {% endfor %}
+        {% endfor %}
+    });
+</script>
+{% endblock %}

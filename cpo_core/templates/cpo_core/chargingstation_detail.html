@@ -1,0 +1,584 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ station.name }} | CPO Planner{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<style>
+    #map {
+        height: 400px;
+        width: 100%;
+    }
+    .status-indicator {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+    }
+    .status-planned { background-color: #36b9cc; }
+    .status-installing { background-color: #4e73df; }
+    .status-active { background-color: #1cc88a; }
+    .status-maintenance { background-color: #f6c23e; }
+    .status-inactive { background-color: #e74a3b; }
+    
+    .tech-specs {
+        font-size: 0.9rem;
+    }
+    .tech-specs .row {
+        padding: 8px 0;
+        border-bottom: 1px solid #e3e6f0;
+    }
+    .tech-specs .row:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        Stazione di Ricarica: {{ station.name }}
+        {% if station.status == 'planned' %}
+            <span class="badge badge-info ml-2">Pianificata</span>
+        {% elif station.status == 'installing' %}
+            <span class="badge badge-primary ml-2">In Installazione</span>
+        {% elif station.status == 'active' %}
+            <span class="badge badge-success ml-2">Attiva</span>
+        {% elif station.status == 'maintenance' %}
+            <span class="badge badge-warning ml-2">In Manutenzione</span>
+        {% elif station.status == 'inactive' %}
+            <span class="badge badge-danger ml-2">Inattiva</span>
+        {% else %}
+            <span class="badge badge-secondary ml-2">{{ station.status }}</span>
+        {% endif %}
+    </h1>
+    <div>
+        <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-warning shadow-sm mr-2">
+            <i class="fas fa-edit fa-sm text-white-50 mr-2"></i>Modifica
+        </a>
+        <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-info shadow-sm mr-2">
+            <i class="fas fa-file-pdf fa-sm text-white-50 mr-2"></i>Scheda Tecnica
+        </a>
+        <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50 mr-2"></i>Torna alla lista
+        </a>
+    </div>
+</div>
+
+<!-- Content Row -->
+<div class="row">
+    <!-- Colonna Sinistra - Informazioni e Dati Tecnici -->
+    <div class="col-xl-8 col-lg-7">
+        <!-- Informazioni Principali -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Informazioni Generali</h6>
+                <div class="dropdown no-arrow">
+                    <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in" aria-labelledby="dropdownMenuLink">
+                        <div class="dropdown-header">Azioni:</div>
+                        <a class="dropdown-item" href="#">Stampa Scheda</a>
+                        <a class="dropdown-item" href="#">Esporta Dati</a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" href="#">Modifica Stato</a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p><strong>Codice:</strong> {{ station.code }}</p>
+                        <p><strong>Nome:</strong> {{ station.name }}</p>
+                        <p><strong>Indirizzo:</strong> {{ station.address }}</p>
+                        <p><strong>Comune:</strong> {{ station.project.municipality.name }}</p>
+                        <p><strong>Progetto:</strong> <a href="#">{{ station.project.name }}</a></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Stato:</strong> 
+                            <span class="status-indicator status-{{ station.status }}"></span>
+                            {{ station.get_status_display }}
+                        </p>
+                        <p><strong>Data Installazione:</strong> {{ station.installation_date|date:"d/m/Y"|default:"Non installata" }}</p>
+                        <p><strong>Data Attivazione:</strong> {{ station.activation_date|date:"d/m/Y"|default:"Non attivata" }}</p>
+                        <p><strong>Ultima Manutenzione:</strong> {{ station.last_maintenance_date|date:"d/m/Y"|default:"Nessuna" }}</p>
+                        <p><strong>Ultima Verifica:</strong> {{ station.last_check_date|date:"d/m/Y"|default:"Nessuna" }}</p>
+                    </div>
+                </div>
+                
+                <div class="card mb-4 border-left-info">
+                    <div class="card-body py-3">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Note</div>
+                                <div class="h6 mb-0 text-gray-800">{{ station.notes|default:"Nessuna nota disponibile" }}</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-sticky-note fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Specifiche Tecniche -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Specifiche Tecniche</h6>
+            </div>
+            <div class="card-body tech-specs">
+                <div class="row">
+                    <div class="col-md-4 font-weight-bold">Potenza Totale</div>
+                    <div class="col-md-8">{{ station.power_kw }} kW</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 font-weight-bold">Numero Connettori</div>
+                    <div class="col-md-8">{{ station.connector_count|default:"1" }}</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 font-weight-bold">Tipo Connettori</div>
+                    <div class="col-md-8">{{ station.connector_types|default:"Tipo 2" }}</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 font-weight-bold">Tensione</div>
+                    <div class="col-md-8">{{ station.voltage|default:"400" }} V</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 font-weight-bold">Corrente Max</div>
+                    <div class="col-md-8">{{ station.max_current|default:"63" }} A</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 font-weight-bold">Modalità di Ricarica</div>
+                    <div class="col-md-8">{{ station.charging_mode|default:"Mode 3" }}</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 font-weight-bold">Protocollo Comunicazione</div>
+                    <div class="col-md-8">{{ station.communication_protocol|default:"OCPP 1.6J" }}</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 font-weight-bold">Dimensioni (L x A x P)</div>
+                    <div class="col-md-8">{{ station.dimensions|default:"60 x 150 x 25 cm" }}</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 font-weight-bold">Peso</div>
+                    <div class="col-md-8">{{ station.weight|default:"45" }} kg</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 font-weight-bold">Classe Protezione</div>
+                    <div class="col-md-8">{{ station.protection_class|default:"IP54" }}</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 font-weight-bold">Temperature Operativa</div>
+                    <div class="col-md-8">{{ station.operating_temperature|default:"-25°C / +50°C" }}</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 font-weight-bold">Interfaccia Utente</div>
+                    <div class="col-md-8">{{ station.user_interface|default:"Display LCD 7\", RFID" }}</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 font-weight-bold">Connettività</div>
+                    <div class="col-md-8">{{ station.connectivity|default:"GSM, GPRS, 4G, Ethernet" }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mappa -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Posizione</h6>
+            </div>
+            <div class="card-body">
+                <div id="map"></div>
+                <div class="mt-3">
+                    <p><strong>Coordinate GPS:</strong> 
+                        {% if station.latitude and station.longitude %}
+                            {{ station.latitude }}, {{ station.longitude }}
+                        {% else %}
+                            Non disponibili
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Colonna Destra - Statistiche e Attività -->
+    <div class="col-xl-4 col-lg-5">
+        <!-- Statistiche -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Statistiche</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-pie pt-4 pb-2">
+                    <canvas id="utilizationChart"></canvas>
+                </div>
+                <div class="mt-4 text-center small">
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-success"></i> In Uso
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-warning"></i> Pronto
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-danger"></i> Non Disponibile
+                    </span>
+                </div>
+                
+                <!-- Statistiche in Cards -->
+                <div class="row mt-4">
+                    <div class="col-md-6 mb-4">
+                        <div class="card border-left-primary h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                            Sessioni Totali</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ station.total_sessions|default:"0" }}</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-plug fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="card border-left-success h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                            Energia Erogata</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ station.total_energy|default:"0" }} kWh</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-bolt fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <div class="card border-left-info h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                            Disponibilità</div>
+                                        <div class="row no-gutters align-items-center">
+                                            <div class="col-auto">
+                                                <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800">{{ station.availability_percentage|default:"98" }}%</div>
+                                            </div>
+                                            <div class="col">
+                                                <div class="progress progress-sm mr-2">
+                                                    <div class="progress-bar bg-info" role="progressbar" style="width: {{ station.availability_percentage|default:"98" }}%"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="card border-left-warning h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                            Tempo Medio</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ station.average_session_time|default:"42" }} min</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-clock fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Costi e Revenue -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Costi e Ricavi</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <p class="mb-2"><strong>Costo Installazione:</strong> € {{ station.installation_cost|default:"0"|floatformat:2 }}</p>
+                    <p class="mb-2"><strong>Costo Manutenzione Annuale:</strong> € {{ station.yearly_maintenance_cost|default:"0"|floatformat:2 }}</p>
+                    <p class="mb-2"><strong>Ricavi Totali:</strong> € {{ station.total_revenue|default:"0"|floatformat:2 }}</p>
+                    <p class="mb-2"><strong>ROI:</strong> {{ station.roi_percentage|default:"0" }}%</p>
+                </div>
+                
+                <div class="chart-area">
+                    <canvas id="earningsChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ultimi Interventi -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Ultimi Interventi</h6>
+            </div>
+            <div class="card-body">
+                {% if station.maintenance_interventions.exists %}
+                <div class="timeline">
+                    {% for intervention in station.maintenance_interventions.all|slice:":5" %}
+                    <div class="timeline-item">
+                        <div class="timeline-item-content">
+                            <span class="tag" style="background-color: {{ intervention.get_type_color }}">
+                                {{ intervention.get_type_display }}
+                            </span>
+                            <time>{{ intervention.date|date:"d/m/Y" }}</time>
+                            <p>{{ intervention.description }}</p>
+                            <span class="circle"></span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <span class="text-gray-500">Nessun intervento registrato</span>
+                </div>
+                {% endif %}
+                
+                <div class="text-center mt-3">
+                    <a href="#" class="btn btn-sm btn-primary">
+                        <i class="fas fa-tools mr-1"></i> Aggiungi Intervento
+                    </a>
+                    {% if station.maintenance_interventions.exists %}
+                    <a href="#" class="btn btn-sm btn-info ml-2">
+                        <i class="fas fa-list mr-1"></i> Vedi Tutti
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Fotografie e Documenti -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Fotografie e Documenti</h6>
+        <a href="#" class="btn btn-sm btn-primary">
+            <i class="fas fa-upload mr-1"></i> Carica Nuovo
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {% if station.photos.exists %}
+                {% for photo in station.photos.all %}
+                <div class="col-md-2 mb-4">
+                    <div class="card">
+                        <img src="{{ photo.image.url }}" class="card-img-top" alt="{{ photo.title }}">
+                        <div class="card-body py-2 px-3">
+                            <p class="card-text small">{{ photo.title }}</p>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{{ photo.image.url }}" class="btn btn-primary" target="_blank"><i class="fas fa-eye"></i></a>
+                                <a href="#" class="btn btn-danger"><i class="fas fa-trash"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12 text-center py-5">
+                    <span class="text-gray-500">Nessuna foto o documento disponibile</span>
+                    <p class="mt-3">
+                        <a href="#" class="btn btn-sm btn-primary">
+                            <i class="fas fa-upload mr-1"></i> Carica la prima foto
+                        </a>
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+    $(document).ready(function() {
+        // Inizializza la mappa
+        var map = L.map('map');
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        {% if station.latitude and station.longitude %}
+            // Aggiungi marker per la stazione
+            var marker = L.marker([{{ station.latitude }}, {{ station.longitude }}]).addTo(map);
+            marker.bindPopup("<strong>{{ station.name }}</strong><br>{{ station.address }}").openPopup();
+            
+            // Centra la mappa sulla stazione
+            map.setView([{{ station.latitude }}, {{ station.longitude }}], 15);
+        {% else %}
+            // Centra la mappa sull'Italia se non ci sono coordinate
+            map.setView([41.9028, 12.4964], 6);
+        {% endif %}
+        
+        // Inizializza Chart.js se disponibile
+        if (typeof Chart !== 'undefined') {
+            // Grafico a torta per utilizzo
+            var utilizationCtx = document.getElementById("utilizationChart");
+            if (utilizationCtx) {
+                var utilizationChart = new Chart(utilizationCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ["In Uso", "Pronto", "Non Disponibile"],
+                        datasets: [{
+                            data: [
+                                {{ station.usage_percentage|default:25 }},
+                                {{ station.ready_percentage|default:70 }},
+                                {{ station.unavailable_percentage|default:5 }}
+                            ],
+                            backgroundColor: ['#1cc88a', '#f6c23e', '#e74a3b'],
+                            hoverBackgroundColor: ['#17a673', '#dda20a', '#be2617'],
+                            hoverBorderColor: "rgba(234, 236, 244, 1)",
+                        }],
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        tooltips: {
+                            backgroundColor: "rgb(255,255,255)",
+                            bodyFontColor: "#858796",
+                            borderColor: '#dddfeb',
+                            borderWidth: 1,
+                            xPadding: 15,
+                            yPadding: 15,
+                            displayColors: false,
+                            caretPadding: 10,
+                        },
+                        legend: {
+                            display: false
+                        },
+                        cutoutPercentage: 70,
+                    },
+                });
+            }
+            
+            // Grafico area per guadagni
+            var earningsCtx = document.getElementById("earningsChart");
+            if (earningsCtx) {
+                var earningsChart = new Chart(earningsCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"],
+                        datasets: [{
+                            label: "Ricavi",
+                            lineTension: 0.3,
+                            backgroundColor: "rgba(78, 115, 223, 0.05)",
+                            borderColor: "rgba(78, 115, 223, 1)",
+                            pointRadius: 3,
+                            pointBackgroundColor: "rgba(78, 115, 223, 1)",
+                            pointBorderColor: "rgba(78, 115, 223, 1)",
+                            pointHoverRadius: 3,
+                            pointHoverBackgroundColor: "rgba(78, 115, 223, 1)",
+                            pointHoverBorderColor: "rgba(78, 115, 223, 1)",
+                            pointHitRadius: 10,
+                            pointBorderWidth: 2,
+                            data: [
+                                {{ station.monthly_revenue.jan|default:0 }},
+                                {{ station.monthly_revenue.feb|default:0 }},
+                                {{ station.monthly_revenue.mar|default:0 }},
+                                {{ station.monthly_revenue.apr|default:0 }},
+                                {{ station.monthly_revenue.may|default:0 }},
+                                {{ station.monthly_revenue.jun|default:0 }},
+                                {{ station.monthly_revenue.jul|default:0 }},
+                                {{ station.monthly_revenue.aug|default:0 }},
+                                {{ station.monthly_revenue.sep|default:0 }},
+                                {{ station.monthly_revenue.oct|default:0 }},
+                                {{ station.monthly_revenue.nov|default:0 }},
+                                {{ station.monthly_revenue.dec|default:0 }}
+                            ],
+                        }],
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        layout: {
+                            padding: {
+                                left: 10,
+                                right: 25,
+                                top: 25,
+                                bottom: 0
+                            }
+                        },
+                        scales: {
+                            xAxes: [{
+                                time: {
+                                    unit: 'date'
+                                },
+                                gridLines: {
+                                    display: false,
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    maxTicksLimit: 7
+                                }
+                            }],
+                            yAxes: [{
+                                ticks: {
+                                    maxTicksLimit: 5,
+                                    padding: 10,
+                                    callback: function(value, index, values) {
+                                        return '€' + value;
+                                    }
+                                },
+                                gridLines: {
+                                    color: "rgb(234, 236, 244)",
+                                    zeroLineColor: "rgb(234, 236, 244)",
+                                    drawBorder: false,
+                                    borderDash: [2],
+                                    zeroLineBorderDash: [2]
+                                }
+                            }],
+                        },
+                        legend: {
+                            display: false
+                        },
+                        tooltips: {
+                            backgroundColor: "rgb(255,255,255)",
+                            bodyFontColor: "#858796",
+                            titleMarginBottom: 10,
+                            titleFontColor: '#6e707e',
+                            titleFontSize: 14,
+                            borderColor: '#dddfeb',
+                            borderWidth: 1,
+                            xPadding: 15,
+                            yPadding: 15,
+                            displayColors: false,
+                            intersect: false,
+                            mode: 'index',
+                            caretPadding: 10,
+                            callbacks: {
+                                label: function(tooltipItem, chart) {
+                                    var datasetLabel = chart.datasets[tooltipItem.datasetIndex].label || '';
+                                    return datasetLabel + ': €' + tooltipItem.yLabel;
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    });
+</script>
+{% endblock %}

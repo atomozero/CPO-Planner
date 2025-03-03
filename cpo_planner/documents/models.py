@@ -207,3 +207,49 @@ class DocumentTask(models.Model):
 # - Notifiche per documenti in scadenza
 # - Aggiornamenti di stato automatici
 # - Integrazione con il sistema di notifica
+
+class ProjectDocument(models.Model):
+    """Documento specifico per i progetti"""
+    # Commenta temporaneamente il ForeignKey problematico
+    # project = models.ForeignKey('cpo_planner.projects.Project', on_delete=models.CASCADE, related_name='documents')
+    title = models.CharField(_('Titolo'), max_length=255)
+    file = models.FileField(_('File'), upload_to='project_documents/')
+    created_at = models.DateTimeField(_('Data Creazione'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('Ultimo Aggiornamento'), auto_now=True)
+    
+    def __str__(self):
+        return self.title
+        
+    class Meta:
+        verbose_name = _('Documento Progetto')
+        verbose_name_plural = _('Documenti Progetto')
+
+class DocumentTemplate(models.Model):
+    """Template per la generazione automatica di documenti"""
+    name = models.CharField(_('Nome'), max_length=255)
+    description = models.TextField(_('Descrizione'), blank=True)
+    file = models.FileField(_('File Template'), upload_to='document_templates/')
+    
+    # Tipo di documento che può essere generato da questo template
+    document_type = models.CharField(_('Tipo Documento'), max_length=100)
+    
+    # Metadati
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='created_templates',
+        verbose_name=_('Creato da')
+    )
+    created_at = models.DateTimeField(_('Data Creazione'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('Ultimo Aggiornamento'), auto_now=True)
+    
+    # Stato attivo/inattivo
+    is_active = models.BooleanField(_('Attivo'), default=True)
+    
+    class Meta:
+        verbose_name = _('Template Documento')
+        verbose_name_plural = _('Template Documenti')
+        ordering = ['name']
+        
+    def __str__(self):
+        return self.name

@@ -53,7 +53,7 @@ urlpatterns = [
          views.DocumentCategoryListView.as_view(), 
          name='category_list'),
     path('categorie/nuova/', 
-         views.DocumentCategoryCreateView.as_view(), 
+         views.DocumentCategoryListView.as_view(), 
          name='category_create'),
     path('categorie/modifica/<int:pk>/', 
          views.DocumentCategoryUpdateView.as_view(), 

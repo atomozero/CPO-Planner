@@ -1,3 +1,4 @@
-from django.shortcuts import render
+# Questo file reindirizza alle viste nella cartella views
+# Mantieni questo file temporaneamente per retrocompatibilità, poi puoi rimuoverlo
 
-# Create your views here.
+from .views import *

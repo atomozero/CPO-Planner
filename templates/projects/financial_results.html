@@ -1,0 +1,623 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load humanize %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.css">
+<style>
+    .financial-metric {
+        border-left: 4px solid #4e73df;
+        padding: 0.75rem 1.25rem;
+        margin-bottom: 1rem;
+        border-radius: 0.25rem;
+        box-shadow: 0 0.15rem 1.75rem rgba(0, 0, 0, 0.15);
+    }
+    .metric-title {
+        color: #5a5c69;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+    }
+    .metric-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #444444;
+    }
+    .metric-green {
+        border-left-color: #1cc88a;
+    }
+    .metric-red {
+        border-left-color: #e74a3b;
+    }
+    .metric-yellow {
+        border-left-color: #f6c23e;
+    }
+    .metric-info {
+        border-left-color: #36b9cc;
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-bottom: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2>{{ title }}</h2>
+            <p class="lead">
+                {% trans "Progetto" %}: {{ project.name }}
+                {% if charging_station %}
+                <br>{% trans "Stazione" %}: {{ charging_station.name }}
+                {% endif %}
+            </p>
+            
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card shadow">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">{% trans "Metriche finanziarie principali" %}</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="financial-metric {% if analysis.return_on_investment > 0 %}metric-green{% else %}metric-red{% endif %}">
+                                        <div class="metric-title">{% trans "ROI" %}</div>
+                                        <div class="metric-value">{{ analysis.return_on_investment|floatformat:2 }}%</div>
+                                        <div class="metric-desc">{% trans "Ritorno sull'investimento" %}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="financial-metric {% if analysis.net_present_value > 0 %}metric-green{% else %}metric-red{% endif %}">
+                                        <div class="metric-title">{% trans "NPV" %}</div>
+                                        <div class="metric-value">{{ analysis.net_present_value|intcomma }} €</div>
+                                        <div class="metric-desc">{% trans "Valore attuale netto" %}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="financial-metric {% if analysis.internal_rate_of_return > 8 %}metric-green{% elif analysis.internal_rate_of_return > 0 %}metric-yellow{% else %}metric-red{% endif %}">
+                                        <div class="metric-title">{% trans "IRR" %}</div>
+                                        <div class="metric-value">{{ analysis.internal_rate_of_return|floatformat:2 }}%</div>
+                                        <div class="metric-desc">{% trans "Tasso interno di rendimento" %}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="financial-metric {% if analysis.payback_period < 5 %}metric-green{% elif analysis.payback_period < 8 %}metric-yellow{% else %}metric-info{% endif %}">
+                                        <div class="metric-title">{% trans "Payback" %}</div>
+                                        <div class="metric-value">{{ analysis.payback_period|floatformat:1 }} {% trans "anni" %}</div>
+                                        <div class="metric-desc">{% trans "Periodo di recupero" %}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row mt-4">
+                                <div class="col-md-4">
+                                    <div class="financial-metric metric-info">
+                                        <div class="metric-title">{% trans "Investimento" %}</div>
+                                        <div class="metric-value">{{ analysis.total_investment|intcomma }} €</div>
+                                        <div class="metric-desc">{% trans "Investimento totale iniziale" %}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="financial-metric {% if analysis.total_profit > 0 %}metric-green{% else %}metric-red{% endif %}">
+                                        <div class="metric-title">{% trans "Profitto totale" %}</div>
+                                        <div class="metric-value">{{ analysis.total_profit|intcomma }} €</div>
+                                        <div class="metric-desc">{% trans "Profitto nel periodo di investimento" %}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="financial-metric metric-yellow">
+                                        <div class="metric-title">{% trans "Indice di redditività" %}</div>
+                                        <div class="metric-value">{{ analysis.profitability_index|floatformat:2 }}</div>
+                                        <div class="metric-desc">{% trans "Rapporto benefici/costi" %}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card shadow">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">{% trans "Flussi di cassa" %}</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="nav nav-tabs" id="cashFlowTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="yearly-tab" data-bs-toggle="tab" data-bs-target="#yearly" type="button" role="tab" aria-controls="yearly" aria-selected="true">
+                                        {% trans "Annuale" %}
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="monthly-tab" data-bs-toggle="tab" data-bs-target="#monthly" type="button" role="tab" aria-controls="monthly" aria-selected="false">
+                                        {% trans "Mensile (primi 24 mesi)" %}
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="cumulative-tab" data-bs-toggle="tab" data-bs-target="#cumulative" type="button" role="tab" aria-controls="cumulative" aria-selected="false">
+                                        {% trans "Cumulativo" %}
+                                    </button>
+                                </li>
+                            </ul>
+                            <div class="tab-content" id="cashFlowTabContent">
+                                <div class="tab-pane fade show active" id="yearly" role="tabpanel" aria-labelledby="yearly-tab">
+                                    <div class="chart-container">
+                                        <canvas id="yearlyCashFlowChart"></canvas>
+                                    </div>
+                                    
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>{% trans "Anno" %}</th>
+                                                    <th>{% trans "Ricavi" %}</th>
+                                                    <th>{% trans "Costi operativi" %}</th>
+                                                    <th>{% trans "Manutenzione" %}</th>
+                                                    <th>{% trans "Prestito" %}</th>
+                                                    <th>{% trans "Flusso di cassa netto" %}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for year in analysis.yearly_cash_flow.years %}
+                                                <tr>
+                                                    <td>{{ year }}</td>
+                                                    <td>{{ analysis.yearly_cash_flow.revenue|index:forloop.counter0|intcomma }} €</td>
+                                                    <td>{{ analysis.yearly_cash_flow.operational_costs|index:forloop.counter0|intcomma }} €</td>
+                                                    <td>{{ analysis.yearly_cash_flow.maintenance_costs|index:forloop.counter0|intcomma }} €</td>
+                                                    <td>{{ analysis.yearly_cash_flow.loan_payments|index:forloop.counter0|intcomma }} €</td>
+                                                    <td>{{ analysis.yearly_cash_flow.net_cash_flow|index:forloop.counter0|intcomma }} €</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="monthly" role="tabpanel" aria-labelledby="monthly-tab">
+                                    <div class="chart-container">
+                                        <canvas id="monthlyCashFlowChart"></canvas>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="cumulative" role="tabpanel" aria-labelledby="cumulative-tab">
+                                    <div class="chart-container">
+                                        <canvas id="cumulativeCashFlowChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card shadow">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">{% trans "Piano ammortamento prestito" %}</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="loanChart"></canvas>
+                            </div>
+                            
+                            <div class="table-responsive mt-3">
+                                <table class="table table-sm table-bordered">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>{% trans "Anno" %}</th>
+                                            <th>{% trans "Rata" %}</th>
+                                            <th>{% trans "Interessi" %}</th>
+                                            <th>{% trans "Capitale" %}</th>
+                                            <th>{% trans "Saldo" %}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for year in analysis.loan_schedule.years %}
+                                        <tr>
+                                            <td>{{ year }}</td>
+                                            <td>{{ analysis.loan_schedule.payment|index:forloop.counter0|intcomma }} €</td>
+                                            <td>{{ analysis.loan_schedule.interest|index:forloop.counter0|intcomma }} €</td>
+                                            <td>{{ analysis.loan_schedule.principal|index:forloop.counter0|intcomma }} €</td>
+                                            <td>{{ analysis.loan_schedule.balance|index:forloop.counter0|intcomma }} €</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card shadow">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">{% trans "Simulazione guasti" %}</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="failureChart"></canvas>
+                            </div>
+                            
+                            <div class="table-responsive mt-3">
+                                <table class="table table-sm table-bordered">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>{% trans "Anno" %}</th>
+                                            <th>{% trans "Guasti" %}</th>
+                                            <th>{% trans "Costi riparazione" %}</th>
+                                            <th>{% trans "Stazioni attive" %}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for year in analysis.failure_simulation.years %}
+                                        <tr>
+                                            <td>{{ year }}</td>
+                                            <td>{{ analysis.failure_simulation.failures|index:forloop.counter0 }}</td>
+                                            <td>{{ analysis.failure_simulation.repair_costs|index:forloop.counter0|intcomma }} €</td>
+                                            <td>{{ analysis.failure_simulation.active_stations|index:forloop.counter0 }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card shadow">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">{% trans "Azioni" %}</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                {% if is_project %}
+                                <a href="{% url 'projects:project_detail' project.id %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-1"></i>
+                                    {% trans "Torna al progetto" %}
+                                </a>
+                                {% else %}
+                                <a href="{% url 'projects:station_detail' project.id charging_station.id %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-1"></i>
+                                    {% trans "Torna alla stazione" %}
+                                </a>
+                                {% endif %}
+                                
+                                <div>
+                                    {% if is_project %}
+                                    <a href="{% url 'projects:run_project_analysis' project.id %}" class="btn btn-warning me-2">
+                                        <i class="fas fa-redo me-1"></i>
+                                        {% trans "Ricalcola analisi" %}
+                                    </a>
+                                    {% else %}
+                                    <a href="{% url 'projects:run_station_analysis' project.id charging_station.id %}" class="btn btn-warning me-2">
+                                        <i class="fas fa-redo me-1"></i>
+                                        {% trans "Ricalcola analisi" %}
+                                    </a>
+                                    {% endif %}
+                                    
+                                    <a href="#" class="btn btn-success" id="printBtn">
+                                        <i class="fas fa-print me-1"></i>
+                                        {% trans "Stampa report" %}
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Dati JSON dai modelli
+        const yearlyCashFlow = {{ analysis.yearly_cash_flow|safe }};
+        const monthlyCashFlow = {{ analysis.monthly_cash_flow|safe }};
+        const loanSchedule = {{ analysis.loan_schedule|safe }};
+        const failureSimulation = {{ analysis.failure_simulation|safe }};
+        
+        // Colori per i grafici
+        const colors = {
+            revenue: 'rgba(78, 115, 223, 0.7)',
+            costs: 'rgba(231, 74, 59, 0.7)',
+            maintenance: 'rgba(246, 194, 62, 0.7)',
+            loan: 'rgba(54, 185, 204, 0.7)',
+            netCash: 'rgba(28, 200, 138, 0.7)',
+            cumulative: 'rgba(133, 135, 150, 0.7)',
+            interest: 'rgba(246, 194, 62, 0.7)',
+            principal: 'rgba(78, 115, 223, 0.7)',
+            balance: 'rgba(133, 135, 150, 0.7)',
+            failures: 'rgba(231, 74, 59, 0.7)',
+            repairCosts: 'rgba(246, 194, 62, 0.7)',
+            activeStations: 'rgba(28, 200, 138, 0.7)'
+        };
+        
+        // Grafico flussi di cassa annuali
+        const yearlyCashFlowCtx = document.getElementById('yearlyCashFlowChart').getContext('2d');
+        new Chart(yearlyCashFlowCtx, {
+            type: 'bar',
+            data: {
+                labels: yearlyCashFlow.years.map(year => `Anno ${year}`),
+                datasets: [
+                    {
+                        label: 'Ricavi',
+                        data: yearlyCashFlow.revenue,
+                        backgroundColor: colors.revenue,
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Costi operativi',
+                        data: yearlyCashFlow.operational_costs.map(value => -value),
+                        backgroundColor: colors.costs,
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Manutenzione',
+                        data: yearlyCashFlow.maintenance_costs.map(value => -value),
+                        backgroundColor: colors.maintenance,
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Prestito',
+                        data: yearlyCashFlow.loan_payments.map(value => -value),
+                        backgroundColor: colors.loan,
+                        borderWidth: 1
+                    },
+                    {
+                        type: 'line',
+                        label: 'Flusso netto',
+                        data: yearlyCashFlow.net_cash_flow,
+                        borderColor: colors.netCash,
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        stacked: true
+                    },
+                    y: {
+                        stacked: false,
+                        title: {
+                            display: true,
+                            text: 'Euro (€)'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Grafico simulazione guasti
+        const failureCtx = document.getElementById('failureChart').getContext('2d');
+        new Chart(failureCtx, {
+            type: 'bar',
+            data: {
+                labels: failureSimulation.years.map(year => `Anno ${year}`),
+                datasets: [
+                    {
+                        type: 'bar',
+                        label: 'Guasti',
+                        data: failureSimulation.failures,
+                        backgroundColor: colors.failures,
+                        borderWidth: 1,
+                        yAxisID: 'y'
+                    },
+                    {
+                        type: 'bar',
+                        label: 'Costi riparazione',
+                        data: failureSimulation.repair_costs,
+                        backgroundColor: colors.repairCosts,
+                        borderWidth: 1,
+                        yAxisID: 'y1'
+                    },
+                    {
+                        type: 'line',
+                        label: 'Stazioni attive',
+                        data: failureSimulation.active_stations,
+                        borderColor: colors.activeStations,
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        yAxisID: 'y2'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Anno'
+                        }
+                    },
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Numero guasti'
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Costi riparazione (€)'
+                        },
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    },
+                    y2: {
+                        type: 'linear',
+                        display: false,
+                        position: 'right',
+                        min: 0,
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Funzione per stampare il report
+        document.getElementById('printBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            window.print();
+        });
+    });
+</script>
+{% endblock %}
+                    x: {
+                        stacked: true
+                    },
+                    y: {
+                        stacked: true,
+                        title: {
+                            display: true,
+                            text: 'Euro (€)'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Grafico flussi di cassa mensili
+        const monthlyCashFlowCtx = document.getElementById('monthlyCashFlowChart').getContext('2d');
+        new Chart(monthlyCashFlowCtx, {
+            type: 'line',
+            data: {
+                labels: monthlyCashFlow.months,
+                datasets: [
+                    {
+                        label: 'Ricavi',
+                        data: monthlyCashFlow.revenue,
+                        borderColor: colors.revenue,
+                        backgroundColor: 'transparent',
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Costi operativi',
+                        data: monthlyCashFlow.operational_costs,
+                        borderColor: colors.costs,
+                        backgroundColor: 'transparent',
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Flusso netto',
+                        data: monthlyCashFlow.net_cash_flow,
+                        borderColor: colors.netCash,
+                        backgroundColor: 'transparent',
+                        borderWidth: 3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Euro (€)'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Grafico flusso di cassa cumulativo
+        const cumulativeCashFlowCtx = document.getElementById('cumulativeCashFlowChart').getContext('2d');
+        new Chart(cumulativeCashFlowCtx, {
+            type: 'line',
+            data: {
+                labels: yearlyCashFlow.years.map(year => `Anno ${year}`),
+                datasets: [
+                    {
+                        label: 'Flusso di cassa cumulativo',
+                        data: yearlyCashFlow.cumulative_cash_flow,
+                        borderColor: colors.cumulative,
+                        backgroundColor: 'rgba(133, 135, 150, 0.1)',
+                        borderWidth: 2,
+                        fill: true
+                    },
+                    {
+                        label: 'Soglia di pareggio',
+                        data: yearlyCashFlow.years.map(() => 0),
+                        borderColor: 'rgba(231, 74, 59, 0.7)',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Euro (€)'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Grafico piano ammortamento prestito
+        const loanCtx = document.getElementById('loanChart').getContext('2d');
+        new Chart(loanCtx, {
+            type: 'bar',
+            data: {
+                labels: loanSchedule.years.map(year => `Anno ${year}`),
+                datasets: [
+                    {
+                        label: 'Interessi',
+                        data: loanSchedule.interest,
+                        backgroundColor: colors.interest,
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Capitale',
+                        data: loanSchedule.principal,
+                        backgroundColor: colors.principal,
+                        borderWidth: 1
+                    },
+                    {
+                        type: 'line',
+                        label: 'Saldo residuo',
+                        data: loanSchedule.balance,
+                        borderColor: colors.balance,
+                        borderWidth: 2,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {

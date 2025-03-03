@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxValueValidator
-from cpo_planner.projects.models import ChargingStation, SubProject, Project
+from cpo_planner.projects.models import ChargingStation, Municipality, Project
 
 User = get_user_model()
 
@@ -198,8 +198,8 @@ class CustomMarker(models.Model):
         blank=True
     )
     
-    subproject = models.ForeignKey(
-        SubProject,
+    municipality = models.ForeignKey(
+        Municipality,
         on_delete=models.CASCADE,
         related_name='custom_markers',
         verbose_name=_('Sotto-progetto'),
@@ -273,7 +273,7 @@ class SavedMap(models.Model):
     
     # Sotto-progetti visualizzati
     subprojects = models.ManyToManyField(
-        SubProject,
+        Municipality,
         related_name='saved_maps',
         verbose_name=_('Sotto-progetti'),
         blank=True

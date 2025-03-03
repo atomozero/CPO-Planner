@@ -5,3 +5,7 @@ reportlab
 django-crispy-forms 
 pillow 
 openpyxl 
+numpy>=1.21.0
+numpy-financial>=1.0.0
+django-crispy-forms>=1.14.0
+crispy-bootstrap5>=0.7

@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2>{{ title }}</h2>
+            <p class="lead">
+                {% trans "Progetto" %}: {{ project.name }}
+                {% if charging_station %}
+                <br>{% trans "Stazione" %}: {{ charging_station.name }}
+                {% endif %}
+            </p>
+            
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">{% trans "Verifica e conferma i parametri finanziari" %}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <h4>{% trans "Parametri generali" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.general_fields %}
+                                <div class="col-md-4 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <h4>{% trans "Parametri del prestito" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.loan_fields %}
+                                <div class="col-md-3 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <h4>{% trans "Parametri di mercato" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.market_fields %}
+                                <div class="col-md-6 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <h4>{% trans "Parametri operativi" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.operational_fields %}
+                                <div class="col-md-4 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <h4>{% trans "Parametri di guasto e riparazione" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.failure_fields %}
+                                <div class="col-md-6 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            {% trans "L'analisi finanziaria eseguirà i calcoli di ROI, flussi di cassa e simulerà eventuali guasti nel periodo di investimento. Questa operazione potrebbe richiedere alcuni istanti." %}
+                        </div>
+                        
+                        <div class="text-end">
+                            {% if charging_station %}
+                            <a href="{% url 'projects:station_detail' project.id charging_station.id %}" class="btn btn-secondary me-2">
+                                {% trans "Annulla" %}
+                            </a>
+                            {% else %}
+                            <a href="{% url 'projects:project_detail' project.id %}" class="btn btn-secondary me-2">
+                                {% trans "Annulla" %}
+                            </a>
+                            {% endif %}
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-calculator me-1"></i>
+                                {% trans "Esegui analisi finanziaria" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -3,8 +3,7 @@ from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
 from cpo_planner.projects.models import Project, SubProject, ChargingStation
-from .models import Document, DocumentCategory, DocumentNote, DocumentTask
-
+from .models import Document, DocumentCategory, DocumentNote, DocumentTask, ProjectDocument, DocumentTemplate
 class DocumentForm(forms.ModelForm):
     """Form per la creazione e modifica dei documenti"""
     
@@ -205,4 +204,14 @@ class DocumentCategoryForm(forms.ModelForm):
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
             'slug': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+class ProjectDocumentForm(forms.ModelForm):
+    """Form per i documenti specifici dei progetti"""
+    class Meta:
+        model = ProjectDocument
+        fields = ['title', 'file']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'file': forms.FileInput(attrs={'class': 'form-control'})
         }

@@ -8,7 +8,7 @@
     <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
-        <a href="{% url 'project_create' %}" class="d-none d-sm-inline-block btn btn-primary shadow-sm">
+        <a href="{% url 'infrastructure:project-create' %}" class="d-none d-sm-inline-block btn btn-primary shadow-sm">
             <i class="fas fa-plus fa-sm text-white-50"></i> Nuovo Progetto
         </a>
     </div>
@@ -31,7 +31,7 @@
                     </div>
                 </div>
                 <div class="card-footer bg-transparent border-0">
-                    <a href="{% url 'project_list' %}" class="small text-primary">Vedi tutti</a>
+                    <a href="{% url 'infrastructure:project-list' %}" class="small text-primary">Vedi tutti</a>
                 </div>
             </div>
         </div>
@@ -52,7 +52,7 @@
                     </div>
                 </div>
                 <div class="card-footer bg-transparent border-0">
-                    <a href="{% url 'project_list' %}?status=operational" class="small text-success">Vedi attivi</a>
+                    <a href="{% url 'infrastructure:project-list' %}?status=operational" class="small text-success">Vedi attivi</a>
                 </div>
             </div>
         </div>
@@ -73,7 +73,7 @@
                     </div>
                 </div>
                 <div class="card-footer bg-transparent border-0">
-                    <a href="{% url 'station_list' %}" class="small text-info">Vedi tutte</a>
+                    <a href="{% url 'infrastructure:station-list' %}" class="small text-info">Vedi tutte</a>
                 </div>
             </div>
         </div>
@@ -100,7 +100,8 @@
                     </div>
                 </div>
                 <div class="card-footer bg-transparent border-0">
-                    <a href="{% url 'financial_overview' %}" class="small text-warning">Analisi finanziaria</a>
+                    <!-- Questo link andrà aggiornato quando implementerai la parte finanziaria -->
+                    <a href="#" class="small text-warning">Analisi finanziaria</a>
                 </div>
             </div>
         </div>
@@ -172,24 +173,23 @@
                                             <span class="badge badge-secondary">Pianificazione</span>
                                         {% elif project.status == 'approval' %}
                                             <span class="badge badge-info">Approvazione</span>
-                                        {% elif project.status == 'construction' %}
-                                            <span class="badge badge-warning">Costruzione</span>
+                                        {% elif project.status == 'installation' %}
+                                            <span class="badge badge-warning">Installazione</span>
+                                        {% elif project.status == 'testing' %}
+                                            <span class="badge badge-primary">Test</span>
                                         {% elif project.status == 'operational' %}
                                             <span class="badge badge-success">Operativo</span>
-                                        {% elif project.status == 'maintenance' %}
-                                            <span class="badge badge-danger">Manutenzione</span>
-                                        {% elif project.status == 'closed' %}
-                                            <span class="badge badge-dark">Chiuso</span>
                                         {% else %}
                                             <span class="badge badge-light">{{ project.get_status_display }}</span>
                                         {% endif %}
                                     </td>
                                     <td>€ {{ project.budget|floatformat:2 }}</td>
                                     <td>
-                                        <a href="{% url 'project_detail' project.id %}" class="btn btn-sm btn-primary">
+                                        <a href="{% url 'infrastructure:project-detail' project.id %}" class="btn btn-sm btn-primary">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="{% url 'project_update' project.id %}" class="btn btn-sm btn-info">
+                                        <!-- Nota: questo URL deve essere creato, potrebbe diventare project-edit -->
+                                        <a href="{% url 'infrastructure:project-detail' project.id %}" class="btn btn-sm btn-info">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                     </td>
@@ -217,7 +217,7 @@
                         <table class="table table-bordered" width="100%" cellspacing="0">
                             <thead>
                                 <tr>
-                                    <th>Nome</th>
+                                    <th>Codice</th>
                                     <th>Tipo</th>
                                     <th>Stato</th>
                                     <th>Potenza</th>
@@ -226,28 +226,26 @@
                             <tbody>
                                 {% for station in stations %}
                                 <tr>
-                                    <td>{{ station.name }}</td>
-                                    <td>{{ station.get_station_type_display }}</td>
+                                    <td>{{ station.code }}</td>
+                                    <td>{{ station.get_connection_type_display }}</td>
                                     <td>
                                         {% if station.status == 'planned' %}
                                             <span class="badge badge-secondary">Pianificata</span>
-                                        {% elif station.status == 'permitting' %}
-                                            <span class="badge badge-info">Autorizzazione</span>
-                                        {% elif station.status == 'installing' %}
-                                            <span class="badge badge-warning">Installazione</span>
-                                        {% elif station.status == 'testing' %}
-                                            <span class="badge badge-primary">Test</span>
-                                        {% elif station.status == 'operational' %}
-                                            <span class="badge badge-success">Operativa</span>
+                                        {% elif station.status == 'ordered' %}
+                                            <span class="badge badge-info">Ordinata</span>
+                                        {% elif station.status == 'installed' %}
+                                            <span class="badge badge-warning">Installata</span>
+                                        {% elif station.status == 'active' %}
+                                            <span class="badge badge-success">Attiva</span>
                                         {% elif station.status == 'maintenance' %}
                                             <span class="badge badge-danger">Manutenzione</span>
-                                        {% elif station.status == 'offline' %}
-                                            <span class="badge badge-dark">Offline</span>
+                                        {% elif station.status == 'disabled' %}
+                                            <span class="badge badge-dark">Disattivata</span>
                                         {% else %}
                                             <span class="badge badge-light">{{ station.get_status_display }}</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ station.power_kw }} kW</td>
+                                    <td>{{ station.max_power }} kW</td>
                                 </tr>
                                 {% empty %}
                                 <tr>

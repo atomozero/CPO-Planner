@@ -1,6 +1,6 @@
 # forms.py
 from django import forms
-from .models import Municipality, ChargingProject, ChargingStation
+from .models import Municipality, ChargingProject, ChargingStation, ProjectTask  
 
 class MunicipalityForm(forms.ModelForm):
     class Meta:

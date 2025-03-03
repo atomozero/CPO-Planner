@@ -2,6 +2,8 @@
 from django.urls import path
 from . import views
 
+app_name = 'infrastructure' 
+
 urlpatterns = [
     # Comuni
     path('municipalities/', views.MunicipalityListView.as_view(), name='municipality-list'),

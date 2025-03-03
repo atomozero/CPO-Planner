@@ -946,3 +946,42 @@ class DocumentCategoryCreateView(LoginRequiredMixin, CreateView):
         response = super().form_valid(form)
         messages.success(self.request, _('Categoria creata con successo.'))
         return response
+
+class DocumentCategoryUpdateView(LoginRequiredMixin, UpdateView):
+    """Vista per aggiornare una categoria di documenti esistente"""
+    model = DocumentCategory
+    template_name = 'documents/document_category_form.html'
+    form_class = DocumentCategoryForm
+    success_url = reverse_lazy('documents:category_list')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['is_update'] = True
+        return context
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, _('Categoria aggiornata con successo.'))
+        return response
+
+class DocumentCategoryDeleteView(LoginRequiredMixin, DeleteView):
+    """Vista per eliminare una categoria di documenti"""
+    model = DocumentCategory
+    template_name = 'documents/document_category_confirm_delete.html'
+    success_url = reverse_lazy('documents:category_list')
+    context_object_name = 'category'
+    
+    def delete(self, request, *args, **kwargs):
+        category = self.get_object()
+        try:
+            # Controlliamo se la categoria è usata
+            if Document.objects.filter(category=category).exists():
+                messages.error(request, _('Non è possibile eliminare una categoria utilizzata da documenti esistenti.'))
+                return redirect('documents:category_list')
+                
+            response = super().delete(request, *args, **kwargs)
+            messages.success(request, _('Categoria eliminata con successo.'))
+            return response
+        except Exception as e:
+            messages.error(request, _('Errore durante l\'eliminazione: {}').format(str(e)))
+            return redirect('documents:category_list')

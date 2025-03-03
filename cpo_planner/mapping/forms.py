@@ -53,7 +53,7 @@ class CustomMarkerForm(forms.ModelForm):
         fields = [
             'name', 'description', 'latitude', 'longitude',
             'color', 'icon', 'is_visible', 'popup_title',
-            'popup_content', 'project', 'subproject'
+            'popup_content', 'project', 'municipality'  # Cambia 'subproject' in 'municipality'
         ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
@@ -66,7 +66,7 @@ class CustomMarkerForm(forms.ModelForm):
             'popup_title': forms.TextInput(attrs={'class': 'form-control'}),
             'popup_content': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'project': forms.Select(attrs={'class': 'form-control'}),
-            'subproject': forms.Select(attrs={'class': 'form-control'})
+            'municipality': forms.Select(attrs={'class': 'form-control'})  # Cambia qui
         }
     
     def __init__(self, *args, **kwargs):
@@ -75,9 +75,9 @@ class CustomMarkerForm(forms.ModelForm):
         
         # Filtra i sotto-progetti in base al progetto selezionato
         if self.instance and self.instance.project:
-            self.fields['subproject'].queryset = SubProject.objects.filter(project=self.instance.project)
+            self.fields['municipality'].queryset = SubProject.objects.filter(project=self.instance.project)
         else:
-            self.fields['subproject'].queryset = SubProject.objects.none()
+            self.fields['municipality'].queryset = SubProject.objects.none()
     
     def save(self, commit=True):
         marker = super().save(commit=False)

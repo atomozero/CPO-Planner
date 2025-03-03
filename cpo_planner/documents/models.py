@@ -69,7 +69,7 @@ class Document(models.Model):
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
-        related_name='created_documents',
+        related_name='created_document',
         verbose_name=_('Creato da')
     )
     created_at = models.DateTimeField(_('Data Creazione'), auto_now_add=True)
@@ -237,7 +237,7 @@ class DocumentTemplate(models.Model):
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
-        related_name='created_templates',
+        related_name='created_document_templates',
         verbose_name=_('Creato da')
     )
     created_at = models.DateTimeField(_('Data Creazione'), auto_now_add=True)

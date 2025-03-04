@@ -1,0 +1,807 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard | CPO Planner{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<style>
+    #map {
+        height: 500px;
+        width: 100%;
+    }
+    .station-marker {
+        text-align: center;
+    }
+    .station-marker i {
+        font-size: 20px;
+    }
+    .station-active { color: #1cc88a; }
+    .station-installing { color: #4e73df; }
+    .station-planned { color: #36b9cc; }
+    .station-maintenance { color: #f6c23e; }
+    .station-inactive { color: #e74a3b; }
+    
+    .kpi-card {
+        transition: transform 0.2s;
+    }
+    .kpi-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .data-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #858796;
+    }
+    .data-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #5a5c69;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
+    <div>
+        <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm mr-2">
+            <i class="fas fa-sync fa-sm text-white-50 mr-1"></i> Aggiorna
+        </a>
+        <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-success shadow-sm">
+            <i class="fas fa-download fa-sm text-white-50 mr-1"></i> Genera Report
+        </a>
+    </div>
+</div>
+
+<!-- Content Row - Primary Stats -->
+<div class="row">
+    <!-- Progetti -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2 kpi-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Progetti</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_projects }}</div>
+                        <div class="mt-2 text-xs">
+                            <span class="text-success mr-2"><i class="fas fa-arrow-up"></i> {{ new_projects_percent }}%</span>
+                            <span>Rispetto al mese precedente</span>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-project-diagram fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stazioni di Ricarica -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2 kpi-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Stazioni di Ricarica</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_stations }}</div>
+                        <div class="mt-2 text-xs">
+                            <span class="text-success mr-2"><i class="fas fa-arrow-up"></i> {{ new_stations_percent }}%</span>
+                            <span>Rispetto al mese precedente</span>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-charging-station fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Potenza Installata -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2 kpi-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Potenza Installata</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_power }} kW</div>
+                        <div class="mt-2 text-xs">
+                            <span class="text-success mr-2"><i class="fas fa-arrow-up"></i> {{ new_power_percent }}%</span>
+                            <span>Rispetto al mese precedente</span>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-bolt fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comuni -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2 kpi-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Comuni Serviti</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_municipalities }}</div>
+                        <div class="mt-2 text-xs">
+                            <span class="text-success mr-2"><i class="fas fa-arrow-up"></i> {{ new_municipalities_percent }}%</span>
+                            <span>Rispetto al mese precedente</span>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-city fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Content Row - Detailed Stats -->
+<div class="row">
+    <!-- Project Status Column -->
+    <div class="col-xl-4 col-lg-5">
+        <!-- Project Status Distribution -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Stato dei Progetti</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-pie pt-4">
+                    <canvas id="projectStatusChart"></canvas>
+                </div>
+                <div class="mt-4 text-center small">
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-info"></i> Pianificati
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-primary"></i> In Corso
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-success"></i> Completati
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-warning"></i> In Pausa
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-danger"></i> Annullati
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Station Status Distribution -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Stato delle Stazioni</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-pie pt-4">
+                    <canvas id="stationStatusChart"></canvas>
+                </div>
+                <div class="mt-4 text-center small">
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-info"></i> Pianificate
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-primary"></i> In Installazione
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-success"></i> Attive
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-warning"></i> In Manutenzione
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-danger"></i> Inattive
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map and Growth Column -->
+    <div class="col-xl-8 col-lg-7">
+        <!-- Growth Trend -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Crescita Infrastruttura</h6>
+                <div class="dropdown no-arrow">
+                    <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in" aria-labelledby="dropdownMenuLink">
+                        <div class="dropdown-header">Intervallo:</div>
+                        <a class="dropdown-item" href="#">Ultimi 6 mesi</a>
+                        <a class="dropdown-item" href="#">Ultimo anno</a>
+                        <a class="dropdown-item" href="#">Ultimi 2 anni</a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-area">
+                    <canvas id="growthChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Map of Stations -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Mappa delle Stazioni</h6>
+            </div>
+            <div class="card-body">
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Content Row - Projects and Financial -->
+<div class="row">
+    <!-- Recent Projects -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Progetti Recenti</h6>
+                <a href="#" class="btn btn-sm btn-primary">
+                    Vedi Tutti
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Progetto</th>
+                                <th>Comune</th>
+                                <th>Stato</th>
+                                <th>Completamento</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for project in recent_projects %}
+                            <tr>
+                                <td><a href="#">{{ project.name }}</a></td>
+                                <td>{{ project.municipality.name }}</td>
+                                <td>
+                                    {% if project.status == 'planned' %}
+                                        <span class="badge badge-info">Pianificato</span>
+                                    {% elif project.status == 'in_progress' %}
+                                        <span class="badge badge-primary">In Corso</span>
+                                    {% elif project.status == 'completed' %}
+                                        <span class="badge badge-success">Completato</span>
+                                    {% elif project.status == 'on_hold' %}
+                                        <span class="badge badge-warning">In Pausa</span>
+                                    {% elif project.status == 'cancelled' %}
+                                        <span class="badge badge-danger">Annullato</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="progress progress-sm">
+                                        <div class="progress-bar bg-{{ project.get_status_color }}" role="progressbar" style="width: {{ project.completion_percentage }}%" 
+                                             aria-valuenow="{{ project.completion_percentage }}" aria-valuemin="0" aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center">Nessun progetto recente</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Overview -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Panoramica Finanziaria</h6>
+                <a href="#" class="btn btn-sm btn-primary">
+                    Dettagli
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="data-label">Investimento Totale</div>
+                        <div class="data-value">€ {{ total_investment|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="data-label">Ricavi Totali</div>
+                        <div class="data-value">€ {{ total_revenue|floatformat:2 }}</div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="data-label">ROI Medio</div>
+                        <div class="data-value">{{ average_roi }}%</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="data-label">Tempo Ritorno Investimento</div>
+                        <div class="data-value">{{ investment_return_time }} anni</div>
+                    </div>
+                </div>
+                <div class="chart-area mt-4">
+                    <canvas id="financialChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Power Distribution -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Distribuzione Potenza</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-bar">
+                    <canvas id="powerDistributionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upcoming Tasks -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Prossime Attività</h6>
+        <a href="#" class="btn btn-sm btn-primary">
+            Gestisci
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Attività</th>
+                        <th>Progetto</th>
+                        <th>Scadenza</th>
+                        <th>Priorità</th>
+                        <th>Stato</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for task in upcoming_tasks %}
+                    <tr>
+                        <td>{{ task.name }}</td>
+                        <td>{{ task.project.name }}</td>
+                        <td>{{ task.due_date|date:"d/m/Y" }}</td>
+                        <td>
+                            {% if task.priority == 'high' %}
+                                <span class="badge badge-danger">Alta</span>
+                            {% elif task.priority == 'medium' %}
+                                <span class="badge badge-warning">Media</span>
+                            {% else %}
+                                <span class="badge badge-info">Bassa</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="progress progress-sm">
+                                <div class="progress-bar bg-info" role="progressbar" style="width: {{ task.completion_percentage }}%" 
+                                     aria-valuenow="{{ task.completion_percentage }}" aria-valuemin="0" aria-valuemax="100">
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center">Nessuna attività imminente</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+    $(document).ready(function() {
+        // Inizializza la mappa
+        var map = L.map('map').setView([41.9028, 12.4964], 6); // Default centrato sull'Italia
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Aggiungi marker per le stazioni
+        {% for station in stations_with_coords %}
+            var marker = L.marker([{{ station.latitude }}, {{ station.longitude }}], {
+                icon: L.divIcon({
+                    className: 'station-marker',
+                    html: '<i class="fas fa-charging-station station-{{ station.status }}"></i>',
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                })
+            }).addTo(map);
+            
+            marker.bindPopup(
+                "<strong>{{ station.name }}</strong><br>" +
+                "Codice: {{ station.code }}<br>" +
+                "Indirizzo: {{ station.address }}<br>" +
+                "Potenza: {{ station.power_kw }} kW<br>" +
+                "<a href='#' class='btn btn-primary btn-sm mt-2'>Dettagli</a>"
+            );
+        {% endfor %}
+        
+        // Inizializza Chart.js
+        // Grafico stato progetti
+        var projectCtx = document.getElementById("projectStatusChart");
+        if (projectCtx) {
+            var projectStatusChart = new Chart(projectCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ["Pianificati", "In Corso", "Completati", "In Pausa", "Annullati"],
+                    datasets: [{
+                        data: [
+                            {{ project_status.planned|default:0 }},
+                            {{ project_status.in_progress|default:0 }},
+                            {{ project_status.completed|default:0 }},
+                            {{ project_status.on_hold|default:0 }},
+                            {{ project_status.cancelled|default:0 }}
+                        ],
+                        backgroundColor: ['#36b9cc', '#4e73df', '#1cc88a', '#f6c23e', '#e74a3b'],
+                        hoverBackgroundColor: ['#2c9faf', '#2e59d9', '#17a673', '#dda20a', '#be2617'],
+                        hoverBorderColor: "rgba(234, 236, 244, 1)",
+                    }],
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    tooltips: {
+                        backgroundColor: "rgb(255,255,255)",
+                        bodyFontColor: "#858796",
+                        borderColor: '#dddfeb',
+                        borderWidth: 1,
+                        xPadding: 15,
+                        yPadding: 15,
+                        displayColors: false,
+                        caretPadding: 10,
+                    },
+                    legend: {
+                        display: false
+                    },
+                    cutoutPercentage: 70,
+                },
+            });
+        }
+        
+        // Grafico stato stazioni
+        var stationCtx = document.getElementById("stationStatusChart");
+        if (stationCtx) {
+            var stationStatusChart = new Chart(stationCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ["Pianificate", "In Installazione", "Attive", "In Manutenzione", "Inattive"],
+                    datasets: [{
+                        data: [
+                            {{ station_status.planned|default:0 }},
+                            {{ station_status.installing|default:0 }},
+                            {{ station_status.active|default:0 }},
+                            {{ station_status.maintenance|default:0 }},
+                            {{ station_status.inactive|default:0 }}
+                        ],
+                        backgroundColor: ['#36b9cc', '#4e73df', '#1cc88a', '#f6c23e', '#e74a3b'],
+                        hoverBackgroundColor: ['#2c9faf', '#2e59d9', '#17a673', '#dda20a', '#be2617'],
+                        hoverBorderColor: "rgba(234, 236, 244, 1)",
+                    }],
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    tooltips: {
+                        backgroundColor: "rgb(255,255,255)",
+                        bodyFontColor: "#858796",
+                        borderColor: '#dddfeb',
+                        borderWidth: 1,
+                        xPadding: 15,
+                        yPadding: 15,
+                        displayColors: false,
+                        caretPadding: 10,
+                    },
+                    legend: {
+                        display: false
+                    },
+                    cutoutPercentage: 70,
+                },
+            });
+        }
+        
+        // Grafico crescita
+        var growthCtx = document.getElementById("growthChart");
+        if (growthCtx) {
+            var growthChart = new Chart(growthCtx, {
+                type: 'line',
+                data: {
+                    labels: [{% for month in growth_data %}"{{ month.label }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    datasets: [{
+                        label: "Stazioni",
+                        lineTension: 0.3,
+                        backgroundColor: "rgba(78, 115, 223, 0.05)",
+                        borderColor: "rgba(78, 115, 223, 1)",
+                        pointRadius: 3,
+                        pointBackgroundColor: "rgba(78, 115, 223, 1)",
+                        pointBorderColor: "rgba(78, 115, 223, 1)",
+                        pointHoverRadius: 3,
+                        pointHoverBackgroundColor: "rgba(78, 115, 223, 1)",
+                        pointHoverBorderColor: "rgba(78, 115, 223, 1)",
+                        pointHitRadius: 10,
+                        pointBorderWidth: 2,
+                        data: [{% for month in growth_data %}{{ month.stations }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    },
+                    {
+                        label: "Progetti",
+                        lineTension: 0.3,
+                        backgroundColor: "rgba(28, 200, 138, 0.05)",
+                        borderColor: "rgba(28, 200, 138, 1)",
+                        pointRadius: 3,
+                        pointBackgroundColor: "rgba(28, 200, 138, 1)",
+                        pointBorderColor: "rgba(28, 200, 138, 1)",
+                        pointHoverRadius: 3,
+                        pointHoverBackgroundColor: "rgba(28, 200, 138, 1)",
+                        pointHoverBorderColor: "rgba(28, 200, 138, 1)",
+                        pointHitRadius: 10,
+                        pointBorderWidth: 2,
+                        data: [{% for month in growth_data %}{{ month.projects }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    }],
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 25,
+                            top: 25,
+                            bottom: 0
+                        }
+                    },
+                    scales: {
+                        xAxes: [{
+                            time: {
+                                unit: 'date'
+                            },
+                            gridLines: {
+                                display: false,
+                                drawBorder: false
+                            },
+                            ticks: {
+                                maxTicksLimit: 7
+                            }
+                        }],
+                        yAxes: [{
+                            ticks: {
+                                maxTicksLimit: 5,
+                                padding: 10,
+                                beginAtZero: true
+                            },
+                            gridLines: {
+                                color: "rgb(234, 236, 244)",
+                                zeroLineColor: "rgb(234, 236, 244)",
+                                drawBorder: false,
+                                borderDash: [2],
+                                zeroLineBorderDash: [2]
+                            }
+                        }],
+                    },
+                    legend: {
+                        display: true
+                    },
+                    tooltips: {
+                        backgroundColor: "rgb(255,255,255)",
+                        bodyFontColor: "#858796",
+                        titleMarginBottom: 10,
+                        titleFontColor: '#6e707e',
+                        titleFontSize: 14,
+                        borderColor: '#dddfeb',
+                        borderWidth: 1,
+                        xPadding: 15,
+                        yPadding: 15,
+                        displayColors: false,
+                        intersect: false,
+                        mode: 'index',
+                        caretPadding: 10
+                    }
+                }
+            });
+        }
+        
+        // Grafico finanziario
+        var financialCtx = document.getElementById("financialChart");
+        if (financialCtx) {
+            var financialChart = new Chart(financialCtx, {
+                type: 'line',
+                data: {
+                    labels: [{% for month in financial_data %}"{{ month.label }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    datasets: [{
+                        label: "Investimenti",
+                        lineTension: 0.3,
+                        backgroundColor: "rgba(231, 74, 59, 0.05)",
+                        borderColor: "rgba(231, 74, 59, 1)",
+                        pointRadius: 3,
+                        pointBackgroundColor: "rgba(231, 74, 59, 1)",
+                        pointBorderColor: "rgba(231, 74, 59, 1)",
+                        pointHoverRadius: 3,
+                        pointHoverBackgroundColor: "rgba(231, 74, 59, 1)",
+                        pointHoverBorderColor: "rgba(231, 74, 59, 1)",
+                        pointHitRadius: 10,
+                        pointBorderWidth: 2,
+                        data: [{% for month in financial_data %}{{ month.investments }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    },
+                    {
+                        label: "Ricavi",
+                        lineTension: 0.3,
+                        backgroundColor: "rgba(28, 200, 138, 0.05)",
+                        borderColor: "rgba(28, 200, 138, 1)",
+                        pointRadius: 3,
+                        pointBackgroundColor: "rgba(28, 200, 138, 1)",
+                        pointBorderColor: "rgba(28, 200, 138, 1)",
+                        pointHoverRadius: 3,
+                        pointHoverBackgroundColor: "rgba(28, 200, 138, 1)",
+                        pointHoverBorderColor: "rgba(28, 200, 138, 1)",
+                        pointHitRadius: 10,
+                        pointBorderWidth: 2,
+                        data: [{% for month in financial_data %}{{ month.revenues }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    }],
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 25,
+                            top: 25,
+                            bottom: 0
+                        }
+                    },
+                    scales: {
+                        xAxes: [{
+                            time: {
+                                unit: 'date'
+                            },
+                            gridLines: {
+                                display: false,
+                                drawBorder: false
+                            },
+                            ticks: {
+                                maxTick
+maxTicksLimit: 7
+                            }
+                        }],
+                        yAxes: [{
+                            ticks: {
+                                maxTicksLimit: 5,
+                                padding: 10,
+                                callback: function(value, index, values) {
+                                    return '€' + value;
+                                }
+                            },
+                            gridLines: {
+                                color: "rgb(234, 236, 244)",
+                                zeroLineColor: "rgb(234, 236, 244)",
+                                drawBorder: false,
+                                borderDash: [2],
+                                zeroLineBorderDash: [2]
+                            }
+                        }],
+                    },
+                    legend: {
+                        display: true
+                    },
+                    tooltips: {
+                        backgroundColor: "rgb(255,255,255)",
+                        bodyFontColor: "#858796",
+                        titleMarginBottom: 10,
+                        titleFontColor: '#6e707e',
+                        titleFontSize: 14,
+                        borderColor: '#dddfeb',
+                        borderWidth: 1,
+                        xPadding: 15,
+                        yPadding: 15,
+                        displayColors: false,
+                        intersect: false,
+                        mode: 'index',
+                        caretPadding: 10,
+                        callbacks: {
+                            label: function(tooltipItem, chart) {
+                                var datasetLabel = chart.datasets[tooltipItem.datasetIndex].label || '';
+                                return datasetLabel + ': €' + tooltipItem.yLabel;
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Grafico distribuzione potenza
+        var powerDistributionCtx = document.getElementById("powerDistributionChart");
+        if (powerDistributionCtx) {
+            var powerDistributionChart = new Chart(powerDistributionCtx, {
+                type: 'bar',
+                data: {
+                    labels: [{% for power in power_distribution %}"{{ power.range }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    datasets: [{
+                        label: "Stazioni",
+                        backgroundColor: "#4e73df",
+                        hoverBackgroundColor: "#2e59d9",
+                        borderColor: "#4e73df",
+                        data: [{% for power in power_distribution %}{{ power.count }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    }],
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 25,
+                            top: 25,
+                            bottom: 0
+                        }
+                    },
+                    scales: {
+                        xAxes: [{
+                            gridLines: {
+                                display: false,
+                                drawBorder: false
+                            },
+                            ticks: {
+                                maxTicksLimit: 6
+                            },
+                            maxBarThickness: 25,
+                        }],
+                        yAxes: [{
+                            ticks: {
+                                min: 0,
+                                maxTicksLimit: 5,
+                                padding: 10,
+                                beginAtZero: true,
+                                callback: function(value) {
+                                    return Math.round(value);
+                                }
+                            },
+                            gridLines: {
+                                color: "rgb(234, 236, 244)",
+                                zeroLineColor: "rgb(234, 236, 244)",
+                                drawBorder: false,
+                                borderDash: [2],
+                                zeroLineBorderDash: [2]
+                            }
+                        }],
+                    },
+                    legend: {
+                        display: false
+                    },
+                    tooltips: {
+                        titleMarginBottom: 10,
+                        titleFontColor: '#6e707e',
+                        titleFontSize: 14,
+                        backgroundColor: "rgb(255,255,255)",
+                        bodyFontColor: "#858796",
+                        borderColor: '#dddfeb',
+                        borderWidth: 1,
+                        xPadding: 15,
+                        yPadding: 15,
+                        displayColors: false,
+                        caretPadding: 10,
+                    },
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

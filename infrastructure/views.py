@@ -75,11 +75,60 @@ class ChargingStationListView(LoginRequiredMixin, ListView):
     context_object_name = 'stations'
     template_name = 'stations/station_list.html'
     
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from django.db.models import Sum, Count, Case, When, IntegerField
+        
+        # Statistiche di base
+        context['active_stations'] = ChargingStation.objects.filter(status='active').count()
+        context['total_power'] = ChargingStation.objects.aggregate(Sum('power_kw'))['power_kw__sum'] or 0
+        context['total_projects'] = ChargingProject.objects.filter(charging_stations__isnull=False).distinct().count()
+        
+        # Stazioni con coordinate per la mappa
+        context['stations_with_coords'] = ChargingStation.objects.filter(latitude__isnull=False, longitude__isnull=False)
+        
+        # Conteggi per stato
+        context['status_counts'] = {
+            'planned': ChargingStation.objects.filter(status='planned').count(),
+            'installing': ChargingStation.objects.filter(status='installing').count(),
+            'active': ChargingStation.objects.filter(status='active').count(),
+            'maintenance': ChargingStation.objects.filter(status='maintenance').count(),
+            'inactive': ChargingStation.objects.filter(status='inactive').count(),
+        }
+        
+        # Distribuzione potenza
+        context['power_distribution'] = [
+            {'range': '0-22 kW', 'count': ChargingStation.objects.filter(power_kw__lte=22).count()},
+            {'range': '23-50 kW', 'count': ChargingStation.objects.filter(power_kw__gt=22, power_kw__lte=50).count()},
+            {'range': '51-100 kW', 'count': ChargingStation.objects.filter(power_kw__gt=50, power_kw__lte=100).count()},
+            {'range': '101-150 kW', 'count': ChargingStation.objects.filter(power_kw__gt=100, power_kw__lte=150).count()},
+            {'range': '151+ kW', 'count': ChargingStation.objects.filter(power_kw__gt=150).count()},
+        ]
+        
+        return context
+    
 class ChargingStationDetailView(LoginRequiredMixin, DetailView):
     model = ChargingStation
     context_object_name = 'station'
     template_name = 'stations/station_detail.html'
-
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Puoi aggiungere qui dati simulati per le statistiche
+        # Esempio:
+        context['usage_percentage'] = 25  # percentuale di tempo in uso
+        context['ready_percentage'] = 70  # percentuale di tempo pronta
+        context['unavailable_percentage'] = 5  # percentuale di tempo non disponibile
+        
+        # Dati ricavi mensili (simulati)
+        context['monthly_revenue'] = {
+            'jan': 120, 'feb': 140, 'mar': 160, 'apr': 190,
+            'may': 210, 'jun': 240, 'jul': 260, 'aug': 280,
+            'sep': 250, 'oct': 220, 'nov': 180, 'dec': 150
+        }
+        
+        return context
 class ChargingStationCreateView(LoginRequiredMixin, CreateView):
     model = ChargingStation
     form_class = ChargingStationForm

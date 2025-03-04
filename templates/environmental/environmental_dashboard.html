@@ -1,0 +1,454 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Ambientale | CPO Planner{% endblock %}
+
+{% block extra_css %}
+<style>
+    .eco-card {
+        transition: transform 0.2s;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .eco-card:hover {
+        transform: translateY(-5px);
+    }
+    .metric-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #5a5c69;
+    }
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #3a3b45;
+    }
+    .metric-unit {
+        font-size: 1rem;
+        color: #858796;
+    }
+    .chart-container {
+        position: relative;
+        height: 350px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Dashboard Ambientale</h1>
+    <div>
+        <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-success shadow-sm mr-2">
+            <i class="fas fa-download fa-sm text-white-50 mr-1"></i> Esporta Report Sostenibilità
+        </a>
+    </div>
+</div>
+
+<!-- Content Row - Environmental Impact -->
+<div class="row">
+    <!-- CO2 Evitata -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2 eco-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="metric-title mb-1">CO₂ Evitata</div>
+                        <div class="d-flex align-items-baseline">
+                            <div class="metric-value">{{ co2_saved|floatformat:1 }}</div>
+                            <div class="metric-unit ml-2">tonnellate</div>
+                        </div>
+                        <div class="text-xs mt-2">
+                            <span class="text-success mr-2"><i class="fas fa-arrow-up"></i> {{ co2_saved_percent }}%</span>
+                            <span>Rispetto al mese precedente</span>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-leaf fa-2x text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Energia Pulita Erogata -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2 eco-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="metric-title mb-1">Energia Pulita</div>
+                        <div class="d-flex align-items-baseline">
+                            <div class="metric-value">{{ clean_energy|floatformat:1 }}</div>
+                            <div class="metric-unit ml-2">MWh</div>
+                        </div>
+                        <div class="text-xs mt-2">
+                            <span class="text-success mr-2"><i class="fas fa-arrow-up"></i> {{ clean_energy_percent }}%</span>
+                            <span>Rispetto al mese precedente</span>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-solar-panel fa-2x text-info"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Percentuale Energia Rinnovabile -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2 eco-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="metric-title mb-1">Energia Rinnovabile</div>
+                        <div class="d-flex align-items-baseline">
+                            <div class="metric-value">{{ renewable_percentage }}</div>
+                            <div class="metric-unit ml-2">%</div>
+                        </div>
+                        <div class="progress progress-sm mt-2">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: {{ renewable_percentage }}%"></div>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-sun fa-2x text-primary"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alberi Equivalenti -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2 eco-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="metric-title mb-1">Alberi Equivalenti</div>
+                        <div class="d-flex align-items-baseline">
+                            <div class="metric-value">{{ trees_equivalent }}</div>
+                            <div class="metric-unit ml-2">alberi</div>
+                        </div>
+                        <div class="text-xs mt-2">
+                            <span class="text-success mr-2"><i class="fas fa-arrow-up"></i> {{ trees_equivalent_percent }}%</span>
+                            <span>Rispetto al mese precedente</span>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-tree fa-2x text-warning"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Content Row - Environmental Data Charts -->
+<div class="row">
+    <!-- CO2 Savings Over Time -->
+    <div class="col-xl-8 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-success">Riduzione CO₂ nel Tempo</h6>
+                <div class="dropdown no-arrow">
+                    <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in" aria-labelledby="dropdownMenuLink">
+                        <div class="dropdown-header">Intervallo:</div>
+                        <a class="dropdown-item" href="#">Ultimi 6 mesi</a>
+                        <a class="dropdown-item" href="#">Ultimo anno</a>
+                        <a class="dropdown-item" href="#">Ultimi 2 anni</a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="co2Chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Energy Sources Distribution -->
+    <div class="col-xl-4 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Fonti di Energia</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="energySourcesChart"></canvas>
+                </div>
+                <div class="mt-4 text-center small">
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-primary"></i> Fotovoltaico
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-success"></i> Eolico
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-info"></i> Idroelettrico
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-warning"></i> Biomasse
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-secondary"></i> Rete Nazionale
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Comparison and Goal Tracking -->
+<div class="row">
+    <!-- Environmental Benefits -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Benefici Ambientali</h6>
+            </div>
+            <div class="card-body">
+                <h4 class="small font-weight-bold">Obiettivo Riduzione CO₂ <span class="float-right">{{ co2_goal_percentage }}%</span></h4>
+                <div class="progress mb-4">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ co2_goal_percentage }}%"></div>
+                </div>
+                
+                <h4 class="small font-weight-bold">Obiettivo Energia Rinnovabile <span class="float-right">{{ renewable_goal_percentage }}%</span></h4>
+                <div class="progress mb-4">
+                    <div class="progress-bar bg-info" role="progressbar" style="width: {{ renewable_goal_percentage }}%"></div>
+                </div>
+                
+                <h4 class="small font-weight-bold">Stazioni Alimentate a Energia Verde <span class="float-right">{{ green_stations_percentage }}%</span></h4>
+                <div class="progress mb-4">
+                    <div class="progress-bar bg-primary" role="progressbar" style="width: {{ green_stations_percentage }}%"></div>
+                </div>
+                
+                <h4 class="small font-weight-bold">Impatto Zero <span class="float-right">{{ zero_impact_percentage }}%</span></h4>
+                <div class="progress mb-4">
+                    <div class="progress-bar bg-warning" role="progressbar" style="width: {{ zero_impact_percentage }}%"></div>
+                </div>
+                
+                <h4 class="small font-weight-bold">Adozione Energia Rinnovabile <span class="float-right">Completato!</span></h4>
+                <div class="progress">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: 100%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Eco Stations -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Top 5 Stazioni Ecologiche</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Stazione</th>
+                                <th>Comune</th>
+                                <th>Energia Verde</th>
+                                <th>CO₂ Risparmiata</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for station in eco_stations %}
+                            <tr>
+                                <td><a href="#">{{ station.name }}</a></td>
+                                <td>{{ station.municipality }}</td>
+                                <td>{{ station.green_energy_percentage }}%</td>
+                                <td>{{ station.co2_saved }} kg</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center">Nessuna stazione ecologica registrata</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Environmental Projects and Initiatives -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Progetti Ambientali e Iniziative</h6>
+        <a href="#" class="btn btn-sm btn-success">
+            <i class="fas fa-plus fa-sm mr-1"></i> Nuova Iniziativa
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {% for initiative in eco_initiatives %}
+            <div class="col-lg-4 mb-4">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h5 class="card-title font-weight-bold text-primary">{{ initiative.name }}</h5>
+                        <p class="card-text">{{ initiative.description }}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge badge-success">{{ initiative.status }}</span>
+                            <a href="#" class="btn btn-sm btn-primary">Dettagli</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-4">
+                <span class="text-gray-500">Nessuna iniziativa ambientale registrata</span>
+                <p class="mt-3">
+                    <a href="#" class="btn btn-sm btn-success">
+                        <i class="fas fa-plus mr-1"></i> Aggiungi la prima iniziativa
+                    </a>
+                </p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Chart.js - CO2 Savings Over Time
+        var ctxCO2 = document.getElementById("co2Chart");
+        if (ctxCO2) {
+            var co2Chart = new Chart(ctxCO2, {
+                type: 'line',
+                data: {
+                    labels: [{% for month in co2_data %}"{{ month.month }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    datasets: [{
+                        label: "CO₂ Risparmiata (tonnellate)",
+                        lineTension: 0.3,
+                        backgroundColor: "rgba(40, 167, 69, 0.05)",
+                        borderColor: "rgba(40, 167, 69, 1)",
+                        pointRadius: 3,
+                        pointBackgroundColor: "rgba(40, 167, 69, 1)",
+                        pointBorderColor: "rgba(40, 167, 69, 1)",
+                        pointHoverRadius: 3,
+                        pointHoverBackgroundColor: "rgba(40, 167, 69, 1)",
+                        pointHoverBorderColor: "rgba(40, 167, 69, 1)",
+                        pointHitRadius: 10,
+                        pointBorderWidth: 2,
+                        data: [{% for month in co2_data %}{{ month.value }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    }],
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 25,
+                            top: 25,
+                            bottom: 0
+                        }
+                    },
+                    scales: {
+                        xAxes: [{
+                            time: {
+                                unit: 'date'
+                            },
+                            gridLines: {
+                                display: false,
+                                drawBorder: false
+                            },
+                            ticks: {
+                                maxTicksLimit: 7
+                            }
+                        }],
+                        yAxes: [{
+                            ticks: {
+                                maxTicksLimit: 5,
+                                padding: 10,
+                                beginAtZero: true,
+                                callback: function(value) {
+                                    return value + ' t';
+                                }
+                            },
+                            gridLines: {
+                                color: "rgb(234, 236, 244)",
+                                zeroLineColor: "rgb(234, 236, 244)",
+                                drawBorder: false,
+                                borderDash: [2],
+                                zeroLineBorderDash: [2]
+                            }
+                        }],
+                    },
+                    legend: {
+                        display: true
+                    },
+                    tooltips: {
+                        backgroundColor: "rgb(255,255,255)",
+                        bodyFontColor: "#858796",
+                        titleMarginBottom: 10,
+                        titleFontColor: '#6e707e',
+                        titleFontSize: 14,
+                        borderColor: '#dddfeb',
+                        borderWidth: 1,
+                        xPadding: 15,
+                        yPadding: 15,
+                        displayColors: false,
+                        intersect: false,
+                        mode: 'index',
+                        caretPadding: 10,
+                        callbacks: {
+                            label: function(tooltipItem, chart) {
+                                var datasetLabel = chart.datasets[tooltipItem.datasetIndex].label || '';
+                                return datasetLabel + ': ' + tooltipItem.yLabel + ' tonnellate';
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Chart.js - Energy Sources Distribution
+        var ctxEnergy = document.getElementById("energySourcesChart");
+        if (ctxEnergy) {
+            var energySourcesChart = new Chart(ctxEnergy, {
+                type: 'doughnut',
+                data: {
+                    labels: ["Fotovoltaico", "Eolico", "Idroelettrico", "Biomasse", "Rete Nazionale"],
+                    datasets: [{
+                        data: [
+                            {{ energy_sources.solar|default:0 }},
+                            {{ energy_sources.wind|default:0 }},
+                            {{ energy_sources.hydro|default:0 }},
+                            {{ energy_sources.biomass|default:0 }},
+                            {{ energy_sources.grid|default:0 }}
+                        ],
+                        backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#858796'],
+                        hoverBackgroundColor: ['#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#717384'],
+                        hoverBorderColor: "rgba(234, 236, 244, 1)",
+                    }],
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    tooltips: {
+                        backgroundColor: "rgb(255,255,255)",
+                        bodyFontColor: "#858796",
+                        borderColor: '#dddfeb',
+                        borderWidth: 1,
+                        xPadding: 15,
+                        yPadding: 15,
+                        displayColors: false,
+                        caretPadding: 10,
+                    },
+                    legend: {
+                        display: false
+                    },
+                    cutoutPercentage: 70,
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

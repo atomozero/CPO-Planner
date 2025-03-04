@@ -9,7 +9,8 @@ urlpatterns = [
     path('municipalities/', views.MunicipalityListView.as_view(), name='municipality-list'),
     path('municipalities/<int:pk>/', views.MunicipalityDetailView.as_view(), name='municipality-detail'),
     path('municipalities/add/', views.MunicipalityCreateView.as_view(), name='municipality-create'),
-    
+    path('municipalities/import/', views.ImportMunicipalitiesView.as_view(), name='import_municipalities'),
+    path('api/municipalities/autocomplete/', views.municipality_autocomplete, name='municipality-autocomplete'),
     # Progetti
     path('projects/', views.ChargingProjectListView.as_view(), name='project-list'),
     path('projects/<int:pk>/', views.ChargingProjectDetailView.as_view(), name='project-detail'),

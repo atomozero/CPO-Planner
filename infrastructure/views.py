@@ -14,17 +14,57 @@ from .forms import ProjectTaskForm
 from django.http import HttpResponse
 from .reports import MunicipalityReportGenerator, ChargingProjectReportGenerator, ChargingStationSheetGenerator
 
+from django.urls import reverse
+from django.views.generic import View
+from django.core.management import call_command
 
+from django.http import JsonResponse
+
+def municipality_autocomplete(request):
+    query = request.GET.get('q', '')
+    if len(query) < 2:
+        return JsonResponse({'results': []})
+    
+    # Cerca comuni che iniziano con la stringa di ricerca
+    municipalities = Municipality.objects.filter(
+        name__istartswith=query
+    ).values('id', 'name', 'province', 'population')[:10]
+    
+    results = [{'id': m['id'], 'text': f"{m['name']} ({m['province']})", 
+                'population': m['population']} for m in municipalities]
+    
+    return JsonResponse({'results': results})
+
+class ImportMunicipalitiesView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        try:
+            # Controlla se forzare l'importazione
+            force = request.GET.get('force', 'false').lower() == 'true'
+            
+            # Esegui il comando
+            if force:
+                call_command('import_municipalities', force=True)
+                messages.success(request, "Dati dei comuni aggiornati con successo!")
+            else:
+                call_command('import_municipalities')
+                messages.success(request, "Dati dei comuni importati con successo!")
+                
+            return redirect(reverse('infrastructure:municipality-list'))  # Nota il trattino invece dell'underscore
+            
+        except Exception as e:
+            messages.error(request, f"Errore durante l'importazione: {str(e)}")
+            return redirect(reverse('infrastructure:municipality-list'))  # Nota il trattino invece dell'underscore
+        
 # Viste per i Comuni
 class MunicipalityListView(LoginRequiredMixin, ListView):
     model = Municipality
     context_object_name = 'municipalities'
-    template_name = 'municipalities/municipality_list.html'
+    template_name = 'municipality_list.html'
     
 class MunicipalityDetailView(LoginRequiredMixin, DetailView):
     model = Municipality
     context_object_name = 'municipality'
-    template_name = 'municipalities/municipality_detail.html'
+    template_name = 'municipality_detail.html'
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -63,9 +103,14 @@ class ChargingProjectCreateView(LoginRequiredMixin, CreateView):
     template_name = 'projects/project_form.html'
     
     def get_success_url(self):
-        return reverse_lazy('project-detail', kwargs={'pk': self.object.pk})
+        return reverse_lazy('infrastructure:project-detail', kwargs={'pk': self.object.pk})
     
     def form_valid(self, form):
+        # Assicurati che il campo municipality sia impostato correttamente
+        municipality_id = self.request.POST.get('municipality')
+        if municipality_id:
+            form.instance.municipality_id = municipality_id
+        
         messages.success(self.request, f"Progetto {form.instance.name} creato con successo!")
         return super().form_valid(form)
 

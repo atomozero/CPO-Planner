@@ -5,6 +5,7 @@ from django.utils.translation import gettext_lazy as _
 class Municipality(models.Model):
     name = models.CharField(_("Nome Comune"), max_length=100)
     province = models.CharField(_("Provincia"), max_length=2)
+    region = models.CharField(_("Regione"), max_length=100, blank=True)
     population = models.IntegerField(_("Popolazione"), blank=True, null=True)
     ev_adoption_rate = models.FloatField(_("Tasso di adozione EV (%)"), default=2.0)
     

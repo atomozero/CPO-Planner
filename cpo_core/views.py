@@ -20,6 +20,18 @@ from .forms import FinancialProjectionForm
 from django.http import JsonResponse
 import json
 
+class MunicipalityCreateView(CreateView):
+    model = Municipality
+    fields = ['name', 'province', 'region', 'population']
+    template_name = 'municipalities/municipality_form.html'
+    success_url = reverse_lazy('municipality_list')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Nuovo Comune'
+        context['action'] = 'Crea'
+        return context
+
 @login_required
 def financial_overview(request):
     """Vista panoramica finanziaria di tutti i progetti."""

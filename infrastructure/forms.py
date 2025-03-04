@@ -1,6 +1,7 @@
 # forms.py
 from django import forms
 from .models import Municipality, ChargingProject, ChargingStation, ProjectTask  
+from django.utils.translation import gettext_lazy as _
 
 class MunicipalityForm(forms.ModelForm):
     class Meta:
@@ -18,13 +19,25 @@ class ChargingProjectForm(forms.ModelForm):
         model = ChargingProject
         fields = ['name', 'municipality', 'start_date', 'estimated_completion_date', 'budget', 'status']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'municipality': forms.Select(attrs={'class': 'form-select'}),
-            'start_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'estimated_completion_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'budget': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'status': forms.Select(attrs={'class': 'form-select'}),
+            'start_date': forms.DateInput(attrs={'type': 'date'}),
+            'estimated_completion_date': forms.DateInput(attrs={'type': 'date'}),
+            # Inizialmente nascondiamo il campo municipality standard, lo sostituiremo con Select2
+            'municipality': forms.HiddenInput(),
         }
+    
+    # Campo personalizzato per l'autocompletamento
+    municipality_autocomplete = forms.CharField(
+        label=_("Comune"),
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control municipality-autocomplete'})
+    )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Se stiamo modificando un progetto esistente, precompila il campo
+        if self.instance and self.instance.pk and self.instance.municipality:
+            self.fields['municipality_autocomplete'].initial = f"{self.instance.municipality.name} ({self.instance.municipality.province})"
 
 class ChargingStationForm(forms.ModelForm):
     class Meta:

@@ -6,7 +6,7 @@ from .views import (
     OrganizationUpdateView, OrganizationDeleteView,
     ProjectListView, ProjectDetailView, ProjectCreateView, 
     ProjectUpdateView, ProjectDeleteView,
-    MunicipalityListView, ChargingStationListView
+    MunicipalityListView, ChargingStationListView, MunicipalityCreateView
 )
 
 urlpatterns = [
@@ -36,7 +36,9 @@ urlpatterns = [
     
     # Comuni
     path('municipalities/', MunicipalityListView.as_view(), name='municipality_list'),
-    
+    path('municipalities/', MunicipalityListView.as_view(), name='municipality_list'),
+    path('municipalities/add/', MunicipalityCreateView.as_view(), name='municipality_create'),
+
     # Stazioni di ricarica
     path('stations/', ChargingStationListView.as_view(), name='station_list'),
 ]

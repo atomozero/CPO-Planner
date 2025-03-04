@@ -1,0 +1,551 @@
+<!-- templates/projects/charging_station_detail.html -->
+{% extends 'base.html' %}
+{% load i18n %}
+{% load humanize %}
+
+{% block title %}{{ station.name }} | CPO Planner{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<style>
+    #map {
+        height: 400px;
+        width: 100%;
+    }
+    .status-indicator {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+    }
+    .status-planned { background-color: #36b9cc; }
+    .status-active { background-color: #1cc88a; }
+    .status-maintenance { background-color: #f6c23e; }
+    .status-inactive { background-color: #e74a3b; }
+    
+    .tech-specs {
+        font-size: 0.9rem;
+    }
+    .tech-specs .row {
+        padding: 8px 0;
+        border-bottom: 1px solid #e3e6f0;
+    }
+    .tech-specs .row:last-child {
+        border-bottom: none;
+    }
+    .nav-tabs .nav-link.active {
+        font-weight: bold;
+        border-bottom: 3px solid #4e73df;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        {{ station.name }}
+        {% if station.status == 'planned' %}
+            <span class="badge badge-info">{% trans "Pianificata" %}</span>
+        {% elif station.status == 'active' %}
+            <span class="badge badge-success">{% trans "Attiva" %}</span>
+        {% elif station.status == 'maintenance' %}
+            <span class="badge badge-warning">{% trans "In Manutenzione" %}</span>
+        {% elif station.status == 'inactive' %}
+            <span class="badge badge-danger">{% trans "Inattiva" %}</span>
+        {% endif %}
+    </h1>
+    <div>
+        <a href="{% url 'projects:station_update' station.id %}" class="d-none d-sm-inline-block btn btn-sm btn-warning shadow-sm mr-2">
+            <i class="fas fa-edit fa-sm text-white-50 mr-2"></i>{% trans "Modifica" %}
+        </a>
+        <a href="{% url 'projects:station_report' project.id station.id %}" class="d-none d-sm-inline-block btn btn-sm btn-info shadow-sm mr-2">
+            <i class="fas fa-file-pdf fa-sm text-white-50 mr-2"></i>{% trans "Scheda Tecnica" %}
+        </a>
+        <a href="{% url 'projects:subproject_detail' station.sub_project.id %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50 mr-2"></i>{% trans "Torna al Sotto-Progetto" %}
+        </a>
+    </div>
+</div>
+
+<!-- Tabs per le diverse sezioni -->
+<ul class="nav nav-tabs mb-4" id="stationTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <a class="nav-link active" id="info-tab" data-toggle="tab" href="#info" role="tab" aria-controls="info" aria-selected="true">
+            <i class="fas fa-info-circle mr-1"></i> {% trans "Informazioni" %}
+        </a>
+    </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link" id="technical-tab" data-toggle="tab" href="#technical" role="tab" aria-controls="technical" aria-selected="false">
+            <i class="fas fa-cogs mr-1"></i> {% trans "Dati Tecnici" %}
+        </a>
+    </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link" id="financial-tab" data-toggle="tab" href="#financial" role="tab" aria-controls="financial" aria-selected="false">
+            <i class="fas fa-chart-line mr-1"></i> {% trans "Analisi Finanziaria" %}
+        </a>
+    </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link" id="photovoltaic-tab" data-toggle="tab" href="#photovoltaic" role="tab" aria-controls="photovoltaic" aria-selected="false">
+            <i class="fas fa-solar-panel mr-1"></i> {% trans "Fotovoltaico" %}
+        </a>
+    </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link" id="timeline-tab" data-toggle="tab" href="#timeline" role="tab" aria-controls="timeline" aria-selected="false">
+            <i class="fas fa-tasks mr-1"></i> {% trans "Cronoprogramma" %}
+        </a>
+    </li>
+</ul>
+
+<div class="tab-content" id="stationTabContent">
+    <!-- Tab Informazioni -->
+    <div class="tab-pane fade show active" id="info" role="tabpanel" aria-labelledby="info-tab">
+        <div class="row">
+            <!-- Colonna Sinistra - Informazioni e Mappa -->
+            <div class="col-xl-8 col-lg-7">
+                <!-- Informazioni Principali -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">{% trans "Informazioni Generali" %}</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <p><strong>{% trans "Codice" %}:</strong> {{ station.identifier }}</p>
+                                <p><strong>{% trans "Nome" %}:</strong> {{ station.name }}</p>
+                                <p><strong>{% trans "Indirizzo" %}:</strong> {{ station.address }}</p>
+                                <p><strong>{% trans "Comune" %}:</strong> {{ station.sub_project.municipality.name }}</p>
+                                <p><strong>{% trans "Progetto" %}:</strong> <a href="{% url 'projects:project_detail' project.id %}">{{ project.name }}</a></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>{% trans "Stato" %}:</strong> 
+                                    <span class="status-indicator status-{{ station.status }}"></span>
+                                    {{ station.get_status_display }}
+                                </p>
+                                <p><strong>{% trans "Data Installazione" %}:</strong> {{ station.installation_date|date:"d/m/Y"|default:"Non installata" }}</p>
+                                <p><strong>{% trans "Coordinate GPS" %}:</strong> 
+                                    {% if station.latitude and station.longitude %}
+                                        {{ station.latitude }}, {{ station.longitude }}
+                                    {% else %}
+                                        {% trans "Non disponibili" %}
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Mappa -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">{% trans "Posizione" %}</h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="map"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Colonna Destra - Riassunto finanziario e collegamenti -->
+            <div class="col-xl-4 col-lg-5">
+                <!-- Scheda riassuntiva finanziaria -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">{% trans "Riassunto Finanziario" %}</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <p class="mb-2"><strong>{% trans "Investimento Totale" %}:</strong> € {{ station.calculate_total_investment|floatformat:2|intcomma }}</p>
+                            <p class="mb-2"><strong>{% trans "ROI" %}:</strong> 
+                                {% if financial_analysis %}
+                                    {{ financial_analysis.return_on_investment|floatformat:2 }}%
+                                {% else %}
+                                    {% trans "Non calcolato" %}
+                                {% endif %}
+                            </p>
+                            <p class="mb-2"><strong>{% trans "Payback" %}:</strong> 
+                                {% if financial_analysis %}
+                                    {{ financial_analysis.payback_period|floatformat:1 }} {% trans "anni" %}
+                                {% else %}
+                                    {% trans "Non calcolato" %}
+                                {% endif %}
+                            </p>
+                        </div>
+                        
+                        <div class="text-center">
+                            {% if financial_analysis %}
+                                <a href="{% url 'projects:station_financial_results' project.id station.id %}" class="btn btn-primary">
+                                    <i class="fas fa-chart-bar mr-1"></i> {% trans "Visualizza Analisi" %}
+                                </a>
+                            {% else %}
+                                <a href="{% url 'projects:run_station_analysis' project.id station.id %}" class="btn btn-success">
+                                    <i class="fas fa-calculator mr-1"></i> {% trans "Esegui Analisi" %}
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Collegamenti rapidi -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">{% trans "Collegamenti Rapidi" %}</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group">
+                            {% if not station.photovoltaic_system %}
+                                <a href="{% url 'projects:photovoltaic_create' station.id %}" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-solar-panel mr-2"></i> {% trans "Aggiungi Impianto Fotovoltaico" %}
+                                </a>
+                            {% else %}
+                                <a href="{% url 'projects:photovoltaic_detail' station.photovoltaic_system.id %}" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-solar-panel mr-2"></i> {% trans "Gestisci Impianto Fotovoltaico" %}
+                                </a>
+                            {% endif %}
+                            
+                            {% if not station.timeline %}
+                                <a href="{% url 'projects:station_timeline_edit' project.id station.id %}" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-tasks mr-2"></i> {% trans "Crea Cronoprogramma" %}
+                                </a>
+                            {% else %}
+                                <a href="{% url 'projects:station_timeline_detail' project.id station.id %}" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-tasks mr-2"></i> {% trans "Visualizza Cronoprogramma" %}
+                                </a>
+                            {% endif %}
+                            
+                            <a href="{% url 'projects:station_report' project.id station.id %}" class="list-group-item list-group-item-action">
+                                <i class="fas fa-file-pdf mr-2"></i> {% trans "Genera Scheda Tecnica PDF" %}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tab Dati Tecnici -->
+    <div class="tab-pane fade" id="technical" role="tabpanel" aria-labelledby="technical-tab">
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">{% trans "Specifiche Tecniche" %}</h6>
+                    </div>
+                    <div class="card-body tech-specs">
+                        <div class="row">
+                            <div class="col-md-4 font-weight-bold">{% trans "Tipo di Potenza" %}</div>
+                            <div class="col-md-8">{{ station.get_power_type_display }}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 font-weight-bold">{% trans "Punti di Ricarica" %}</div>
+                            <div class="col-md-8">{{ station.charging_points }}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 font-weight-bold">{% trans "Potenza Totale" %}</div>
+                            <div class="col-md-8">{{ station.total_power }} kW</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 font-weight-bold">{% trans "Prezzo Energia" %}</div>
+                            <div class="col-md-8">{{ station.energy_cost_kwh }} €/kWh</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 font-weight-bold">{% trans "Prezzo Ricarica" %}</div>
+                            <div class="col-md-8">{{ station.charging_price_kwh }} €/kWh</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 font-weight-bold">{% trans "Sessioni Stimate al Giorno" %}</div>
+                            <div class="col-md-8">{{ station.estimated_sessions_day }}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 font-weight-bold">{% trans "Media kWh per Sessione" %}</div>
+                            <div class="col-md-8">{{ station.avg_kwh_session }} kWh</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">{% trans "Costi" %}</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card bg-light mb-3">
+                                    <div class="card-header">{% trans "Costi di Capitale" %}</div>
+                                    <div class="card-body">
+                                        <p><strong>{% trans "Costo Colonnina" %}:</strong> € {{ station.station_cost|floatformat:2|intcomma }}</p>
+                                        <p><strong>{% trans "Costo Installazione" %}:</strong> € {{ station.installation_cost|floatformat:2|intcomma }}</p>
+                                        <p><strong>{% trans "Costo Allaccio" %}:</strong> € {{ station.connection_cost|floatformat:2|intcomma }}</p>
+                                        <p><strong>{% trans "Costo Progettazione" %}:</strong> € {{ station.design_cost|floatformat:2|intcomma }}</p>
+                                        <p><strong>{% trans "Costo Permessi" %}:</strong> € {{ station.permit_cost|floatformat:2|intcomma }}</p>
+                                        <hr>
+                                        <p><strong>{% trans "Totale" %}:</strong> € {{ station.calculate_total_investment|floatformat:2|intcomma }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card bg-light mb-3">
+                                    <div class="card-header">{% trans "Metriche Operazionali Giornaliere" %}</div>
+                                    <div class="card-body">
+                                        <p><strong>{% trans "Sessioni al Giorno" %}:</strong> {{ station.estimated_sessions_day }}</p>
+                                        <p><strong>{% trans "kWh per Sessione" %}:</strong> {{ station.avg_kwh_session }} kWh</p>
+                                        <p><strong>{% trans "Consumo Giornaliero" %}:</strong> {{ daily_consumption|floatformat:2 }} kWh</p>
+                                        <p><strong>{% trans "Ricavo Giornaliero" %}:</strong> € {{ daily_revenue|floatformat:2 }}</p>
+                                        <p><strong>{% trans "Costo Giornaliero" %}:</strong> € {{ daily_cost|floatformat:2 }}</p>
+                                        <hr>
+                                        <p><strong>{% trans "Margine Giornaliero" %}:</strong> € {{ daily_margin|floatformat:2 }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tab Analisi Finanziaria -->
+    <div class="tab-pane fade" id="financial" role="tabpanel" aria-labelledby="financial-tab">
+        {% if financial_analysis %}
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">{% trans "Metriche Finanziarie" %}</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="financial-metric {% if financial_analysis.return_on_investment > 0 %}metric-green{% else %}metric-red{% endif %}">
+                            <div class="metric-title">{% trans "ROI" %}</div>
+                            <div class="metric-value">{{ financial_analysis.return_on_investment|floatformat:2 }}%</div>
+                            <div class="metric-desc">{% trans "Ritorno sull'investimento" %}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="financial-metric {% if financial_analysis.net_present_value > 0 %}metric-green{% else %}metric-red{% endif %}">
+                            <div class="metric-title">{% trans "NPV" %}</div>
+                            <div class="metric-value">{{ financial_analysis.net_present_value|intcomma }} €</div>
+                            <div class="metric-desc">{% trans "Valore attuale netto" %}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="financial-metric {% if financial_analysis.internal_rate_of_return > 8 %}metric-green{% elif financial_analysis.internal_rate_of_return > 0 %}metric-yellow{% else %}metric-red{% endif %}">
+                            <div class="metric-title">{% trans "IRR" %}</div>
+                            <div class="metric-value">{{ financial_analysis.internal_rate_of_return|floatformat:2 }}%</div>
+                            <div class="metric-desc">{% trans "Tasso interno di rendimento" %}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="financial-metric {% if financial_analysis.payback_period < 5 %}metric-green{% elif financial_analysis.payback_period < 8 %}metric-yellow{% else %}metric-info{% endif %}">
+                            <div class="metric-title">{% trans "Payback" %}</div>
+                            <div class="metric-value">{{ financial_analysis.payback_period|floatformat:1 }} {% trans "anni" %}</div>
+                            <div class="metric-desc">{% trans "Periodo di recupero" %}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="{% url 'projects:station_financial_results' project.id station.id %}" class="btn btn-primary">
+                        <i class="fas fa-chart-bar mr-1"></i> {% trans "Visualizza Analisi Completa" %}
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle mr-2"></i>
+            {% trans "Non è stata ancora eseguita un'analisi finanziaria per questa stazione." %}
+            <a href="{% url 'projects:run_station_analysis' project.id station.id %}" class="btn btn-success ml-2">
+                <i class="fas fa-calculator mr-1"></i> {% trans "Esegui Analisi" %}
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Tab Fotovoltaico -->
+    <div class="tab-pane fade" id="photovoltaic" role="tabpanel" aria-labelledby="photovoltaic-tab">
+        {% if photovoltaic %}
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">{% trans "Impianto Fotovoltaico" %}</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card bg-light mb-3">
+                            <div class="card-header">{% trans "Dati Tecnici" %}</div>
+                            <div class="card-body">
+                                <p><strong>{% trans "Capacità" %}:</strong> {{ photovoltaic.capacity }} kWp</p>
+                                <p><strong>{% trans "Tipo Pannelli" %}:</strong> {{ photovoltaic.get_panel_type_display }}</p>
+                                <p><strong>{% trans "Superficie" %}:</strong> {{ photovoltaic.total_area }} m²</p>
+                                <p><strong>{% trans "Numero Pannelli" %}:</strong> {{ photovoltaic.number_of_panels }}</p>
+                                <p><strong>{% trans "Produzione Annua Stimata" %}:</strong> {{ photovoltaic.expected_annual_production }} kWh</p>
+                                <p><strong>{% trans "Perdita Efficienza Annuale" %}:</strong> {{ photovoltaic.efficiency_loss_year }}%</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light mb-3">
+                            <div class="card-header">{% trans "Dati Economici" %}</div>
+                            <div class="card-body">
+                                <p><strong>{% trans "Costo Totale" %}:</strong> € {{ photovoltaic.calculate_total_cost|floatformat:2|intcomma }}</p>
+                                <p><strong>{% trans "Percentuale Incentivi" %}:</strong> {{ photovoltaic.incentive_percentage }}%</p>
+                                <p><strong>{% trans "Costo Netto" %}:</strong> € {{ photovoltaic.calculate_net_cost|floatformat:2|intcomma }}</p>
+                                <p><strong>{% trans "Risparmio Annuale" %}:</strong> € {{ annual_savings|floatformat:2|intcomma }}</p>
+                                <p><strong>{% trans "Payback Fotovoltaico" %}:</strong> {{ photovoltaic_payback|floatformat:1 }} {% trans "anni" %}</p>
+                                <p><strong>{% trans "Data Installazione" %}:</strong> {{ photovoltaic.installation_date|date:"d/m/Y" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="chart-container">
+                            <canvas id="photovoltaicProductionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="{% url 'projects:photovoltaic_update' photovoltaic.id %}" class="btn btn-warning">
+                        <i class="fas fa-edit mr-1"></i> {% trans "Modifica Impianto" %}
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle mr-2"></i>
+            {% trans "Non è stato ancora configurato un impianto fotovoltaico per questa stazione." %}
+            <a href="{% url 'projects:photovoltaic_create' station.id %}" class="btn btn-success ml-2">
+                <i class="fas fa-solar-panel mr-1"></i> {% trans "Aggiungi Impianto Fotovoltaico" %}
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Tab Cronoprogramma -->
+    <div class="tab-pane fade" id="timeline" role="tabpanel" aria-labelledby="timeline-tab">
+        {% if timeline %}
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">{% trans "Cronoprogramma Stazione" %}</h6>
+            </div>
+            <div class="card-body">
+                <div class="timeline">
+                    <div class="timeline-phase {% if timeline.get_current_status == 'design' %}in-progress{% elif timeline.design_end < today %}completed{% else %}future{% endif %}">
+                        <h5>
+                            {% trans "Progettazione" %}
+                            <span class="date-badge {% if timeline.design_end < today %}past{% elif timeline.design_start <= today and timeline.design_end >= today %}present{% else %}future{% endif %}">
+                                {{ timeline.design_start|date:"d/m/Y" }} - {{ timeline.design_end|date:"d/m/Y" }}
+                            </span>
+                        </h5>
+                    </div>
+                    
+                    <div class="timeline-phase {% if timeline.get_current_status == 'permitting' %}in-progress{% elif timeline.permit_approval_date and timeline.permit_approval_date < today %}completed{% else %}future{% endif %}">
+                        <h5>
+                            {% trans "Permessi" %}
+                            <span class="date-badge {% if timeline.permit_approval_date and timeline.permit_approval_date < today %}past{% elif timeline.permit_application_date <= today and (not timeline.permit_approval_date or timeline.permit_approval_date >= today) %}present{% else %}future{% endif %}">
+                                {{ timeline.permit_application_date|date:"d/m/Y" }}
+                                {% if timeline.permit_approval_date %} - {{ timeline.permit_approval_date|date:"d/m/Y" }}{% endif %}
+                            </span>
+                        </h5>
+                    </div>
+                    
+                    <!-- Aggiungi altre fasi del cronoprogramma qui -->
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="{% url 'projects:station_timeline_detail' project.id station.id %}" class="btn btn-primary">
+                        <i class="fas fa-calendar-alt mr-1"></i> {% trans "Visualizza Dettaglio" %}
+                    </a>
+                    <a href="{% url 'projects:station_timeline_edit' project.id station.id %}" class="btn btn-warning ml-2">
+                        <i class="fas fa-edit mr-1"></i> {% trans "Modifica Cronoprogramma" %}
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle mr-2"></i>
+            {% trans "Non è stato ancora configurato un cronoprogramma per questa stazione." %}
+            <a href="{% url 'projects:station_timeline_edit' project.id station.id %}" class="btn btn-success ml-2">
+                <i class="fas fa-tasks mr-1"></i> {% trans "Crea Cronoprogramma" %}
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inizializza la mappa
+        var map = L.map('map');
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        {% if station.latitude and station.longitude %}
+            // Aggiungi marker per la stazione
+            var marker = L.marker([{{ station.latitude }}, {{ station.longitude }}]).addTo(map);
+            marker.bindPopup("<strong>{{ station.name }}</strong><br>{{ station.address }}").openPopup();
+            
+            // Centra la mappa sulla stazione
+            map.setView([{{ station.latitude }}, {{ station.longitude }}], 15);
+        {% else %}
+            // Centra la mappa sull'Italia se non ci sono coordinate
+            map.setView([41.9028, 12.4964], 6);
+        {% endif %}
+        
+        // Grafico produzione fotovoltaica (solo se presente)
+        {% if photovoltaic %}
+        var photovoltaicCtx = document.getElementById('photovoltaicProductionChart');
+        if (photovoltaicCtx) {
+            new Chart(photovoltaicCtx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: {{ photovoltaic.expected_lifespan }}}, (_, i) => `Anno ${i+1}`),
+                    datasets: [{
+                        label: 'Produzione Annuale (kWh)',
+                        data: Array.from({length: {{ photovoltaic.expected_lifespan }}}, (_, i) => {
+                            const initialProduction = {{ photovoltaic.expected_annual_production }};
+                            const annualLoss = {{ photovoltaic.efficiency_loss_year }} / 100;
+                            return initialProduction * Math.pow(1 - annualLoss, i);
+                        }),
+                        borderColor: 'rgba(28, 200, 138, 1)',
+                        backgroundColor: 'rgba(28, 200, 138, 0.1)',
+                        borderWidth: 2,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'kWh'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Produzione Fotovoltaica Stimata'
+                        }
+                    }
+                }
+            });
+        }
+        {% endif %}
+    });
+</script>
+{% endblock %}

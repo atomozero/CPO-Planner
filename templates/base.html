@@ -67,29 +67,29 @@
                 </a>
             </li>
 
-            <!-- Nav Item - Progetti -->
-            <li class="nav-item {% if 'projects' in request.path %}active{% endif %}">
-                <a class="nav-link" href="{% url 'project_list' %}">
-                    <i class="fas fa-fw fa-project-diagram"></i>
-                    <span>Progetti</span>
-                </a>
-            </li>
+<!-- Nav Item - Progetti -->
+<li class="nav-item {% if 'projects' in request.path %}active{% endif %}">
+    <a class="nav-link" href="{% url 'infrastructure:project-list' %}">
+        <i class="fas fa-fw fa-project-diagram"></i>
+        <span>Progetti</span>
+    </a>
+</li>
 
-            <!-- Nav Item - Comuni -->
-            <li class="nav-item {% if 'municipalities' in request.path %}active{% endif %}">
-                <a class="nav-link" href="{% url 'municipality_list' %}">
-                    <i class="fas fa-fw fa-city"></i>
-                    <span>Comuni</span>
-                </a>
-            </li>
+<!-- Nav Item - Comuni -->
+<li class="nav-item {% if 'municipalities' in request.path %}active{% endif %}">
+    <a class="nav-link" href="{% url 'infrastructure:municipality-list' %}">
+        <i class="fas fa-fw fa-city"></i>
+        <span>Comuni</span>
+    </a>
+</li>
 
-            <!-- Nav Item - Stazioni di Ricarica -->
-            <li class="nav-item {% if 'stations' in request.path %}active{% endif %}">
-                <a class="nav-link" href="{% url 'station_list' %}">
-                    <i class="fas fa-fw fa-charging-station"></i>
-                    <span>Stazioni di Ricarica</span>
-                </a>
-            </li>
+<!-- Nav Item - Stazioni di Ricarica -->
+<li class="nav-item {% if 'stations' in request.path %}active{% endif %}">
+    <a class="nav-link" href="{% url 'infrastructure:station-list' %}">
+        <i class="fas fa-fw fa-charging-station"></i>
+        <span>Stazioni di Ricarica</span>
+    </a>
+</li>
 
             <!-- Divider -->
             <hr class="sidebar-divider">

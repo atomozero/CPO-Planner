@@ -7,9 +7,14 @@
 <!-- Page Heading -->
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
     <h1 class="h3 mb-0 text-gray-800">Comuni</h1>
-    <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-        <i class="fas fa-plus fa-sm text-white-50 mr-2"></i>Nuovo Comune
-    </a>
+    <div>
+        <a href="{% url 'infrastructure:import_municipalities' %}" class="d-none d-sm-inline-block btn btn-sm btn-success shadow-sm mr-2">
+            <i class="fas fa-download fa-sm text-white-50 mr-2"></i>Importa Comuni Italiani
+        </a>
+        <a href="{% url 'municipality_create' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+            <i class="fas fa-plus fa-sm text-white-50 mr-2"></i>Nuovo Comune
+        </a>
+    </div>
 </div>
 
 <!-- Content Row - Stats Cards -->
@@ -144,7 +149,7 @@
         </div>
         {% else %}
         <div class="alert alert-info">
-            Nessun comune registrato. <a href="#">Aggiungi il primo comune</a>.
+            Nessun comune registrato. <a href="{% url 'municipality_create' %}">Aggiungi il primo comune</a>.
         </div>
         {% endif %}
     </div>

@@ -1,0 +1,143 @@
+<!-- templates/projects/failure_simulation_form.html -->
+{% extends 'base.html' %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %}Parametri Simulazione Guasti | {{ project.name }} | CPO Planner{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2>{% trans "Parametri Simulazione Guasti" %}</h2>
+            <p class="lead">
+                {% trans "Progetto" %}: {{ project.name }}
+            </p>
+            
+            {% if has_results %}
+            <div class="alert alert-info mb-4">
+                <i class="fas fa-info-circle me-2"></i>
+                {% trans "Una simulazione di guasti è già stata eseguita per questo progetto. Modificando questi parametri e salvando, sarà necessario rieseguire la simulazione." %}
+            </div>
+            {% endif %}
+            
+            <div class="card shadow mb-4">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Tassi di guasto -->
+                        <h4 class="text-primary mb-3">{% trans "Tassi di Guasto" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.rate_fields %}
+                                <div class="col-md-6 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Tipi di guasto -->
+                        <h4 class="text-primary mb-3">{% trans "Tipi di Guasto" %}</h4>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            {% trans "La somma delle percentuali dei tipi di guasto deve essere 100%" %}
+                        </div>
+                        <div class="row mb-4">
+                            {% for field_name in form.type_fields %}
+                                <div class="col-md-4 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Costi di riparazione -->
+                        <h4 class="text-primary mb-3">{% trans "Costi di Riparazione" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.cost_fields %}
+                                <div class="col-md-6 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Tempi di inattività -->
+                        <h4 class="text-primary mb-3">{% trans "Tempi di Inattività" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.downtime_fields %}
+                                <div class="col-md-4 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="text-end">
+                            <a href="{% url 'projects:project_detail' project.id %}" class="btn btn-secondary me-2">
+                                {% trans "Annulla" %}
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                {% trans "Salva parametri" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Verificare che la somma dei tipi di guasto sia 100%
+        const minorField = document.getElementById('id_minor_repair_percentage');
+        const majorField = document.getElementById('id_major_repair_percentage');
+        const replacementField = document.getElementById('id_replacement_percentage');
+        
+        if (minorField && majorField && replacementField) {
+            const checkSum = function() {
+                const minorVal = parseFloat(minorField.value) || 0;
+                const majorVal = parseFloat(majorField.value) || 0;
+                const replacementVal = parseFloat(replacementField.value) || 0;
+                
+                const sum = minorVal + majorVal + replacementVal;
+                
+                const sumContainer = document.getElementById('type-sum-container');
+                if (sumContainer) {
+                    sumContainer.textContent = sum.toFixed(2) + '%';
+                    
+                    if (Math.abs(sum - 100) < 0.01) {
+                        sumContainer.classList.remove('text-danger');
+                        sumContainer.classList.add('text-success');
+                    } else {
+                        sumContainer.classList.remove('text-success');
+                        sumContainer.classList.add('text-danger');
+                    }
+                }
+            };
+            
+            // Aggiungi un elemento per mostrare la somma
+            const typeFieldsContainer = document.querySelector('h4:contains("Tipi di Guasto")').nextElementSibling.nextElementSibling;
+            const sumRow = document.createElement('div');
+            sumRow.className = 'row';
+            sumRow.innerHTML = `
+                <div class="col-12">
+                    <div class="alert alert-light">
+                        <strong>{% trans "Somma" %}:</strong> <span id="type-sum-container">0.00%</span>
+                        <span class="ms-2 text-muted">{% trans "(Deve essere 100%)" %}</span>
+                    </div>
+                </div>
+            `;
+            typeFieldsContainer.insertAdjacentElement('afterend', sumRow);
+            
+            // Aggiungi event listener
+            minorField.addEventListener('input', checkSum);
+            majorField.addEventListener('input', checkSum);
+            replacementField.addEventListener('input', checkSum);
+            
+            // Check iniziale
+            checkSum();
+        }
+    });
+</script>
+{% endblock %}

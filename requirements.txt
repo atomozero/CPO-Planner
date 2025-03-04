@@ -1,52 +1,40 @@
-numpy 
-pandas 
-matplotlib 
-reportlab 
-django-crispy-forms 
-pillow 
-openpyxl 
-numpy>=1.21.0
-numpy-financial>=1.0.0
-django-crispy-forms>=1.14.0
-crispy-bootstrap5>=0.7
 # Django e dipendenze base
 Django==4.2.9
 django-environ==0.10.0
+django-allauth==0.58.2
+django-crispy-forms>=1.14.0
+crispy-bootstrap5>=0.7
+django-debug-toolbar==4.2.0
 
-# Generazione documenti e calcoli
+# Generazione documenti e reporting
 reportlab==4.0.8
 openpyxl==3.1.2
 python-docx==1.1.0
+pillow
 
-# Calcoli numerici e scientifici
-numpy==1.24.3
-pandas==2.0.1
-scipy==1.10.1
-sympy==1.12
-
-# Gestione configurazioni e ambiente
-python-dotenv==1.0.0
-
-# Autenticazione e sicurezza
-django-allauth==0.58.2
+# Calcoli numerici, analisi dati e visualizzazione
+# NumPy è già installato, quindi non lo includiamo
+numpy-financial>=1.0.0
+pandas>=2.0.0
+scipy>=1.11.3  # Versione compatibile con Python 3.12
+sympy>=1.12.0
+matplotlib>=3.7.0
 
 # Strumenti di sviluppo e debug
-ipython==8.12.2
-django-debug-toolbar==4.2.0
+ipython>=8.12.0
+python-dotenv>=1.0.0
 
 # Test
-pytest==7.3.1
-pytest-django==4.5.2
-coverage==7.2.5
+pytest>=7.3.0
+pytest-django>=4.5.0
+coverage>=7.2.0
 
 # Deployment
-gunicorn==20.1.0
-whitenoise==6.4.0
+gunicorn>=20.1.0
+whitenoise>=6.4.0
 
-# Librerie aggiuntive per il progetto
-Babel==2.12.1  # Internazionalizzazione
-reportlab==4.0.8  # Generazione PDF
-matplotlib==3.7.1  # Visualizzazione dati
-requests==2.31.0  # Chiamate API
-django>=4.0.0
-reportlab>=3.6.0
+# API e connessioni
+requests>=2.31.0
+
+# Internazionalizzazione
+Babel>=2.12.0

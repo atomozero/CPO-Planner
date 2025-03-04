@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}{% if form.instance.pk %}Modifica{% else %}Nuovo{% endif %} Progetto | CPO Planner{% endblock %}
+
+{% block extra_css %}
+<!-- Aggiungi Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .select2-container--default .select2-selection--single {
+        height: calc(1.5em + 0.75rem + 2px);
+        padding: 0.375rem 0.75rem;
+        border: 1px solid #d1d3e2;
+        border-radius: 0.35rem;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: calc(1.5em + 0.75rem + 2px);
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: calc(1.5em + 0.25rem);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{% if form.instance.pk %}Modifica{% else %}Nuovo{% endif %} Progetto</h1>
+    </div>
+    
+    <form method="post" class="mt-3">
+        {% csrf_token %}
+        
+        <div class="card mb-4 shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Informazioni Generali</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="id_name" class="form-label">Nome Progetto</label>
+                        <input type="text" name="name" id="id_name" value="{{ form.name.value|default:'' }}" class="form-control" required>
+                        {% if form.name.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.name.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="id_municipality_autocomplete" class="form-label">Comune</label>
+                        <select id="id_municipality_autocomplete" class="form-control municipality-autocomplete" style="width: 100%">
+                            {% if form.instance.municipality %}
+                            <option value="{{ form.instance.municipality.id }}" selected>{{ form.instance.municipality.name }} ({{ form.instance.municipality.province }})</option>
+                            {% endif %}
+                        </select>
+                        <input type="hidden" name="municipality" id="id_municipality" value="{{ form.instance.municipality.id|default:'' }}">
+                        <div id="municipality-details" class="mt-2"></div>
+                        {% if form.municipality.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.municipality.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="id_start_date" class="form-label">Data di inizio</label>
+                        <input type="date" name="start_date" id="id_start_date" value="{{ form.start_date.value|date:'Y-m-d'|default:'' }}" class="form-control">
+                        {% if form.start_date.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.start_date.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="id_estimated_completion_date" class="form-label">Data di completamento stimata</label>
+                        <input type="date" name="estimated_completion_date" id="id_estimated_completion_date" value="{{ form.estimated_completion_date.value|date:'Y-m-d'|default:'' }}" class="form-control">
+                        {% if form.estimated_completion_date.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.estimated_completion_date.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <label for="id_status" class="form-label">Stato</label>
+                        <select name="status" id="id_status" class="form-control">
+                            {% for value, label in form.fields.status.choices %}
+                            <option value="{{ value }}" {% if form.status.value == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if form.status.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.status.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mb-4 shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Informazioni Finanziarie</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="id_budget" class="form-label">Budget totale (€)</label>
+                        <input type="number" name="budget" id="id_budget" value="{{ form.budget.value|default:'' }}" class="form-control" step="0.01" min="0">
+                        {% if form.budget.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.budget.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Altri campi finanziari se necessario -->
+                {% if form.total_budget %}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="id_total_budget" class="form-label">{{ form.total_budget.label }}</label>
+                        {{ form.total_budget }}
+                        {% if form.total_budget.help_text %}
+                        <div class="form-text">{{ form.total_budget.help_text }}</div>
+                        {% endif %}
+                        {% if form.total_budget.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.total_budget.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="id_loan_amount" class="form-label">{{ form.loan_amount.label }}</label>
+                        {{ form.loan_amount }}
+                        {% if form.loan_amount.help_text %}
+                        <div class="form-text">{{ form.loan_amount.help_text }}</div>
+                        {% endif %}
+                        {% if form.loan_amount.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.loan_amount.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="id_loan_rate" class="form-label">{{ form.loan_rate.label }}</label>
+                        {{ form.loan_rate }}
+                        {% if form.loan_rate.help_text %}
+                        <div class="form-text">{{ form.loan_rate.help_text }}</div>
+                        {% endif %}
+                        {% if form.loan_rate.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.loan_rate.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="id_loan_term" class="form-label">{{ form.loan_term.label }}</label>
+                        {{ form.loan_term }}
+                        {% if form.loan_term.help_text %}
+                        <div class="form-text">{{ form.loan_term.help_text }}</div>
+                        {% endif %}
+                        {% if form.loan_term.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.loan_term.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="id_grace_period" class="form-label">{{ form.grace_period.label }}</label>
+                        {{ form.grace_period }}
+                        {% if form.grace_period.help_text %}
+                        <div class="form-text">{{ form.grace_period.help_text }}</div>
+                        {% endif %}
+                        {% if form.grace_period.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.grace_period.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="id_expected_roi" class="form-label">{{ form.expected_roi.label }}</label>
+                        {{ form.expected_roi }}
+                        {% if form.expected_roi.help_text %}
+                        <div class="form-text">{{ form.expected_roi.help_text }}</div>
+                        {% endif %}
+                        {% if form.expected_roi.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.expected_roi.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if form.market_penetration %}
+        <div class="card mb-4 shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Previsioni di Mercato</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="id_market_penetration" class="form-label">{{ form.market_penetration.label }}</label>
+                        {{ form.market_penetration }}
+                        {% if form.market_penetration.help_text %}
+                        <div class="form-text">{{ form.market_penetration.help_text }}</div>
+                        {% endif %}
+                        {% if form.market_penetration.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.market_penetration.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="id_extended_period" class="form-label">{{ form.extended_period.label }}</label>
+                        {{ form.extended_period }}
+                        {% if form.extended_period.help_text %}
+                        <div class="form-text">{{ form.extended_period.help_text }}</div>
+                        {% endif %}
+                        {% if form.extended_period.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.extended_period.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="d-flex justify-content-between mb-4">
+            <a href="{% url 'infrastructure:project-list' %}" class="btn btn-secondary">Annulla</a>
+            <button type="submit" class="btn btn-primary">Salva Progetto</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Aggiungi Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Configura l'autocompletamento per i comuni
+    $('.municipality-autocomplete').select2({
+        placeholder: 'Inizia a digitare il nome di un comune...',
+        minimumInputLength: 2,
+        ajax: {
+            url: '{% url "infrastructure:municipality-autocomplete" %}',
+            dataType: 'json',
+            delay: 300,
+            data: function(params) {
+                return {
+                    q: params.term
+                };
+            },
+            processResults: function(data) {
+                return {
+                    results: data.results
+                };
+            },
+            cache: true
+        }
+    });
+    
+    // Quando viene selezionato un comune
+    $('.municipality-autocomplete').on('select2:select', function(e) {
+        var data = e.params.data;
+        // Imposta l'ID nel campo nascosto
+        $('#id_municipality').val(data.id);
+        
+        // Mostra dettagli aggiuntivi del comune
+        var populationDisplay = data.population ? data.population.toLocaleString() : 'N/D';
+        
+        var details = `
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Popolazione</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${populationDisplay}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        $('#municipality-details').html(details);
+    });
+    
+    // Se c'è un valore iniziale (modifica di un progetto esistente)
+    var initialMunicipalityId = $('#id_municipality').val();
+    if (initialMunicipalityId) {
+        // Carica i dettagli del comune
+        $.ajax({
+            url: '{% url "infrastructure:municipality-autocomplete" %}',
+            data: {
+                id: initialMunicipalityId
+            },
+            success: function(data) {
+                if (data.results && data.results.length > 0) {
+                    var municipality = data.results[0];
+                    var populationDisplay = municipality.population ? municipality.population.toLocaleString() : 'N/D';
+                    
+                    var details = `
+                        <div class="card border-left-info shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                            Popolazione</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">${populationDisplay}</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-users fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    $('#municipality-details').html(details);
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

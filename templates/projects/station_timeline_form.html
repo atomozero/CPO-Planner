@@ -30,6 +30,209 @@
                     <form method="post">
                         {% csrf_token %}
                         
-                        <!-- Fase di progettazione -->
-                        <div class="phase-section">
-                            <h4 class="text
+                       <!-- Fase di progettazione -->
+                       <div class="phase-section">
+                        <h4 class="text-primary mb-3">{% trans "Fase di Progettazione" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.design_fields %}
+                                <div class="col-md-6 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Fase di permessi -->
+                    <div class="phase-section">
+                        <h4 class="text-primary mb-3">{% trans "Fase di Permessi" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.permit_fields %}
+                                <div class="col-md-6 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Fase di acquisizione apparecchiature -->
+                    <div class="phase-section">
+                        <h4 class="text-primary mb-3">{% trans "Fase di Acquisizione Apparecchiature" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.equipment_fields %}
+                                <div class="col-md-6 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Fase di preparazione del sito -->
+                    <div class="phase-section">
+                        <h4 class="text-primary mb-3">{% trans "Fase di Preparazione del Sito" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.preparation_fields %}
+                                <div class="col-md-6 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Fase di installazione -->
+                    <div class="phase-section">
+                        <h4 class="text-primary mb-3">{% trans "Fase di Installazione" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.installation_fields %}
+                                <div class="col-md-6 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Fase finale -->
+                    <div class="phase-section">
+                        <h4 class="text-primary mb-3">{% trans "Fase Finale" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.final_fields %}
+                                <div class="col-md-6 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Note -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            {{ form|getattr:'status_notes'|as_crispy_field }}
+                        </div>
+                    </div>
+                    
+                    <div class="text-end">
+                        <a href="{% url 'projects:station_detail' station.id %}" class="btn btn-secondary me-2">
+                            {% trans "Annulla" %}
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            {% trans "Salva cronoprogramma" %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Verifica e suggerimento date
+    const designStartField = document.getElementById('id_design_start');
+    const designEndField = document.getElementById('id_design_end');
+    const permitApplicationField = document.getElementById('id_permit_application_date');
+    const permitApprovalField = document.getElementById('id_permit_approval_date');
+    const equipmentOrderField = document.getElementById('id_equipment_order_date');
+    const equipmentDeliveryField = document.getElementById('id_equipment_delivery_date');
+    const siteStartField = document.getElementById('id_site_preparation_start');
+    const siteEndField = document.getElementById('id_site_preparation_end');
+    const installStartField = document.getElementById('id_installation_start');
+    const installEndField = document.getElementById('id_installation_end');
+    const gridConnectionField = document.getElementById('id_grid_connection_date');
+    const testingField = document.getElementById('id_testing_date');
+    const commissioningField = document.getElementById('id_commissioning_date');
+    
+    // Suggerimento di date consecutive
+    if (designEndField && permitApplicationField) {
+        designEndField.addEventListener('change', function() {
+            if (this.value && !permitApplicationField.value) {
+                const designEndDate = new Date(this.value);
+                designEndDate.setDate(designEndDate.getDate() + 1);
+                permitApplicationField.value = designEndDate.toISOString().split('T')[0];
+            }
+        });
+    }
+    
+    if (permitApplicationField && permitApprovalField) {
+        permitApplicationField.addEventListener('change', function() {
+            if (this.value && !permitApprovalField.value) {
+                const permitApplicationDate = new Date(this.value);
+                permitApplicationDate.setDate(permitApplicationDate.getDate() + 30); // Stima 30 giorni per approvazione
+                permitApprovalField.value = permitApplicationDate.toISOString().split('T')[0];
+            }
+        });
+    }
+    
+    if (permitApprovalField && equipmentOrderField) {
+        permitApprovalField.addEventListener('change', function() {
+            if (this.value && !equipmentOrderField.value) {
+                const permitApprovalDate = new Date(this.value);
+                permitApprovalDate.setDate(permitApprovalDate.getDate() + 7); // Una settimana dopo
+                equipmentOrderField.value = permitApprovalDate.toISOString().split('T')[0];
+            }
+        });
+    }
+    
+    if (equipmentOrderField && equipmentDeliveryField) {
+        equipmentOrderField.addEventListener('change', function() {
+            if (this.value && !equipmentDeliveryField.value) {
+                const equipmentOrderDate = new Date(this.value);
+                equipmentOrderDate.setDate(equipmentOrderDate.getDate() + 45); // Stima 45 giorni per consegna
+                equipmentDeliveryField.value = equipmentOrderDate.toISOString().split('T')[0];
+            }
+        });
+    }
+    
+    if (equipmentDeliveryField && siteStartField) {
+        equipmentDeliveryField.addEventListener('change', function() {
+            if (this.value && !siteStartField.value) {
+                const equipmentDeliveryDate = new Date(this.value);
+                equipmentDeliveryDate.setDate(equipmentDeliveryDate.getDate() + 7); // Una settimana dopo
+                siteStartField.value = equipmentDeliveryDate.toISOString().split('T')[0];
+            }
+        });
+    }
+    
+    if (siteEndField && installStartField) {
+        siteEndField.addEventListener('change', function() {
+            if (this.value && !installStartField.value) {
+                const siteEndDate = new Date(this.value);
+                siteEndDate.setDate(siteEndDate.getDate() + 1);
+                installStartField.value = siteEndDate.toISOString().split('T')[0];
+            }
+        });
+    }
+    
+    if (installEndField && gridConnectionField) {
+        installEndField.addEventListener('change', function() {
+            if (this.value && !gridConnectionField.value) {
+                const installEndDate = new Date(this.value);
+                installEndDate.setDate(installEndDate.getDate() + 7); // Una settimana dopo
+                gridConnectionField.value = installEndDate.toISOString().split('T')[0];
+            }
+        });
+    }
+    
+    if (gridConnectionField && testingField) {
+        gridConnectionField.addEventListener('change', function() {
+            if (this.value && !testingField.value) {
+                const gridConnectionDate = new Date(this.value);
+                gridConnectionDate.setDate(gridConnectionDate.getDate() + 3); // Tre giorni dopo
+                testingField.value = gridConnectionDate.toISOString().split('T')[0];
+            }
+        });
+    }
+    
+    if (testingField && commissioningField) {
+        testingField.addEventListener('change', function() {
+            if (this.value && !commissioningField.value) {
+                const testingDate = new Date(this.value);
+                testingDate.setDate(testingDate.getDate() + 7); // Una settimana dopo
+                commissioningField.value = testingDate.toISOString().split('T')[0];
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

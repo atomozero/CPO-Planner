@@ -5,7 +5,7 @@
 {% block page_title %}Dettaglio Progetto: {{ project.name }}{% endblock %}
 
 {% block header_buttons %}
-<a href="{% url 'project_update' project.id %}" class="btn btn-warning me-2">
+<a href="{% url 'infrastructure:project-update' project.id %}" class="btn btn-warning me-2">
     <i class="bi bi-pencil me-2"></i> Modifica
 </a>
 <a href="{% url 'generate_project_report' project.id %}" class="btn btn-success me-2">
@@ -34,8 +34,7 @@
                     <label class="col-sm-4 col-form-label fw-bold">Comune:</label>
                     <div class="col-sm-8">
                         <p class="form-control-plaintext">
-                            <a href="{% url 'municipality_detail' project.municipality.id %}">{{ project.municipality.name }}</a>
-                        </p>
+                            <a href="{% url 'infrastructure:municipality-detail' project.municipality.id %}">{{ project.municipality.name }}</a>                        </p>
                     </div>
                 </div>
                 <div class="mb-3 row">

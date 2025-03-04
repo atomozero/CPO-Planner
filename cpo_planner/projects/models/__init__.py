@@ -1,18 +1,29 @@
 # cpo_planner/projects/models/__init__.py
-
-
-# Prima importa i modelli base che non dipendono da altri
 from .project import Project
+from .subproject import SubProject
 from .municipality import Municipality
-from .subproject import SubProject  # Nota il nome file corretto 'subproject.py', non 'sub_project.py'
-
-# Poi importa i modelli che dipendono dai precedenti
 from .charging_station import ChargingStation
+from .financial import FinancialParameters, FinancialAnalysis
+from .photovoltaic import PhotovoltaicSystem
+from .timeline import ProjectTimeline, StationTimeline
+from .energy_contract import EnergyContract, ProjectEnergyContract
+from .failure_simulation import FailureSimulation
+from .document import ProjectDocument, StationDocument
 
-# Esporta tutti i modelli
+# Assicurarsi che i modelli siano registrati in Django
 __all__ = [
     'Project',
-    'Municipality',
     'SubProject',
+    'Municipality',
     'ChargingStation',
+    'FinancialParameters',
+    'FinancialAnalysis',
+    'PhotovoltaicSystem',
+    'ProjectTimeline',
+    'StationTimeline',
+    'EnergyContract',
+    'ProjectEnergyContract',
+    'FailureSimulation',
+    'ProjectDocument',
+    'StationDocument',
 ]

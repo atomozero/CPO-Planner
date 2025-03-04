@@ -1,0 +1,167 @@
+<!-- templates/projects/photovoltaic_form.html -->
+{% extends 'base.html' %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }} | CPO Planner{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2>{{ title }}</h2>
+            <p class="lead">
+                {% trans "Stazione" %}: {{ station.name }} - 
+                {% trans "Progetto" %}: {{ project.name }}
+            </p>
+            
+            <div class="card shadow mb-4">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Dati tecnici -->
+                        <h4 class="text-primary mb-3">{% trans "Dati Tecnici" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.technical_fields %}
+                                <div class="col-md-6 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Costi di installazione -->
+                        <h4 class="text-primary mb-3">{% trans "Costi di Installazione" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.cost_fields %}
+                                <div class="col-md-4 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Parametri di performance -->
+                        <h4 class="text-primary mb-3">{% trans "Parametri di Performance" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.performance_fields %}
+                                <div class="col-md-6 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Parametri economici -->
+                        <h4 class="text-primary mb-3">{% trans "Parametri Economici" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.economic_fields %}
+                                <div class="col-md-6 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Date e durata -->
+                        <h4 class="text-primary mb-3">{% trans "Date e Durata" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.lifespan_fields %}
+                                <div class="col-md-6 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="text-end">
+                            <a href="{% url 'projects:station_detail' station.id %}" class="btn btn-secondary me-2">
+                                {% trans "Annulla" %}
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                {% trans "Salva impianto fotovoltaico" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Calcoli automatici
+        const capacityField = document.getElementById('id_capacity');
+        const areaField = document.getElementById('id_total_area');
+        const panelsField = document.getElementById('id_number_of_panels');
+        const installCostField = document.getElementById('id_installation_cost');
+        const inverterCostField = document.getElementById('id_inverter_cost');
+        const equipCostField = document.getElementById('id_additional_equipment_cost');
+        const productionField = document.getElementById('id_expected_annual_production');
+        
+        // Stima della produzione annuale quando si cambia la capacità
+        if (capacityField && productionField) {
+            capacityField.addEventListener('change', function() {
+                const capacity = parseFloat(this.value);
+                if (!isNaN(capacity)) {
+                    // Stima: 1 kWp produce circa 1300 kWh/anno in Italia (valore medio)
+                    const estimatedProduction = (capacity * 1300).toFixed(2);
+                    productionField.value = estimatedProduction;
+                }
+            });
+        }
+        
+        // Calcolo del costo totale
+        if (installCostField && inverterCostField && equipCostField) {
+            const calculateTotalCost = function() {
+                const installCost = parseFloat(installCostField.value) || 0;
+                const inverterCost = parseFloat(inverterCostField.value) || 0;
+                const equipCost = parseFloat(equipCostField.value) || 0;
+                
+                const totalCostElement = document.getElementById('total-cost');
+                if (totalCostElement) {
+                    const totalCost = (installCost + inverterCost + equipCost).toFixed(2);
+                    totalCostElement.textContent = totalCost + ' €';
+                }
+            };
+            
+            installCostField.addEventListener('change', calculateTotalCost);
+            inverterCostField.addEventListener('change', calculateTotalCost);
+            equipCostField.addEventListener('change', calculateTotalCost);
+            
+            // Aggiungi un elemento per mostrare il costo totale
+            const costFieldsContainer = document.querySelector('h4:contains("Costi di Installazione")').closest('.row').nextElementSibling;
+            const totalCostDiv = document.createElement('div');
+            totalCostDiv.className = 'col-12 mt-3';
+            totalCostDiv.innerHTML = `
+                <div class="alert alert-info">
+                    <strong>{% trans "Costo Totale Stimato" %}:</strong> <span id="total-cost">0.00 €</span>
+                </div>
+            `;
+            costFieldsContainer.appendChild(totalCostDiv);
+            
+            // Calcola inizialmente
+            calculateTotalCost();
+        }
+        
+        // Calcolo del numero di pannelli in base alla capacità
+        if (capacityField && panelsField) {
+            capacityField.addEventListener('change', function() {
+                const capacity = parseFloat(this.value);
+                if (!isNaN(capacity)) {
+                    // Assumendo pannelli da 330W (0.33 kW) ciascuno
+                    const panelPower = 0.33;
+                    const estimatedPanels = Math.ceil(capacity / panelPower);
+                    panelsField.value = estimatedPanels;
+                    
+                    // Stima dell'area necessaria
+                    if (areaField) {
+                        // Assumendo circa 1.7 m² per pannello
+                        const estimatedArea = (estimatedPanels * 1.7).toFixed(2);
+                        areaField.value = estimatedArea;
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

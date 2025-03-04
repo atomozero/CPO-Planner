@@ -25,33 +25,6 @@
                             {% endfor %}
                         </div>
                         
-                        <h4>{% trans "Parametri di guasto e riparazione" %}</h4>
-                        <div class="row mb-4">
-                            {% for field_name in form.failure_fields %}
-                                <div class="col-md-6 mb-3">
-                                    {{ form|getattr:field_name|as_crispy_field }}
-                                </div>
-                            {% endfor %}
-                        </div>
-                        
-                        <div class="text-end">
-                            <a href="{% url 'projects:project_detail' project.id %}" class="btn btn-secondary me-2">
-                                {% trans "Annulla" %}
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                {% trans "Salva parametri" %}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}                </div>
-                            {% endfor %}
-                        </div>
-                        
                         <h4>{% trans "Parametri del prestito" %}</h4>
                         <div class="row mb-4">
                             {% for field_name in form.loan_fields %}
@@ -75,4 +48,31 @@
                             {% for field_name in form.operational_fields %}
                                 <div class="col-md-4 mb-3">
                                     {{ form|getattr:field_name|as_crispy_field }}
-                
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <h4>{% trans "Parametri di guasto e riparazione" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.failure_fields %}
+                                <div class="col-md-6 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="text-end">
+                            <a href="{% url 'projects:project_detail' project.id %}" class="btn btn-secondary me-2">
+                                {% trans "Annulla" %}
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                {% trans "Salva parametri" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

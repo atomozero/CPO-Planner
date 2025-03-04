@@ -1,8 +1,9 @@
+# cpo_planner/projects/models/financial.py
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.translation import gettext_lazy as _
-from .base import Project, ChargingStation
-
+from .project import Project
+from .charging_station import ChargingStation
 
 class FinancialParameters(models.Model):
     """Parametri finanziari globali per il calcolo del ROI e delle previsioni finanziarie"""

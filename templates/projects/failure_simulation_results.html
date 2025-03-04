@@ -1,0 +1,356 @@
+<!-- templates/projects/failure_simulation_results.html -->
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Simulazione Guasti | {{ project.name }} | CPO Planner{% endblock %}
+
+{% block extra_css %}
+<style>
+    .summary-box {
+        padding: 1.5rem;
+        border-radius: 0.35rem;
+        margin-bottom: 1rem;
+    }
+    .summary-box h3 {
+        margin-bottom: 0.75rem;
+        font-size: 1.25rem;
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+        padding-bottom: 0.5rem;
+    }
+    .summary-box p {
+        margin-bottom: 0.5rem;
+    }
+    .summary-box p:last-child {
+        margin-bottom: 0;
+    }
+    .summary-box strong {
+        font-weight: 600;
+    }
+    .failure-year {
+        cursor: pointer;
+    }
+    .failure-year.active {
+        background-color: #eaecf4;
+    }
+    .year-details {
+        display: none;
+    }
+    .year-details.active {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        Simulazione Guasti: {{ project.name }}
+    </h1>
+    <div>
+        <a href="{% url 'projects:failure_simulation_form' project.id %}" class="d-none d-sm-inline-block btn btn-sm btn-warning shadow-sm mr-2">
+            <i class="fas fa-cog fa-sm text-white-50 mr-2"></i>Parametri Simulazione
+        </a>
+        <a href="{% url 'projects:run_failure_simulation' project.id %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm mr-2">
+            <i class="fas fa-redo fa-sm text-white-50 mr-2"></i>Riesegui Simulazione
+        </a>
+        <a href="{% url 'projects:project_detail' project.id %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50 mr-2"></i>Torna al Progetto
+        </a>
+    </div>
+</div>
+
+<!-- Simulazione Guasti -->
+<div class="row">
+    <!-- Riepilogo -->
+    <div class="col-lg-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Riepilogo Simulazione</h6>
+            </div>
+            <div class="card-body">
+                <div class="summary-box bg-light">
+                    <h3>Totali</h3>
+                    <p><strong>Guasti totali:</strong> {{ simulation.total_failures }}</p>
+                    <p><strong>Costi riparazione:</strong> € {{ simulation.total_repair_costs|intcomma }}</p>
+                    <p><strong>Perdita ricavi:</strong> € {{ simulation.total_revenue_loss|intcomma }}</p>
+                    <p><strong>Impatto totale:</strong> € {{ results.summary.total_impact|intcomma }}</p>
+                </div>
+                
+                <div class="summary-box bg-light">
+                    <h3>Medie</h3>
+                    <p><strong>Guasti annuali medi:</strong> {{ results.summary.average_yearly_failures|floatformat:1 }}</p>
+                    <p><strong>Costi annuali medi:</strong> € {{ results.summary.average_yearly_costs|intcomma }}</p>
+                    <p><strong>Guasti per stazione:</strong> {{ results.summary.average_failures_per_station|floatformat:2 }}</p>
+                </div>
+                
+                <div class="summary-box bg-light">
+                    <h3>Parametri utilizzati</h3>
+                    <p><strong>Tasso guasti anno 1:</strong> {{ simulation.failure_rate_year1 }}%</p>
+                    <p><strong>Incremento annuo tasso:</strong> {{ simulation.failure_rate_increase }}%</p>
+                    <p><strong>Riparazioni minori:</strong> {{ simulation.minor_repair_percentage }}%</p>
+                    <p><strong>Riparazioni maggiori:</strong> {{ simulation.major_repair_percentage }}%</p>
+                    <p><strong>Sostituzioni:</strong> {{ simulation.replacement_percentage }}%</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Grafici -->
+    <div class="col-lg-8">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Andamento Guasti e Costi</h6>
+            </div>
+            <div class="card-body">
+                <div style="height: 300px;">
+                    <canvas id="failureChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Impatto Finanziario</h6>
+            </div>
+            <div class="card-body">
+                <div style="height: 300px;">
+                    <canvas id="financialImpactChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dettagli annuali -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Dettagli Simulazione per Anno</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Anno</th>
+                        <th>Tasso Guasti</th>
+                        <th>Num. Guasti</th>
+                        <th>% Stazioni Guaste</th>
+                        <th>Costi Riparazione</th>
+                        <th>Perdita Ricavi</th>
+                        <th>Impatto Totale</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for year in results.yearly_results %}
+                    <tr class="failure-year" data-year="{{ year.year }}">
+                        <td>{{ year.year }}</td>
+                        <td>{{ year.failure_rate|floatformat:2 }}%</td>
+                        <td>{{ year.failures }}</td>
+                        <td>{{ year.failure_percentage|floatformat:1 }}%</td>
+                        <td>€ {{ year.repair_costs|floatformat:2|intcomma }}</td>
+                        <td>€ {{ year.revenue_loss|floatformat:2|intcomma }}</td>
+                        <td>€ {{ year.total_impact|floatformat:2|intcomma }}</td>
+                    </tr>
+                    <tr class="year-details" id="year-{{ year.year }}-details">
+                        <td colspan="7">
+                            <div class="p-3">
+                                <h6>Dettaglio guasti per l'anno {{ year.year }}</h6>
+                                {% if year.station_failures %}
+                                <div class="table-responsive mt-3">
+                                    <table class="table table-sm table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Stazione</th>
+                                                <th>Tipo Guasto</th>
+                                                <th>Costo Riparazione</th>
+                                                <th>Giorni Inattività</th>
+                                                <th>Perdita Ricavi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for failure in year.station_failures %}
+                                            <tr>
+                                                <td>{{ failure.station_name }}</td>
+                                                <td>
+                                                    {% if failure.failure_type == 'minor' %}
+                                                    <span class="badge badge-info">Riparazione Minore</span>
+                                                    {% elif failure.failure_type == 'major' %}
+                                                    <span class="badge badge-warning">Riparazione Maggiore</span>
+                                                    {% else %}
+                                                    <span class="badge badge-danger">Sostituzione</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>€ {{ failure.repair_cost|floatformat:2|intcomma }}</td>
+                                                <td>{{ failure.downtime_days }}</td>
+                                                <td>€ {{ failure.revenue_loss|floatformat:2|intcomma }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-info">
+                                    Nessun guasto simulato per questo anno.
+                                </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Grafici per guasti e costi
+    const ctxFailure = document.getElementById('failureChart').getContext('2d');
+    const failureChart = new Chart(ctxFailure, {
+        type: 'bar',
+        data: {
+            labels: [{% for year in results.yearly_results %}'Anno {{ year.year }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+            datasets: [
+                {
+                    label: 'Numero Guasti',
+                    data: [{% for year in results.yearly_results %}{{ year.failures }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    backgroundColor: 'rgba(231, 74, 59, 0.8)',
+                    borderColor: 'rgba(231, 74, 59, 1)',
+                    borderWidth: 1,
+                    yAxisID: 'y-failures'
+                },
+                {
+                    label: 'Tasso Guasti (%)',
+                    data: [{% for year in results.yearly_results %}{{ year.failure_rate }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    type: 'line',
+                    fill: false,
+                    backgroundColor: 'rgba(78, 115, 223, 0.8)',
+                    borderColor: 'rgba(78, 115, 223, 1)',
+                    pointBorderColor: 'rgba(78, 115, 223, 1)',
+                    pointBackgroundColor: '#fff',
+                    pointBorderWidth: 1,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: 'rgba(78, 115, 223, 1)',
+                    pointHoverBorderColor: '#fff',
+                    pointHoverBorderWidth: 2,
+                    tension: 0.1,
+                    yAxisID: 'y-rate'
+                }
+            ]
+        },
+        options: {
+            maintainAspectRatio: false,
+            scales: {
+                'y-failures': {
+                    type: 'linear',
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Numero Guasti'
+                    },
+                    ticks: {
+                        beginAtZero: true
+                    }
+                },
+                'y-rate': {
+                    type: 'linear',
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Tasso Guasti (%)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                }
+            }
+        }
+    });
+    
+    // Grafico per impatto finanziario
+    const ctxFinancial = document.getElementById('financialImpactChart').getContext('2d');
+    const financialChart = new Chart(ctxFinancial, {
+        type: 'bar',
+        data: {
+            labels: [{% for year in results.yearly_results %}'Anno {{ year.year }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+            datasets: [
+                {
+                    label: 'Costi Riparazione',
+                    data: [{% for year in results.yearly_results %}{{ year.repair_costs }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    backgroundColor: 'rgba(246, 194, 62, 0.8)',
+                    borderColor: 'rgba(246, 194, 62, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Perdita Ricavi',
+                    data: [{% for year in results.yearly_results %}{{ year.revenue_loss }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    backgroundColor: 'rgba(28, 200, 138, 0.8)',
+                    borderColor: 'rgba(28, 200, 138, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Impatto Totale',
+                    data: [{% for year in results.yearly_results %}{{ year.total_impact }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    type: 'line',
+                    fill: false,
+                    backgroundColor: 'rgba(231, 74, 59, 0.8)',
+                    borderColor: 'rgba(231, 74, 59, 1)',
+                    borderWidth: 2,
+                    pointBorderColor: 'rgba(231, 74, 59, 1)',
+                    pointBackgroundColor: '#fff',
+                    pointBorderWidth: 1,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: 'rgba(231, 74, 59, 1)',
+                    pointHoverBorderColor: 'white',
+                    pointHoverBorderWidth: 2,
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Euro (€)'
+                    },
+                    ticks: {
+                        beginAtZero: true,
+                        callback: function(value) {
+                            return '€ ' + value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Gestione espansione dettagli annuali
+    const yearRows = document.querySelectorAll('.failure-year');
+    yearRows.forEach(row => {
+        row.addEventListener('click', function() {
+            const year = this.getAttribute('data-year');
+            const detailsRow = document.getElementById(`year-${year}-details`);
+            
+            // Rimuovi la classe active da tutte le righe
+            document.querySelectorAll('.year-details').forEach(r => r.classList.remove('active'));
+            document.querySelectorAll('.failure-year').forEach(r => r.classList.remove('active'));
+            
+            // Aggiungi la classe active alla riga corrente
+            this.classList.add('active');
+            detailsRow.classList.add('active');
+        });
+    });
+});
+</script>
+{% endblock %}

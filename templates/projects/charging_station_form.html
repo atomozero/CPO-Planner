@@ -1,0 +1,215 @@
+<!-- templates/projects/charging_station_form.html -->
+{% extends 'base.html' %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }} | CPO Planner{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<style>
+    #map {
+        height: 300px;
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2>{{ title }}</h2>
+            <p class="lead">
+                {% if subproject %}
+                    {% trans "Sotto-Progetto" %}: {{ subproject.name }} - 
+                    {% trans "Comune" %}: {{ subproject.municipality.name }}
+                {% endif %}
+            </p>
+            
+            <div class="card shadow mb-4">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Identificazione e localizzazione -->
+                        <h4 class="text-primary mb-3">{% trans "Identificazione e Localizzazione" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.identification_fields %}
+                                {% if field_name == 'latitude' or field_name == 'longitude' %}
+                                    <div class="col-md-3 mb-3">
+                                        {{ form|getattr:field_name|as_crispy_field }}
+                                    </div>
+                                {% else %}
+                                    <div class="col-md-6 mb-3">
+                                        {{ form|getattr:field_name|as_crispy_field }}
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Mappa per selezionare la posizione -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label for="map">{% trans "Seleziona posizione sulla mappa" %}</label>
+                                    <div id="map"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Dettagli tecnici -->
+                        <h4 class="text-primary mb-3">{% trans "Dettagli Tecnici" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.technical_fields %}
+                                <div class="col-md-4 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Costi -->
+                        <h4 class="text-primary mb-3">{% trans "Costi" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.cost_fields %}
+                                <div class="col-md-4 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Parametri operativi -->
+                        <h4 class="text-primary mb-3">{% trans "Parametri Operativi" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.operational_fields %}
+                                <div class="col-md-6 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Stato e date -->
+                        <h4 class="text-primary mb-3">{% trans "Stato e Date" %}</h4>
+                        <div class="row mb-4">
+                            {% for field_name in form.status_fields %}
+                                <div class="col-md-6 mb-3">
+                                    {{ form|getattr:field_name|as_crispy_field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="text-end">
+                            <a href="{% if subproject %}{% url 'projects:subproject_detail' subproject.id %}{% else %}{% url 'projects:project_detail' project.id %}{% endif %}" class="btn btn-secondary me-2">
+                                {% trans "Annulla" %}
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                {% trans "Salva stazione" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Ottieni i campi latitudine e longitudine
+        const latField = document.getElementById('id_latitude');
+        const lngField = document.getElementById('id_longitude');
+        
+        // Valori predefiniti (Italia centrale)
+        let defaultLat = 41.9028;
+        let defaultLng = 12.4964;
+        let defaultZoom = 5;
+        
+        // Se i campi hanno già valori, usa quelli
+        if (latField.value && lngField.value) {
+            defaultLat = parseFloat(latField.value);
+            defaultLng = parseFloat(lngField.value);
+            defaultZoom = 15;
+        }
+        
+        // Inizializza la mappa
+        const map = L.map('map').setView([defaultLat, defaultLng], defaultZoom);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Aggiungi marker se già esistono coordinate
+        let marker;
+        if (latField.value && lngField.value) {
+            marker = L.marker([defaultLat, defaultLng], {
+                draggable: true
+            }).addTo(map);
+            
+            // Aggiorna campi quando il marker viene trascinato
+            marker.on('dragend', function(event) {
+                const position = marker.getLatLng();
+                latField.value = position.lat.toFixed(6);
+                lngField.value = position.lng.toFixed(6);
+            });
+        }
+        
+        // Click sulla mappa per posizionare/spostare il marker
+        map.on('click', function(e) {
+            const latlng = e.latlng;
+            
+            // Aggiorna i campi del form
+            latField.value = latlng.lat.toFixed(6);
+            lngField.value = latlng.lng.toFixed(6);
+            
+            // Crea o aggiorna il marker
+            if (marker) {
+                marker.setLatLng(latlng);
+            } else {
+                marker = L.marker(latlng, {
+                    draggable: true
+                }).addTo(map);
+                
+                // Aggiorna campi quando il marker viene trascinato
+                marker.on('dragend', function(event) {
+                    const position = marker.getLatLng();
+                    latField.value = position.lat.toFixed(6);
+                    lngField.value = position.lng.toFixed(6);
+                });
+            }
+        });
+        
+        // Aggiorna la mappa quando i campi vengono modificati
+        latField.addEventListener('change', updateMarkerFromFields);
+        lngField.addEventListener('change', updateMarkerFromFields);
+        
+        function updateMarkerFromFields() {
+            const lat = parseFloat(latField.value);
+            const lng = parseFloat(lngField.value);
+            
+            if (!isNaN(lat) && !isNaN(lng)) {
+                const latlng = L.latLng(lat, lng);
+                
+                if (marker) {
+                    marker.setLatLng(latlng);
+                } else {
+                    marker = L.marker(latlng, {
+                        draggable: true
+                    }).addTo(map);
+                    
+                    marker.on('dragend', function(event) {
+                        const position = marker.getLatLng();
+                        latField.value = position.lat.toFixed(6);
+                        lngField.value = position.lng.toFixed(6);
+                    });
+                }
+                
+                map.setView(latlng, 15);
+            }
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,350 @@
+<!-- templates/projects/dashboard.html -->
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Dashboard | CPO Planner{% endblock %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
+    <a href="{% url 'projects:project_create' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+        <i class="fas fa-plus fa-sm text-white-50 mr-2"></i>Nuovo Progetto
+    </a>
+</div>
+
+<!-- Content Row - Stats Cards -->
+<div class="row">
+    <!-- Totale Progetti -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Totale Progetti</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_projects }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-project-diagram fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progetti Attivi -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Progetti Attivi</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_projects }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-rocket fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stazioni di Ricarica -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Stazioni di Ricarica</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_stations }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-charging-station fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Budget Totale -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Investimento Totale</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">€ {{ total_investment|intcomma }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-euro-sign fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Content Row - Charts -->
+<div class="row">
+    <!-- Progetti per Stato -->
+    <div class="col-xl-4 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Stato dei Progetti</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-pie pt-4">
+                    <canvas id="projectStatusChart"></canvas>
+                </div>
+                <div class="mt-4 text-center small">
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-info"></i> Pianificazione
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-primary"></i> In Corso
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-success"></i> Completati
+                    </span>
+                    <span class="mr-2">
+                        <i class="fas fa-circle text-warning"></i> Sospesi
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progetti per Regione -->
+    <div class="col-xl-8 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Progetti per Regione</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-bar">
+                    <canvas id="projectsByRegionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Progetti Recenti e Stazioni Recenti -->
+<div class="row">
+    <!-- Progetti Recenti -->
+    <div class="col-xl-6 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Progetti Recenti</h6>
+                <a href="{% url 'projects:project_list' %}" class="btn btn-sm btn-primary">
+                    Vedi Tutti
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Comune</th>
+                                <th>Stato</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for project in recent_projects %}
+                            <tr>
+                                <td>{{ project.name }}</td>
+                                <td>{{ project.municipality }}</td>
+                                <td>
+                                    {% if project.status == 'planning' %}
+                                        <span class="badge badge-info">Pianificazione</span>
+                                    {% elif project.status == 'in_progress' %}
+                                        <span class="badge badge-primary">In Corso</span>
+                                    {% elif project.status == 'completed' %}
+                                        <span class="badge badge-success">Completato</span>
+                                    {% elif project.status == 'suspended' %}
+                                        <span class="badge badge-warning">Sospeso</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'projects:project_detail' project.id %}" class="btn btn-sm btn-info">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center">Nessun progetto disponibile</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stazioni Recenti -->
+    <div class="col-xl-6 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Stazioni Recenti</h6>
+                <a href="#" class="btn btn-sm btn-primary">
+                    Vedi Tutte
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Indirizzo</th>
+                                <th>Stato</th>
+                                <th>Potenza</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for station in recent_stations %}
+                            <tr>
+                                <td>{{ station.name }}</td>
+                                <td>{{ station.address }}</td>
+                                <td>
+                                    {% if station.status == 'planned' %}
+                                        <span class="badge badge-info">Pianificata</span>
+                                    {% elif station.status == 'active' %}
+                                        <span class="badge badge-success">Attiva</span>
+                                    {% elif station.status == 'maintenance' %}
+                                        <span class="badge badge-warning">Manutenzione</span>
+                                    {% elif station.status == 'inactive' %}
+                                        <span class="badge badge-danger">Inattiva</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ station.total_power }} kW</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center">Nessuna stazione disponibile</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Grafico stato progetti
+    var statusCtx = document.getElementById("projectStatusChart");
+    var statusChart = new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ["Pianificazione", "In Corso", "Completati", "Sospesi"],
+            datasets: [{
+                data: [{{ planning_projects }}, {{ in_progress_projects }}, {{ completed_projects }}, {{ suspended_projects }}],
+                backgroundColor: ['#36b9cc', '#4e73df', '#1cc88a', '#f6c23e'],
+                hoverBackgroundColor: ['#2c9faf', '#2e59d9', '#17a673', '#dda20a'],
+                hoverBorderColor: "rgba(234, 236, 244, 1)",
+            }],
+        },
+        options: {
+            maintainAspectRatio: false,
+            tooltips: {
+                backgroundColor: "rgb(255,255,255)",
+                bodyFontColor: "#858796",
+                borderColor: '#dddfeb',
+                borderWidth: 1,
+                xPadding: 15,
+                yPadding: 15,
+                displayColors: false,
+                caretPadding: 10,
+            },
+            legend: {
+                display: false
+            },
+            cutoutPercentage: 70,
+        },
+    });
+
+    // Grafico progetti per regione
+    var regionCtx = document.getElementById("projectsByRegionChart");
+    var regionChart = new Chart(regionCtx, {
+        type: 'bar',
+        data: {
+            labels: [{% for item in projects_by_region %}"{{ item.region }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                label: "Progetti",
+                backgroundColor: "#4e73df",
+                hoverBackgroundColor: "#2e59d9",
+                borderColor: "#4e73df",
+                data: [{% for item in projects_by_region %}{{ item.count }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+            }],
+        },
+        options: {
+            maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    left: 10,
+                    right: 25,
+                    top: 25,
+                    bottom: 0
+                }
+            },
+            scales: {
+                xAxes: [{
+                    gridLines: {
+                        display: false,
+                        drawBorder: false
+                    },
+                    ticks: {
+                        maxTicksLimit: 6
+                    },
+                    maxBarThickness: 25,
+                }],
+                yAxes: [{
+                    ticks: {
+                        min: 0,
+                        max: {{ max_projects_by_region|default:10 }},
+                        maxTicksLimit: 5,
+                        padding: 10,
+                    },
+                    gridLines: {
+                        color: "rgb(234, 236, 244)",
+                        zeroLineColor: "rgb(234, 236, 244)",
+                        drawBorder: false,
+                        borderDash: [2],
+                        zeroLineBorderDash: [2]
+                    }
+                }],
+            },
+            legend: {
+                display: false
+            },
+            tooltips: {
+                backgroundColor: "rgb(255,255,255)",
+                bodyFontColor: "#858796",
+                titleMarginBottom: 10,
+                titleFontColor: '#6e707e',
+                titleFontSize: 14,
+                borderColor: '#dddfeb',
+                borderWidth: 1,
+                xPadding: 15,
+                yPadding: 15,
+                displayColors: false,
+                intersect: false,
+                mode: 'index',
+                caretPadding: 10,
+            }
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,302 @@
+<!-- templates/projects/project_timeline_form.html -->
+{% extends 'base.html' %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }} | CPO Planner{% endblock %}
+
+{% block extra_css %}
+<style>
+    .phase-section {
+        border-left: 3px solid #4e73df;
+        padding-left: 15px;
+        margin-bottom: 25px;
+    }
+    .milestone-item {
+        background-color: #f8f9fc;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 10px;
+        position: relative;
+    }
+    .milestone-item .remove-milestone {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        cursor: pointer;
+        color: #e74a3b;
+    }
+    .add-milestone-btn {
+        margin-top: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2>{{ title }}</h2>
+            <p class="lead">
+                {% trans "Progetto" %}: {{ project.name }}
+            </p>
+            
+            <div class="card shadow mb-4">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Fase di pianificazione -->
+                        <div class="phase-section">
+                            <h4 class="text-primary mb-3">{% trans "Fase di Pianificazione" %}</h4>
+                            <div class="row mb-4">
+                                {% for field_name in form.planning_fields %}
+                                    <div class="col-md-6 mb-3">
+                                        {{ form|getattr:field_name|as_crispy_field }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- Fase di permessi -->
+                        <div class="phase-section">
+                            <h4 class="text-primary mb-3">{% trans "Fase di Permessi e Autorizzazioni" %}</h4>
+                            <div class="row mb-4">
+                                {% for field_name in form.permitting_fields %}
+                                    <div class="col-md-6 mb-3">
+                                        {{ form|getattr:field_name|as_crispy_field }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- Fase di approvvigionamento -->
+                        <div class="phase-section">
+                            <h4 class="text-primary mb-3">{% trans "Fase di Approvvigionamento" %}</h4>
+                            <div class="row mb-4">
+                                {% for field_name in form.procurement_fields %}
+                                    <div class="col-md-6 mb-3">
+                                        {{ form|getattr:field_name|as_crispy_field }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- Fase di installazione -->
+                        <div class="phase-section">
+                            <h4 class="text-primary mb-3">{% trans "Fase di Installazione" %}</h4>
+                            <div class="row mb-4">
+                                {% for field_name in form.installation_fields %}
+                                    <div class="col-md-6 mb-3">
+                                        {{ form|getattr:field_name|as_crispy_field }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- Fase di test -->
+                        <div class="phase-section">
+                            <h4 class="text-primary mb-3">{% trans "Fase di Test e Collaudo" %}</h4>
+                            <div class="row mb-4">
+                                {% for field_name in form.testing_fields %}
+                                    <div class="col-md-6 mb-3">
+                                        {{ form|getattr:field_name|as_crispy_field }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- Fase operativa -->
+                        <div class="phase-section">
+                            <h4 class="text-primary mb-3">{% trans "Fase Operativa" %}</h4>
+                            <div class="row mb-4">
+                                {% for field_name in form.operation_fields %}
+                                    <div class="col-md-6 mb-3">
+                                        {{ form|getattr:field_name|as_crispy_field }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- Milestone critiche -->
+                        <div class="card bg-light mb-4">
+                            <div class="card-header">
+                                <h4 class="mb-0">{% trans "Milestone Critiche" %}</h4>
+                            </div>
+                            <div class="card-body">
+                                <div id="milestones-container">
+                                    {% if form.instance.critical_milestones %}
+                                        {% for milestone in form.instance.critical_milestones %}
+                                        <div class="milestone-item">
+                                            <i class="fas fa-times remove-milestone"></i>
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <div class="form-group">
+                                                        <label>{% trans "Nome" %}</label>
+                                                        <input type="text" name="milestone_name[]" class="form-control" value="{{ milestone.name }}">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="form-group">
+                                                        <label>{% trans "Data" %}</label>
+                                                        <input type="date" name="milestone_date[]" class="form-control" value="{{ milestone.date }}">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-5">
+                                                    <div class="form-group">
+                                                        <label>{% trans "Descrizione" %}</label>
+                                                        <input type="text" name="milestone_description[]" class="form-control" value="{{ milestone.description }}">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                                <button type="button" id="add-milestone" class="btn btn-info add-milestone-btn">
+                                    <i class="fas fa-plus me-1"></i> {% trans "Aggiungi Milestone" %}
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Note -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                {{ form|getattr:'timeline_notes'|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <div class="text-end">
+                            <a href="{% url 'projects:project_detail' project.id %}" class="btn btn-secondary me-2">
+                                {% trans "Annulla" %}
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                {% trans "Salva cronoprogramma" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Funzionalità per aggiungere milestone
+        const addMilestoneBtn = document.getElementById('add-milestone');
+        const milestonesContainer = document.getElementById('milestones-container');
+        
+        if (addMilestoneBtn && milestonesContainer) {
+            addMilestoneBtn.addEventListener('click', function() {
+                const milestoneItem = document.createElement('div');
+                milestoneItem.className = 'milestone-item';
+                milestoneItem.innerHTML = `
+                    <i class="fas fa-times remove-milestone"></i>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>{% trans "Nome" %}</label>
+                                <input type="text" name="milestone_name[]" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>{% trans "Data" %}</label>
+                                <input type="date" name="milestone_date[]" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="form-group">
+                                <label>{% trans "Descrizione" %}</label>
+                                <input type="text" name="milestone_description[]" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                `;
+                milestonesContainer.appendChild(milestoneItem);
+                
+                // Aggiungi event listener al pulsante di rimozione
+                const removeBtn = milestoneItem.querySelector('.remove-milestone');
+                removeBtn.addEventListener('click', function() {
+                    milestonesContainer.removeChild(milestoneItem);
+                });
+            });
+            
+            // Aggiungi event listener ai pulsanti di rimozione esistenti
+            document.querySelectorAll('.remove-milestone').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const item = this.closest('.milestone-item');
+                    milestonesContainer.removeChild(item);
+                });
+            });
+        }
+        
+        // Verifica e suggerimento date
+        const planningStartField = document.getElementById('id_planning_start');
+        const planningEndField = document.getElementById('id_planning_end');
+        const permittingStartField = document.getElementById('id_permitting_start');
+        const permittingEndField = document.getElementById('id_permitting_end');
+        const procurementStartField = document.getElementById('id_procurement_start');
+        const procurementEndField = document.getElementById('id_procurement_end');
+        const installationStartField = document.getElementById('id_installation_start');
+        const installationEndField = document.getElementById('id_installation_end');
+        const testingStartField = document.getElementById('id_testing_start');
+        const testingEndField = document.getElementById('id_testing_end');
+        const operationStartField = document.getElementById('id_operation_start');
+        
+        // Suggerimento di date consecutive
+        if (planningEndField && permittingStartField) {
+            planningEndField.addEventListener('change', function() {
+                if (this.value && !permittingStartField.value) {
+                    const planningEndDate = new Date(this.value);
+                    planningEndDate.setDate(planningEndDate.getDate() + 1);
+                    permittingStartField.value = planningEndDate.toISOString().split('T')[0];
+                }
+            });
+        }
+        
+        if (permittingEndField && procurementStartField) {
+            permittingEndField.addEventListener('change', function() {
+                if (this.value && !procurementStartField.value) {
+                    const permittingEndDate = new Date(this.value);
+                    permittingEndDate.setDate(permittingEndDate.getDate() + 1);
+                    procurementStartField.value = permittingEndDate.toISOString().split('T')[0];
+                }
+            });
+        }
+        
+        if (procurementEndField && installationStartField) {
+            procurementEndField.addEventListener('change', function() {
+                if (this.value && !installationStartField.value) {
+                    const procurementEndDate = new Date(this.value);
+                    procurementEndDate.setDate(procurementEndDate.getDate() + 1);
+                    installationStartField.value = procurementEndDate.toISOString().split('T')[0];
+                }
+            });
+        }
+        
+        if (installationEndField && testingStartField) {
+            installationEndField.addEventListener('change', function() {
+                if (this.value && !testingStartField.value) {
+                    const installationEndDate = new Date(this.value);
+                    installationEndDate.setDate(installationEndDate.getDate() + 1);
+                    testingStartField.value = installationEndDate.toISOString().split('T')[0];
+                }
+            });
+        }
+        
+        if (testingEndField && operationStartField) {
+            testingEndField.addEventListener('change', function() {
+                if (this.value && !operationStartField.value) {
+                    const testingEndDate = new Date(this.value);
+                    testingEndDate.setDate(testingEndDate.getDate() + 1);
+                    operationStartField.value = testingEndDate.toISOString().split('T')[0];
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

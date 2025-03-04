@@ -11,19 +11,37 @@ class ChargingStation(models.Model):
     sub_project = models.ForeignKey('SubProject', on_delete=models.CASCADE, verbose_name=_('Sotto-Progetto'))
     
     # Identificazione e Localizzazione
+    name = models.CharField(_('Nome Stazione'), max_length=100)
     identifier = models.CharField(_('Identificatore Stazione'), max_length=50, unique=True)
     address = models.CharField(_('Indirizzo'), max_length=255)
     latitude = models.DecimalField(_('Latitudine'), max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(_('Longitudine'), max_digits=9, decimal_places=6, null=True, blank=True)
     
     # Dettagli Tecnici
-    charging_type = models.CharField(_('Tipo di Ricarica'), max_length=50)
-    max_power = models.DecimalField(_('Potenza Massima'), max_digits=6, decimal_places=2, help_text='kW')
+    POWER_TYPE_CHOICES = [
+        ('ac', _('AC')),
+        ('dc', _('DC')),
+        ('ac_dc', _('AC/DC')),
+    ]
+    power_type = models.CharField(_('Tipo di Potenza'), max_length=10, choices=POWER_TYPE_CHOICES, default='ac')
+    charging_points = models.PositiveIntegerField(_('Punti di Ricarica'), default=1)
+    total_power = models.DecimalField(_('Potenza Totale'), max_digits=8, decimal_places=2, help_text='kW')
     
-    # Costi Specifici
+    # Costi
+    station_cost = models.DecimalField(_('Costo Colonnina'), max_digits=10, decimal_places=2)
     installation_cost = models.DecimalField(_('Costo Installazione'), max_digits=10, decimal_places=2)
     connection_cost = models.DecimalField(_('Costo Allaccio'), max_digits=10, decimal_places=2)
-    estimated_monthly_revenue = models.DecimalField(_('Ricavi Mensili Stimati'), max_digits=10, decimal_places=2)
+    design_cost = models.DecimalField(_('Costo Progettazione'), max_digits=10, decimal_places=2, default=0)
+    permit_cost = models.DecimalField(_('Costo Permessi'), max_digits=10, decimal_places=2, default=0)
+    
+    # Parametri operativi
+    energy_cost_kwh = models.DecimalField(_('Costo Energia (€/kWh)'), max_digits=6, decimal_places=4)
+    charging_price_kwh = models.DecimalField(_('Prezzo Ricarica (€/kWh)'), max_digits=6, decimal_places=4)
+    estimated_sessions_day = models.DecimalField(_('Sessioni Stimate/Giorno'), max_digits=6, decimal_places=2)
+    avg_kwh_session = models.DecimalField(_('Media kWh/Sessione'), max_digits=6, decimal_places=2)
+    
+    # Date
+    installation_date = models.DateField(_('Data Installazione'), null=True, blank=True)
     
     # Stato e Manutenzione
     STATUS_CHOICES = [
@@ -42,7 +60,8 @@ class ChargingStation(models.Model):
         """
         Calcola metriche annuali basate sui dati della stazione
         """
-        annual_revenue = self.estimated_monthly_revenue * 12
+        daily_revenue = self.charging_price_kwh * self.avg_kwh_session * self.estimated_sessions_day
+        annual_revenue = daily_revenue * 365
         annual_costs = self.calculate_annual_operational_costs()
         annual_profit = annual_revenue - annual_costs
         return {
@@ -55,11 +74,24 @@ class ChargingStation(models.Model):
         """
         Calcola i costi operativi annuali stimati
         """
-        # TODO: Implementare logica dettagliata di calcolo dei costi
-        return Decimal('0.00')
+        # Costo energia
+        daily_energy_cost = self.energy_cost_kwh * self.avg_kwh_session * self.estimated_sessions_day
+        annual_energy_cost = daily_energy_cost * 365
+        
+        # Costo manutenzione (assumiamo 5% del costo della stazione)
+        annual_maintenance_cost = self.station_cost * Decimal('0.05')
+        
+        # Totale costi operativi
+        return annual_energy_cost + annual_maintenance_cost
+    
+    def calculate_total_investment(self):
+        """
+        Calcola l'investimento totale per questa stazione
+        """
+        return self.station_cost + self.installation_cost + self.connection_cost + self.design_cost + self.permit_cost
     
     def __str__(self):
-        return f"{self.identifier} - {self.address}"
+        return f"{self.name} ({self.identifier})"
     
     class Meta:
         verbose_name = _('Stazione di Ricarica')

@@ -1,0 +1,408 @@
+<!-- templates/projects/project_timeline_detail.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Cronoprogramma | {{ project.name }} | CPO Planner{% endblock %}
+
+{% block extra_css %}
+<style>
+    .timeline {
+        position: relative;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .timeline-phase {
+        position: relative;
+        margin-bottom: 1.5rem;
+        padding-left: 3rem;
+        padding-bottom: 1.5rem;
+        border-left: 2px solid #e3e6f0;
+    }
+    
+    .timeline-phase:last-child {
+        border-left: none;
+        padding-bottom: 0;
+    }
+    
+    .timeline-phase:before {
+        content: '';
+        position: absolute;
+        left: -0.85rem;
+        top: 0;
+        width: 1.75rem;
+        height: 1.75rem;
+        border-radius: 50%;
+        background-color: #fff;
+        border: 3px solid #4e73df;
+    }
+    
+    .timeline-phase.completed:before {
+        background-color: #1cc88a;
+        border-color: #1cc88a;
+    }
+    
+    .timeline-phase.in-progress:before {
+        background-color: #4e73df;
+        border-color: #4e73df;
+    }
+    
+    .timeline-phase.delayed:before {
+        background-color: #e74a3b;
+        border-color: #e74a3b;
+    }
+    
+    .timeline-phase.future:before {
+        background-color: #f6c23e;
+        border-color: #f6c23e;
+    }
+    
+    .date-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-left: 0.5rem;
+    }
+    
+    .date-badge.past {
+        background-color: #e3e6f0;
+        color: #5a5c69;
+    }
+    
+    .date-badge.present {
+        background-color: #36b9cc;
+        color: #fff;
+    }
+    
+    .date-badge.future {
+        background-color: #f6c23e;
+        color: #fff;
+    }
+    
+    .gantt-chart {
+        height: 400px;
+        width: 100%;
+        overflow-x: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        Cronoprogramma: {{ project.name }}
+    </h1>
+    <div>
+        <a href="{% url 'projects:project_timeline_edit' project.id %}" class="d-none d-sm-inline-block btn btn-sm btn-warning shadow-sm mr-2">
+            <i class="fas fa-edit fa-sm text-white-50 mr-2"></i>Modifica Cronoprogramma
+        </a>
+        <a href="{% url 'projects:project_detail' project.id %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50 mr-2"></i>Torna al Progetto
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Timeline View -->
+    <div class="col-xl-5 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Fasi del Progetto</h6>
+            </div>
+            <div class="card-body">
+                <div class="timeline">
+                    <div class="timeline-phase {% if timeline.has_completed_planning %}completed{% elif timeline.get_current_phase == 'planning' %}in-progress{% elif timeline.is_delayed and timeline.planning_end < today %}delayed{% else %}future{% endif %}">
+                        <h5>
+                            Pianificazione
+                            <span class="date-badge {% if timeline.planning_end < today %}past{% elif timeline.planning_start <= today and timeline.planning_end >= today %}present{% else %}future{% endif %}">
+                                {{ timeline.planning_start|date:"d/m/Y" }} - {{ timeline.planning_end|date:"d/m/Y" }}
+                            </span>
+                        </h5>
+                        <p>Definizione del progetto, analisi di fattibilità, selezione delle località.</p>
+                    </div>
+                    
+                    <div class="timeline-phase {% if timeline.has_completed_permitting %}completed{% elif timeline.get_current_phase == 'permitting' %}in-progress{% elif timeline.is_delayed and timeline.permitting_end < today %}delayed{% else %}future{% endif %}">
+                        <h5>
+                            Permessi e Autorizzazioni
+                            <span class="date-badge {% if timeline.permitting_end < today %}past{% elif timeline.permitting_start <= today and timeline.permitting_end >= today %}present{% else %}future{% endif %}">
+                                {{ timeline.permitting_start|date:"d/m/Y" }} - {{ timeline.permitting_end|date:"d/m/Y" }}
+                            </span>
+                        </h5>
+                        <p>Richiesta e ottenimento dei permessi necessari dalle autorità locali.</p>
+                    </div>
+                    
+                    <div class="timeline-phase {% if timeline.has_completed_procurement %}completed{% elif timeline.get_current_phase == 'procurement' %}in-progress{% elif timeline.is_delayed and timeline.procurement_end < today %}delayed{% else %}future{% endif %}">
+                        <h5>
+                            Approvvigionamento
+                            <span class="date-badge {% if timeline.procurement_end < today %}past{% elif timeline.procurement_start <= today and timeline.procurement_end >= today %}present{% else %}future{% endif %}">
+                                {{ timeline.procurement_start|date:"d/m/Y" }} - {{ timeline.procurement_end|date:"d/m/Y" }}
+                            </span>
+                        </h5>
+                        <p>Acquisto delle stazioni di ricarica e del materiale necessario.</p>
+                    </div>
+                    
+                    <div class="timeline-phase {% if timeline.has_completed_installation %}completed{% elif timeline.get_current_phase == 'installation' %}in-progress{% elif timeline.is_delayed and timeline.installation_end < today %}delayed{% else %}future{% endif %}">
+                        <h5>
+                            Installazione
+                            <span class="date-badge {% if timeline.installation_end < today %}past{% elif timeline.installation_start <= today and timeline.installation_end >= today %}present{% else %}future{% endif %}">
+                                {{ timeline.installation_start|date:"d/m/Y" }} - {{ timeline.installation_end|date:"d/m/Y" }}
+                            </span>
+                        </h5>
+                        <p>Installazione delle stazioni di ricarica nei siti selezionati.</p>
+                    </div>
+                    
+                    <div class="timeline-phase {% if timeline.has_completed_testing %}completed{% elif timeline.get_current_phase == 'testing' %}in-progress{% elif timeline.is_delayed and timeline.testing_end < today %}delayed{% else %}future{% endif %}">
+                        <h5>
+                            Test e Collaudo
+                            <span class="date-badge {% if timeline.testing_end < today %}past{% elif timeline.testing_start <= today and timeline.testing_end >= today %}present{% else %}future{% endif %}">
+                                {{ timeline.testing_start|date:"d/m/Y" }} - {{ timeline.testing_end|date:"d/m/Y" }}
+                            </span>
+                        </h5>
+                        <p>Verifica del corretto funzionamento delle stazioni di ricarica.</p>
+                    </div>
+                    
+                    <div class="timeline-phase {% if today >= timeline.operation_start %}completed{% else %}future{% endif %}">
+                        <h5>
+                            Operatività
+                            <span class="date-badge {% if today >= timeline.operation_start %}present{% else %}future{% endif %}">
+                                {{ timeline.operation_start|date:"d/m/Y" }}
+                            </span>
+                        </h5>
+                        <p>Attivazione delle stazioni di ricarica e inizio operatività.</p>
+                    </div>
+                </div>
+                
+                {% if timeline.is_delayed %}
+                <div class="alert alert-danger mt-3">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    <strong>Attenzione:</strong> Il progetto presenta dei ritardi rispetto alla pianificazione.
+                </div>
+                {% endif %}
+                
+                {% if timeline.timeline_notes %}
+                <div class="card bg-light mt-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">Note</h6>
+                    </div>
+                    <div class="card-body">
+                        {{ timeline.timeline_notes }}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Gantt Chart -->
+    <div class="col-xl-7 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Diagramma Gantt</h6>
+            </div>
+            <div class="card-body">
+                <div class="gantt-chart" id="ganttChart"></div>
+            </div>
+        </div>
+        
+        <!-- Milestone e Punti Critici -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Milestone Critiche</h6>
+            </div>
+            <div class="card-body">
+                {% if timeline.critical_milestones %}
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Milestone</th>
+                                <th>Data</th>
+                                <th>Descrizione</th>
+                                <th>Stato</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for milestone in timeline.critical_milestones %}
+                            <tr>
+                                <td>{{ milestone.name }}</td>
+                                <td>{{ milestone.date }}</td>
+                                <td>{{ milestone.description }}</td>
+                                <td>
+                                    {% if milestone.completed %}
+                                    <span class="badge badge-success">Completata</span>
+                                    {% elif milestone.date < today %}
+                                    <span class="badge badge-danger">In Ritardo</span>
+                                    {% else %}
+                                    <span class="badge badge-warning">Programmata</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <p class="text-muted mb-0">Nessuna milestone critica definita</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stazioni Associate -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Stazioni di Ricarica - Avanzamento Installazione</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Stazione</th>
+                        <th>Indirizzo</th>
+                        <th>Stato</th>
+                        <th>Data Installazione</th>
+                        <th>Avanzamento</th>
+                        <th>Timeline</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for station in stations %}
+                    <tr>
+                        <td>{{ station.name }}</td>
+                        <td>{{ station.address }}</td>
+                        <td>
+                            {% if station.status == 'planned' %}
+                            <span class="badge badge-info">Pianificata</span>
+                            {% elif station.status == 'active' %}
+                            <span class="badge badge-success">Attiva</span>
+                            {% elif station.status == 'maintenance' %}
+                            <span class="badge badge-warning">Manutenzione</span>
+                            {% elif station.status == 'inactive' %}
+                            <span class="badge badge-danger">Inattiva</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ station.installation_date|date:"d/m/Y"|default:"Non installata" }}</td>
+                        <td>
+                            {% if station.timeline %}
+                            <div class="progress">
+                                <div class="progress-bar bg-{{ station.timeline.get_status_color }}" role="progressbar" 
+                                    style="width: {{ station.timeline.get_installation_progress }}%;" 
+                                    aria-valuenow="{{ station.timeline.get_installation_progress }}" aria-valuemin="0" aria-valuemax="100">
+                                    {{ station.timeline.get_installation_progress }}%
+                                </div>
+                            </div>
+                            {% else %}
+                            <span class="text-muted">Nessuna timeline</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'projects:station_timeline_detail' project.id station.id %}" class="btn btn-sm btn-info">
+                                <i class="fas fa-tasks mr-1"></i> Timeline
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center">Nessuna stazione di ricarica associata</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.0/dist/frappe-gantt.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Trasforma i dati del cronoprogramma in formato per Frappe Gantt
+    const timelineData = JSON.parse('{{ timeline_json|safe }}');
+    
+    // Crea le tasks per Gantt
+    const tasks = [
+        {
+            id: 'planning',
+            name: 'Pianificazione',
+            start: new Date(timelineData.planning.start),
+            end: new Date(timelineData.planning.end),
+            progress: 100,
+            dependencies: ''
+        },
+        {
+            id: 'permitting',
+            name: 'Permessi',
+            start: new Date(timelineData.permitting.start),
+            end: new Date(timelineData.permitting.end),
+            progress: 100,
+            dependencies: 'planning'
+        },
+        {
+        id: 'procurement',
+        name: 'Approvvigionamento',
+        start: new Date(timelineData.procurement.start),
+        end: new Date(timelineData.procurement.end),
+        progress: 75,
+        dependencies: 'permitting'
+    },
+    {
+        id: 'installation',
+        name: 'Installazione',
+        start: new Date(timelineData.installation.start),
+        end: new Date(timelineData.installation.end),
+        progress: 50,
+        dependencies: 'procurement'
+    },
+    {
+        id: 'testing',
+        name: 'Test e Collaudo',
+        start: new Date(timelineData.testing.start),
+        end: new Date(timelineData.testing.end),
+        progress: 0,
+        dependencies: 'installation'
+    },
+    {
+        id: 'operation',
+        name: 'Operatività',
+        start: new Date(timelineData.operation.start),
+        end: new Date(new Date(timelineData.operation.start).setMonth(new Date(timelineData.operation.start).getMonth() + 1)),
+        progress: 0,
+        dependencies: 'testing'
+    }
+];
+
+// Inizializza il Gantt chart
+const gantt = new Gantt("#ganttChart", tasks, {
+    header_height: 50,
+    column_width: 30,
+    step: 24,
+    view_modes: ['Quarter Day', 'Half Day', 'Day', 'Week', 'Month'],
+    bar_height: 20,
+    bar_corner_radius: 3,
+    arrow_curve: 5,
+    padding: 18,
+    view_mode: 'Month',
+    date_format: 'YYYY-MM-DD',
+    custom_popup_html: function(task) {
+        return `
+            <div class="details-container">
+                <h5>${task.name}</h5>
+                <p>Da: ${task._start.toLocaleDateString()}</p>
+                <p>A: ${task._end.toLocaleDateString()}</p>
+                <p>Avanzamento: ${task.progress}%</p>
+            </div>
+        `;
+    }
+});
+});
+</script>
+{% endblock %}

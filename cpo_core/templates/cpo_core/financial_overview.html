@@ -1,0 +1,161 @@
+{% extends 'layouts/dashboard_base.html' %}
+{% load static %}
+
+{% block title %}Panoramica Finanziaria - CPO Planner{% endblock %}
+
+{% block stats %}
+    <!-- Progetti con Proiezioni Card -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        {% include "components/stats_card.html" with title="Progetti" value=projects_count icon="fas fa-project-diagram" color="primary" %}
+    </div>
+
+    <!-- Investimento Totale Card -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        {% include "components/stats_card.html" with title="Investimento Totale" value=total_investment|floatformat:2 icon="fas fa-money-bill-wave" color="success" %}
+    </div>
+
+    <!-- ROI Medio Card -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        {% include "components/stats_card.html" with title="ROI Medio" value=avg_roi|floatformat:2|add:"%" icon="fas fa-percent" color="info" %}
+    </div>
+
+    <!-- Payback Medio Card -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        {% include "components/stats_card.html" with title="Payback Medio" value=avg_payback|floatformat:2|add:" anni" icon="fas fa-calendar-alt" color="warning" %}
+    </div>
+{% endblock %}
+
+{% block charts %}
+    <!-- Proiezioni Annuali Chart -->
+    <div class="col-lg-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Proiezioni Finanziarie Annuali</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-area">
+                    <canvas id="yearlySummaryChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block tables %}
+    <!-- Progetti con miglior ROI -->
+    <div class="col-lg-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Progetti con ROI più alto</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Progetto</th>
+                                <th>Investimento</th>
+                                <th>ROI</th>
+                                <th>Payback</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for project in top_roi_projects %}
+                            <tr>
+                                <td>{{ project.name }}</td>
+                                <td>€ {{ project.financial_projection.total_investment|floatformat:2 }}</td>
+                                <td>{{ project.financial_projection.expected_roi|floatformat:2 }}%</td>
+                                <td>{{ project.financial_projection.expected_payback_years|floatformat:2 }} anni</td>
+                                <td>
+                                    <a href="{% url 'cpo_core:project_financial_detail' project.id %}" class="btn btn-info btn-sm">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">Nessun progetto con proiezioni finanziarie presente</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block dashboard_js %}
+<script>
+    // Setup chart data from Django context
+    var yearlyData = {{ yearly_chart_data|safe }};
+    
+    // Setup years, revenue and profit arrays for the chart
+    var years = [];
+    var revenues = [];
+    var expenses = [];
+    var profits = [];
+    
+    // Populate the arrays from the data
+    yearlyData.forEach(function(item) {
+        years.push(item.year);
+        revenues.push(item.revenue);
+        expenses.push(item.expenses);
+        profits.push(item.profit);
+    });
+    
+    // Create the chart
+    var ctx = document.getElementById('yearlySummaryChart').getContext('2d');
+    var myChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: years,
+            datasets: [
+                {
+                    label: 'Ricavi',
+                    data: revenues,
+                    backgroundColor: 'rgba(28, 200, 138, 0.5)',
+                    borderColor: 'rgba(28, 200, 138, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Costi',
+                    data: expenses,
+                    backgroundColor: 'rgba(231, 74, 59, 0.5)',
+                    borderColor: 'rgba(231, 74, 59, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Profitto',
+                    data: profits,
+                    backgroundColor: 'rgba(54, 185, 204, 0.5)',
+                    borderColor: 'rgba(54, 185, 204, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true,
+                        callback: function(value) {
+                            return '€' + value.toLocaleString();
+                        }
+                    }
+                }]
+            },
+            tooltips: {
+                callbacks: {
+                    label: function(tooltipItem, data) {
+                        return data.datasets[tooltipItem.datasetIndex].label + ': €' + tooltipItem.yLabel.toLocaleString();
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

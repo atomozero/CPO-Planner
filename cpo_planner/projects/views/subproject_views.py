@@ -6,9 +6,10 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils.translation import gettext_lazy as _
 
-from ..models.project import Project
-from ..models.subproject import SubProject
-from ..models.municipality import Municipality
+# Importa dai modelli consolidati
+from cpo_core.models.project import Project
+from cpo_core.models.subproject import SubProject
+from cpo_core.models.municipality import Municipality
 from ..forms.subproject_forms import SubProjectForm
 
 class SubProjectDetailView(LoginRequiredMixin, DetailView):
@@ -19,7 +20,8 @@ class SubProjectDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['project'] = self.object.project
-        context['stations'] = self.object.chargingstation_set.all()
+        # Rimuoviamo la riga che causa l'errore - il SubProject non ha stazioni collegate direttamente
+        # ma è lui stesso una stazione di ricarica nel contesto dell'applicazione
         return context
 
 class SubProjectCreateView(LoginRequiredMixin, CreateView):
@@ -36,13 +38,51 @@ class SubProjectCreateView(LoginRequiredMixin, CreateView):
         context = super().get_context_data(**kwargs)
         project_id = self.kwargs.get('project_id')
         context['project'] = get_object_or_404(Project, pk=project_id)
-        context['title'] = _('Crea Nuovo Sotto-Progetto')
+        context['title'] = _('Crea Nuova Stazione di Ricarica')
+        
+        # Aggiungi i template di stazioni disponibili
+        from infrastructure.models import ChargingStationTemplate
+        templates = ChargingStationTemplate.objects.all().order_by('brand', 'model')
+        # Stampa debug dei template per aiutare la risoluzione dei problemi
+        debug_info = []
+        for template in templates:
+            debug_info.append({
+                'id': template.id,
+                'brand': template.brand,
+                'model': template.model,
+                'power_kw': template.power_kw,
+                'ground_area': template.ground_area
+            })
+        print("DEBUG - Templates disponibili:", debug_info)
+        context['charging_templates'] = templates
         return context
     
     def form_valid(self, form):
+        # Imposta il progetto
         form.instance.project_id = self.kwargs.get('project_id')
-        messages.success(self.request, _('Sotto-progetto creato con successo!'))
-        return super().form_valid(form)
+        project = get_object_or_404(Project, pk=self.kwargs.get('project_id'))
+        
+        # Se use_project_completion_date è selezionato, imposta la data di completamento
+        if form.cleaned_data.get('use_project_completion_date'):
+            form.instance.planned_completion_date = project.expected_completion_date
+        
+        # Imposta il comune del sottoprogetto uguale a quello specificato nel progetto
+        project = get_object_or_404(Project, pk=self.kwargs.get('project_id'))
+        # Ottieni il comune del progetto dal campo region (che contiene il nome del comune)
+        if project.region:
+            # Cerca il comune con lo stesso nome
+            municipality = Municipality.objects.filter(name=project.region).first()
+            if municipality:
+                form.instance.municipality = municipality
+        
+        # Salva l'oggetto
+        response = super().form_valid(form)
+        
+        # Per ora rimuoviamo la gestione delle immagini
+        # La implementeremo in seguito quando lavoreremo sul template
+        
+        messages.success(self.request, _('Stazione di ricarica creata con successo!'))
+        return response
     
     def get_success_url(self):
         return reverse_lazy('projects:project_detail', kwargs={'pk': self.kwargs.get('project_id')})
@@ -56,23 +96,137 @@ class SubProjectUpdateView(LoginRequiredMixin, UpdateView):
         kwargs = super().get_form_kwargs()
         kwargs['project_id'] = self.object.project_id
         return kwargs
+        
+    def form_valid(self, form):
+        # Ottieni il progetto associato al sottoprogetto
+        project = self.object.project
+        
+        # Imposta il comune del sottoprogetto uguale a quello specificato nel progetto
+        if project.region:
+            municipality = Municipality.objects.filter(name=project.region).first()
+            if municipality:
+                form.instance.municipality = municipality
+        
+        messages.success(self.request, _('Stazione di ricarica aggiornata con successo!'))
+        return super().form_valid(form)
+    
+    def post(self, request, *args, **kwargs):
+        # Gestisci richieste AJAX
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' and 'status' in request.POST:
+            # Ottieni l'oggetto da aggiornare
+            self.object = self.get_object()
+            
+            # Crea un form con solo il campo status
+            from django.forms import modelform_factory
+            ModelForm = modelform_factory(self.model, fields=['status'])
+            form = ModelForm(request.POST, instance=self.object)
+            
+            if form.is_valid():
+                # Imposta i campi di tracciamento
+                from django.utils import timezone
+                self.object.status_changed_date = timezone.now()
+                self.object.status_changed_by = request.user if request.user.is_authenticated else None
+                
+                # Imposta lo stato e salva
+                self.object.status = form.cleaned_data['status']
+                self.object.save()
+                
+                # Restituisci una risposta JSON
+                from django.http import JsonResponse
+                return JsonResponse({
+                    'success': True,
+                    'status': self.object.get_status_display()
+                })
+            else:
+                from django.http import JsonResponse
+                return JsonResponse({
+                    'success': False,
+                    'errors': form.errors
+                }, status=400)
+                
+        return super().post(request, *args, **kwargs)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['project'] = self.object.project
         context['title'] = _('Modifica Sotto-Progetto')
+        
+        # Se siamo in modalità aggiornamento rapido dello stato
+        if 'status' in self.request.GET or (hasattr(self, 'fields') and self.fields == ['status']):
+            context['status_only'] = True
+            context['status_choices'] = SubProject.STATUS_CHOICES
+            context['title'] = _('Aggiorna Stato')
+            
         return context
     
+    def get_form_class(self):
+        # Gestisci richieste AJAX per aggiornamento dello stato
+        is_ajax_status_update = (
+            self.request.method == 'POST' and
+            self.request.headers.get('X-Requested-With') == 'XMLHttpRequest' and
+            'status' in self.request.POST and 
+            len(self.request.POST) == 1
+        )
+        
+        # Se viene specificato fields direttamente nella URL conf, usa un ModelForm di base
+        if hasattr(self, 'fields') and self.fields:
+            from django.forms import modelform_factory
+            return modelform_factory(self.model, fields=self.fields)
+        # Se la richiesta è un aggiornamento di stato via AJAX
+        elif is_ajax_status_update:
+            from django.forms import modelform_factory
+            return modelform_factory(self.model, fields=['status'])
+        # Se il parametro status è presente nella richiesta POST normale, crea un form solo per lo stato
+        elif self.request.method == 'POST' and 'status' in self.request.POST and len(self.request.POST) <= 2:
+            # 2 perché abbiamo csrfmiddlewaretoken e status
+            from django.forms import modelform_factory
+            return modelform_factory(self.model, fields=['status'])
+        # Altrimenti usa il form completo
+        return self.form_class
+    
     def form_valid(self, form):
+        # Se la richiesta è AJAX e contiene solo lo status
+        is_ajax_status_update = self.request.headers.get('X-Requested-With') == 'XMLHttpRequest' and len(self.request.POST) == 1 and 'status' in self.request.POST
+        
+        # Se stiamo aggiornando lo stato (o tramite form o tramite AJAX)
+        if 'status' in form.changed_data or is_ajax_status_update:
+            from django.utils import timezone
+            # Imposta la data di modifica dello stato
+            form.instance.status_changed_date = timezone.now()
+            # Imposta l'utente che ha modificato lo stato
+            if self.request.user.is_authenticated:
+                form.instance.status_changed_by = self.request.user
+        
+        # Gestione speciale per richieste AJAX
+        if is_ajax_status_update:
+            from django.http import JsonResponse
+            self.object = form.save()
+            return JsonResponse({'success': True, 'status': form.instance.get_status_display()})
+        
+        # Messaggio di successo per richieste normali
         messages.success(self.request, _('Sotto-progetto aggiornato con successo!'))
+        
+        # Se è stato passato il parametro 'next' nell'URL, redirect a quella pagina
+        if 'next' in self.request.GET:
+            self.success_url = self.request.GET.get('next')
+            
         return super().form_valid(form)
     
     def get_success_url(self):
+        if hasattr(self, 'success_url') and self.success_url:
+            return self.success_url
+        
+        # Se l'aggiornamento è stato solo per lo stato e siamo venuti dalla pagina del progetto
+        referer = self.request.META.get('HTTP_REFERER', '')
+        if 'status' in self.request.GET and '/projects/' in referer and '/subproject/' not in referer:
+            project_id = self.object.project_id
+            return reverse_lazy('projects:project_detail', kwargs={'pk': project_id})
+            
         return reverse_lazy('projects:subproject_detail', kwargs={'pk': self.object.pk})
 
 class SubProjectDeleteView(LoginRequiredMixin, DeleteView):
     model = SubProject
-    template_name = 'projects/subproject_confirm_delete.html'
+    template_name = 'projects/subproject_delete.html'
     
     def get_success_url(self):
         return reverse_lazy('projects:project_detail', kwargs={'pk': self.object.project.pk})

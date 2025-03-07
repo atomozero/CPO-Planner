@@ -1,0 +1,428 @@
+{% extends 'layouts/dashboard_base.html' %}
+{% load humanize %}
+{% load math_filters %}
+
+{% block title %}Gestione Dati Tecnici | CPO Planner{% endblock %}
+
+{% block extra_css %}
+<style>
+    .config-card {
+        transition: transform 0.2s;
+    }
+    .config-card:hover {
+        transform: translateY(-5px);
+    }
+    .data-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #858796;
+    }
+    .data-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #5a5c69;
+    }
+    .price-tier {
+        padding: 15px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+    }
+    .tier-1 { background-color: #e3f2fd; }
+    .tier-2 { background-color: #e8f5e9; }
+    .tier-3 { background-color: #fff3e0; }
+    .tier-4 { background-color: #ffebee; }
+    .tier-5 { background-color: #ede7f6; }
+    
+    .card-config-icon {
+        font-size: 3rem;
+        opacity: 0.7;
+    }
+</style>
+{% endblock %}
+
+{% block stats %}
+    <!-- Tariffe Elettriche -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2 config-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Tariffe Elettriche</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_electricity_tariffs.count }} Attive</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-bolt fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <a href="{% url 'infrastructure:tariff-list' %}" class="btn btn-sm btn-primary">Gestisci</a>
+                    <a href="{% url 'infrastructure:tariff-create' %}" class="btn btn-sm btn-outline-primary">Aggiungi</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Commissioni di Gestione -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2 config-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Commissioni di Gestione</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_management_fees.count }} Attive</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-euro-sign fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <a href="{% url 'infrastructure:fee-list' %}" class="btn btn-sm btn-success">Gestisci</a>
+                    <a href="{% url 'infrastructure:fee-create' %}" class="btn btn-sm btn-outline-success">Aggiungi</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profili di Utilizzo -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2 config-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Profili di Utilizzo</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ usage_profiles_count }} Profili</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <a href="{% url 'infrastructure:profile-list' %}" class="btn btn-sm btn-info">Gestisci</a>
+                    <a href="{% url 'infrastructure:profile-create' %}" class="btn btn-sm btn-outline-info">Aggiungi</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template Stazioni -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2 config-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Template Stazioni</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ station_templates_count }} Template</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-charging-station fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <a href="{% url 'infrastructure:template-list' %}" class="btn btn-sm btn-warning">Gestisci</a>
+                    <a href="{% url 'infrastructure:template-create' %}" class="btn btn-sm btn-outline-warning">Aggiungi</a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block charts %}
+    <!-- Tariffe e Commissioni -->
+    <div class="col-xl-6 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Costi & Prezzi per kWh</h6>
+            </div>
+            <div class="card-body">
+                {% if active_electricity_tariffs and active_management_fees %}
+                    <p class="mb-4">Confronto tra costi e prezzi per diverse fasce di potenza</p>
+                    <div class="price-tier tier-1">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="data-label">AC fino a 7kW</div>
+                                <div class="data-value">
+                                    Costo: €{{ active_electricity_tariffs.first.cost_tier1 }} /kWh | 
+                                    Prezzo: €{{ active_management_fees.first.customer_price_tier1 }} /kWh
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="data-label">Margine</div>
+                                <div class="data-value">
+                                    €{{ active_management_fees.first.customer_price_tier1|sub:active_electricity_tariffs.first.cost_tier1|floatformat:4 }} /kWh 
+                                    ({{ active_management_fees.first.customer_price_tier1|sub:active_electricity_tariffs.first.cost_tier1|div:active_electricity_tariffs.first.cost_tier1|mul:100|floatformat:0 }}%)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="price-tier tier-2">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="data-label">AC fino a 22kW</div>
+                                <div class="data-value">
+                                    Costo: €{{ active_electricity_tariffs.first.cost_tier2 }} /kWh | 
+                                    Prezzo: €{{ active_management_fees.first.customer_price_tier2 }} /kWh
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="data-label">Margine</div>
+                                <div class="data-value">
+                                    €{{ active_management_fees.first.customer_price_tier2|sub:active_electricity_tariffs.first.cost_tier2|floatformat:4 }} /kWh 
+                                    ({{ active_management_fees.first.customer_price_tier2|sub:active_electricity_tariffs.first.cost_tier2|div:active_electricity_tariffs.first.cost_tier2|mul:100|floatformat:0 }}%)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="price-tier tier-3">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="data-label">DC fino a 50kW</div>
+                                <div class="data-value">
+                                    Costo: €{{ active_electricity_tariffs.first.cost_tier3 }} /kWh | 
+                                    Prezzo: €{{ active_management_fees.first.customer_price_tier3 }} /kWh
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="data-label">Margine</div>
+                                <div class="data-value">
+                                    €{{ active_management_fees.first.customer_price_tier3|sub:active_electricity_tariffs.first.cost_tier3|floatformat:4 }} /kWh 
+                                    ({{ active_management_fees.first.customer_price_tier3|sub:active_electricity_tariffs.first.cost_tier3|div:active_electricity_tariffs.first.cost_tier3|mul:100|floatformat:0 }}%)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="price-tier tier-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="data-label">DC fino a 150kW</div>
+                                <div class="data-value">
+                                    Costo: €{{ active_electricity_tariffs.first.cost_tier4 }} /kWh | 
+                                    Prezzo: €{{ active_management_fees.first.customer_price_tier4 }} /kWh
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="data-label">Margine</div>
+                                <div class="data-value">
+                                    €{{ active_management_fees.first.customer_price_tier4|sub:active_electricity_tariffs.first.cost_tier4|floatformat:4 }} /kWh 
+                                    ({{ active_management_fees.first.customer_price_tier4|sub:active_electricity_tariffs.first.cost_tier4|div:active_electricity_tariffs.first.cost_tier4|mul:100|floatformat:0 }}%)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="price-tier tier-5">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="data-label">DC oltre 150kW</div>
+                                <div class="data-value">
+                                    Costo: €{{ active_electricity_tariffs.first.cost_tier5 }} /kWh | 
+                                    Prezzo: €{{ active_management_fees.first.customer_price_tier5 }} /kWh
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="data-label">Margine</div>
+                                <div class="data-value">
+                                    €{{ active_management_fees.first.customer_price_tier5|sub:active_electricity_tariffs.first.cost_tier5|floatformat:4 }} /kWh 
+                                    ({{ active_management_fees.first.customer_price_tier5|sub:active_electricity_tariffs.first.cost_tier5|div:active_electricity_tariffs.first.cost_tier5|mul:100|floatformat:0 }}%)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        Nessuna configurazione tariffaria attiva. 
+                        <a href="{% url 'infrastructure:tariff-create' %}" class="alert-link">Crea una tariffa elettrica</a> e 
+                        <a href="{% url 'infrastructure:fee-create' %}" class="alert-link">configura le commissioni</a> per visualizzare i margini.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Statistiche Stazioni -->
+    <div class="col-xl-6 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Statistiche Stazioni di Ricarica</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead>
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Numero</th>
+                                <th>Potenza Media</th>
+                                <th>Potenza Totale</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for type in station_types %}
+                            <tr>
+                                <td>
+                                    {% if type.connection_type == 'ac' %}
+                                        <span class="badge badge-primary">AC</span> Corrente Alternata
+                                    {% elif type.connection_type == 'dc' %}
+                                        <span class="badge badge-danger">DC</span> Corrente Continua
+                                    {% elif type.connection_type == 'hybrid' %}
+                                        <span class="badge badge-warning">HYBRID</span> Ibrido AC/DC
+                                    {% else %}
+                                        {{ type.connection_type }}
+                                    {% endif %}
+                                </td>
+                                <td>{{ type.count }}</td>
+                                <td>{{ type.avg_power|floatformat:1 }} kW</td>
+                                <td>{{ type.total_power|floatformat:1 }} kW</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center">Nessuna stazione configurata</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-4">
+                    {% if total_monthly_revenue > 0 %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="data-label">Ricavo Mensile Stimato</div>
+                            <div class="data-value">€ {{ total_monthly_revenue|floatformat:2|intcomma }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="data-label">Ricavo Annuale Stimato</div>
+                            <div class="data-value">€ {{ total_annual_revenue|floatformat:2|intcomma }}</div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> 
+                        Configura profili di utilizzo e tariffe per visualizzare i ricavi stimati.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block tables %}
+    <!-- Configurazioni Rapide -->
+    <div class="row">
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card shadow h-100 config-card">
+                <div class="card-body text-center">
+                    <div class="card-config-icon text-primary mb-3">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                    </div>
+                    <h4>Tariffe Elettriche</h4>
+                    <p>Configura i costi dell'energia per fasce di potenza</p>
+                    <a href="{% url 'infrastructure:tariff-list' %}" class="btn btn-primary btn-block">Gestisci Tariffe</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card shadow h-100 config-card">
+                <div class="card-body text-center">
+                    <div class="card-config-icon text-success mb-3">
+                        <i class="fas fa-percentage"></i>
+                    </div>
+                    <h4>Commissioni</h4>
+                    <p>Imposta le commissioni di gestione e i prezzi cliente</p>
+                    <a href="{% url 'infrastructure:fee-list' %}" class="btn btn-success btn-block">Gestisci Commissioni</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card shadow h-100 config-card">
+                <div class="card-body text-center">
+                    <div class="card-config-icon text-info mb-3">
+                        <i class="fas fa-user-clock"></i>
+                    </div>
+                    <h4>Profili di Utilizzo</h4>
+                    <p>Configura modelli di utilizzo delle stazioni</p>
+                    <a href="{% url 'infrastructure:profile-list' %}" class="btn btn-info btn-block">Gestisci Profili</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card shadow h-100 config-card">
+                <div class="card-body text-center">
+                    <div class="card-config-icon text-warning mb-3">
+                        <i class="fas fa-charging-station"></i>
+                    </div>
+                    <h4>Catalogo Stazioni</h4>
+                    <p>Gestisci il catalogo delle stazioni di ricarica</p>
+                    <a href="{% url 'infrastructure:template-list' %}" class="btn btn-warning btn-block">Gestisci Catalogo</a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block additional_content %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Informazioni Tecniche</h6>
+    </div>
+    <div class="card-body">
+        <p>Questa sezione permette di configurare tutti i parametri tecnici ed economici relativi alle stazioni di ricarica.</p>
+        
+        <div class="row mt-4">
+            <div class="col-md-4">
+                <h5 class="font-weight-bold">Tariffe & Commissioni</h5>
+                <ul>
+                    <li>Configura i costi di fornitura energia per diverse fasce di potenza</li>
+                    <li>Imposta i prezzi applicati ai clienti finali</li>
+                    <li>Definisci le commissioni fisse e percentuali per sessione</li>
+                    <li>Analizza i margini potenziali per kWh erogato</li>
+                </ul>
+            </div>
+            
+            <div class="col-md-4">
+                <h5 class="font-weight-bold">Stazioni & Profili</h5>
+                <ul>
+                    <li>Crea template di stazioni di ricarica riutilizzabili</li>
+                    <li>Configura profili di utilizzo realistici per simulare i ricavi</li>
+                    <li>Definisci parametri di utilizzo per diverse tipologie di location</li>
+                    <li>Analizza i costi operativi e i ricavi potenziali</li>
+                </ul>
+            </div>
+            
+            <div class="col-md-4">
+                <h5 class="font-weight-bold">Dati PUN & Proiezioni</h5>
+                <ul>
+                    <li><a href="{% url 'infrastructure:pun-data-list' %}">Visualizza dati PUN</a> per l'energia nelle fasce F1, F2, F3</li>
+                    <li><a href="{% url 'infrastructure:pun-data-download' %}">Scarica dati PUN</a> dal GME per tariffe indicizzate</li>
+                    <li><a href="{% url 'infrastructure:energy-projection-list' %}">Genera proiezioni</a> basate su inflazione</li>
+                    <li>Usa i dati nelle simulazioni finanziarie multi-anno</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block dashboard_js %}
+<script>
+    // Funzioni di supporto per il calcolo dei margini
+    function calculateMargin(cost, price) {
+        return price - cost;
+    }
+    
+    function calculateMarginPercentage(cost, price) {
+        return ((price - cost) / cost) * 100;
+    }
+</script>
+{% endblock %}

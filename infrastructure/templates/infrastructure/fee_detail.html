@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load humanize %}
+
+{% block title %}{{ fee.name }} | Configurazione Tariffaria{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ fee.name }}</h1>
+        <div>
+            <a href="{% url 'infrastructure:fee-update' fee.id %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-edit fa-sm text-white-50 mr-1"></i> {% trans "Modifica" %}
+            </a>
+            <a href="{% url 'infrastructure:fee-list' %}" class="btn btn-secondary btn-sm ml-2">
+                <i class="fas fa-list fa-sm text-white-50 mr-1"></i> {% trans "Tutte le configurazioni" %}
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Informazioni di base -->
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                {% trans "Informazioni di base" %}
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ fee.name }}</div>
+                            <div class="mt-2">
+                                {% if fee.active %}
+                                    <span class="badge badge-success">{% trans "Attiva" %}</span>
+                                {% else %}
+                                    <span class="badge badge-secondary">{% trans "Inattiva" %}</span>
+                                {% endif %}
+                            </div>
+                            <div class="mt-2 small">
+                                <strong>{% trans "Validità" %}:</strong> 
+                                {% if fee.valid_to %}
+                                    {{ fee.valid_from|date:"d/m/Y" }} - {{ fee.valid_to|date:"d/m/Y" }}
+                                {% else %}
+                                    {% trans "Dal" %} {{ fee.valid_from|date:"d/m/Y" }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-coins fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Commissioni di gestione -->
+        <div class="col-xl-8 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                {% trans "Commissioni di gestione" %}
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-4">
+                                    <div class="small text-gray-600">{% trans "Commissione per sessione" %}</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ fee.session_fee|floatformat:2 }} €</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="small text-gray-600">{% trans "Commissione percentuale" %}</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ fee.percentage_fee|floatformat:2 }}%</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="small text-gray-600">{% trans "Canone mensile" %}</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ fee.monthly_fee|floatformat:2 }} €</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-percentage fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Prezzi per potenza -->
+        <div class="col-xl-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">{% trans "Prezzi per il cliente finale" %}</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>{% trans "Tipo di potenza" %}</th>
+                                    <th>{% trans "Prezzo cliente (€/kWh)" %}</th>
+                                    {% if active_tariff %}
+                                    <th>{% trans "Costo energia (€/kWh)" %}</th>
+                                    <th>{% trans "Margine (€/kWh)" %}</th>
+                                    <th>{% trans "Margine (%)" %}</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>AC ≤ 22kW</td>
+                                    <td><strong>{{ fee.customer_price_tier2 }} €/kWh</strong></td>
+                                    {% if margin_examples.1 %}
+                                    <td>{{ margin_examples.1.cost|floatformat:4 }} €</td>
+                                    <td>{{ margin_examples.1.margin|floatformat:4 }} €</td>
+                                    <td>{{ margin_examples.1.margin_percentage|floatformat:1 }}%</td>
+                                    {% endif %}
+                                </tr>
+                                <tr>
+                                    <td>DC ≤ 50kW</td>
+                                    <td><strong>{{ fee.customer_price_tier3 }} €/kWh</strong></td>
+                                    {% if margin_examples.2 %}
+                                    <td>{{ margin_examples.2.cost|floatformat:4 }} €</td>
+                                    <td>{{ margin_examples.2.margin|floatformat:4 }} €</td>
+                                    <td>{{ margin_examples.2.margin_percentage|floatformat:1 }}%</td>
+                                    {% endif %}
+                                </tr>
+                                <tr>
+                                    <td>DC ≤ 150kW</td>
+                                    <td><strong>{{ fee.customer_price_tier4 }} €/kWh</strong></td>
+                                    {% if margin_examples.3 %}
+                                    <td>{{ margin_examples.3.cost|floatformat:4 }} €</td>
+                                    <td>{{ margin_examples.3.margin|floatformat:4 }} €</td>
+                                    <td>{{ margin_examples.3.margin_percentage|floatformat:1 }}%</td>
+                                    {% endif %}
+                                </tr>
+                                <tr>
+                                    <td>DC > 150kW</td>
+                                    <td><strong>{{ fee.customer_price_tier5 }} €/kWh</strong></td>
+                                    {% if margin_examples.4 %}
+                                    <td>{{ margin_examples.4.cost|floatformat:4 }} €</td>
+                                    <td>{{ margin_examples.4.margin|floatformat:4 }} €</td>
+                                    <td>{{ margin_examples.4.margin_percentage|floatformat:1 }}%</td>
+                                    {% endif %}
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    {% if active_tariff %}
+                    <div class="alert alert-info mt-3">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        {% trans "I margini sono calcolati utilizzando la tariffa elettrica attiva:" %} <strong>{{ active_tariff.name }}</strong>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning mt-3">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        {% trans "Nessuna tariffa elettrica attiva trovata. Attiva una tariffa per visualizzare i margini." %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if fee.notes %}
+    <div class="row">
+        <div class="col-xl-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">{% trans "Note" %}</h6>
+                </div>
+                <div class="card-body">
+                    <p>{{ fee.notes|linebreaks }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

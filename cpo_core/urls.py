@@ -9,6 +9,8 @@ from .views import (
     MunicipalityListView, ChargingStationListView, MunicipalityCreateView
 )
 
+app_name = 'cpo_core'
+
 urlpatterns = [
     # Dashboard
     path('', views.dashboard, name='dashboard'),
@@ -20,22 +22,17 @@ urlpatterns = [
     path('organizations/<int:pk>/edit/', OrganizationUpdateView.as_view(), name='organization_update'),
     path('organizations/<int:pk>/delete/', OrganizationDeleteView.as_view(), name='organization_delete'),
     
-    # Progetti
-    path('projects/', ProjectListView.as_view(), name='project_list'),
-    path('projects/<int:pk>/', ProjectDetailView.as_view(), name='project_detail'),
-    path('projects/new/', ProjectCreateView.as_view(), name='project_create'),
-    path('projects/<int:pk>/edit/', ProjectUpdateView.as_view(), name='project_update'),
-    path('projects/<int:pk>/delete/', ProjectDeleteView.as_view(), name='project_delete'),
+    # Progetti (rimossi per evitare conflitti con cpo_planner.projects)
+    # Questi URL sono ora gestiti da cpo_planner.projects.urls
     
     # Proiezioni finanziarie
-    path('financial/', views.financial_overview, name='financial_overview'),
-    path('financial/project/<int:pk>/', views.project_financial_detail, name='project_financial_detail'),
-    path('financial/project/<int:project_id>/create/', views.financial_projection_create, name='financial_projection_create'),
-    path('financial/projection/<int:pk>/update/', views.financial_projection_update, name='financial_projection_update'),
-    path('financial/roi-calculator/', views.roi_calculator, name='roi_calculator'),
+    path('financial-overview/', views.financial_overview, name='financial_overview'),
+    path('financial-project/<int:pk>/', views.project_financial_detail, name='project_financial_detail'),
+    path('financial-project/<int:project_id>/create/', views.financial_projection_create, name='financial_projection_create'),
+    path('financial-projection/<int:pk>/update/', views.financial_projection_update, name='financial_projection_update'),
+    path('financial-roi-calculator/', views.roi_calculator, name='roi_calculator'),
     
     # Comuni
-    path('municipalities/', MunicipalityListView.as_view(), name='municipality_list'),
     path('municipalities/', MunicipalityListView.as_view(), name='municipality_list'),
     path('municipalities/add/', MunicipalityCreateView.as_view(), name='municipality_create'),
 

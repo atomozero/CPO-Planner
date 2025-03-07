@@ -55,6 +55,9 @@
         {% endif %}
     </h1>
     <div>
+        <a href="{% url 'projects:station_charger_list' charging_station_id=station.id %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm mr-2">
+            <i class="fas fa-charging-station fa-sm text-white-50 mr-2"></i>Gestisci Colonnine
+        </a>
         <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-warning shadow-sm mr-2">
             <i class="fas fa-edit fa-sm text-white-50 mr-2"></i>Modifica
         </a>

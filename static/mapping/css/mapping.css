@@ -1,0 +1,65 @@
+/* Stili per la funzionalità di mappatura */
+
+/* Popup */
+.map-popup {
+    padding: 5px;
+    max-width: 300px;
+}
+
+.map-popup h5 {
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.map-popup .badge {
+    padding: 5px 8px;
+    font-size: 85%;
+}
+
+/* Stili per i controlli di MapBox */
+.mapboxgl-ctrl-top-right {
+    margin-top: 10px;
+}
+
+.mapboxgl-ctrl-group {
+    margin-bottom: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.mapboxgl-ctrl-geocoder {
+    min-width: 300px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+/* Stili per il disegno sulla mappa */
+.mapbox-gl-draw_ctrl-draw-btn {
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+/* Mappa a schermo intero */
+.mapboxgl-canvas-container.mapboxgl-interactive {
+    cursor: default;
+}
+
+/* Badge status */
+.badge-primary {
+    background-color: #4e73df;
+}
+
+.badge-success {
+    background-color: #1cc88a;
+}
+
+.badge-warning {
+    background-color: #f6c23e;
+}
+
+.badge-danger {
+    background-color: #e74a3b;
+}
+
+.badge-light {
+    background-color: #f8f9fc;
+    color: #333;
+}

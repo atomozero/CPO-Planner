@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if form.instance.pk %}{% trans "Modifica" %}{% else %}{% trans "Nuovo" %}{% endif %} Template Stazione{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">
+        {% if form.instance.pk %}
+            {% trans "Modifica Template Stazione" %}: {{ form.instance.name }}
+        {% else %}
+            {% trans "Nuovo Template Stazione di Ricarica" %}
+        {% endif %}
+    </h1>
+    
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        {% if form.instance.pk %}
+                            {% trans "Modifica dati template" %}
+                        {% else %}
+                            {% trans "Inserisci dati template" %}
+                        {% endif %}
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5 class="text-primary mb-3">{% trans "Informazioni Generali" %}</h5>
+                                <div class="mb-3">
+                                    <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+                                    {{ form.name }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ form.brand.id_for_label }}">{{ form.brand.label }}</label>
+                                    {{ form.brand }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ form.model.id_for_label }}">{{ form.model.label }}</label>
+                                    {{ form.model }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
+                                    {{ form.description }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ form.image.id_for_label }}">{{ form.image.label }}</label>
+                                    {{ form.image }}
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h5 class="text-primary mb-3">{% trans "Specifiche Tecniche" %}</h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.connection_type.id_for_label }}">{{ form.connection_type.label }}</label>
+                                            {{ form.connection_type }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.connector_type.id_for_label }}">{{ form.connector_type.label }}</label>
+                                            {{ form.connector_type }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.power_kw.id_for_label }}">{{ form.power_kw.label }}</label>
+                                            {{ form.power_kw }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.num_connectors.id_for_label }}">{{ form.num_connectors.label }}</label>
+                                            {{ form.num_connectors }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.dimensions.id_for_label }}">{{ form.dimensions.label }}</label>
+                                            {{ form.dimensions }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.weight.id_for_label }}">{{ form.weight.label }}</label>
+                                            {{ form.weight }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ form.ground_area.id_for_label }}">{{ form.ground_area.label }}</label>
+                                    {{ form.ground_area }}
+                                    <small class="form-text text-muted">Area occupata sul terreno in mq, utile per il calcolo della tassa di occupazione</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ form.protection_rating.id_for_label }}">{{ form.protection_rating.label }}</label>
+                                    {{ form.protection_rating }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ form.technical_specs.id_for_label }}">{{ form.technical_specs.label }}</label>
+                                    {{ form.technical_specs }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <h5 class="text-primary mb-3">{% trans "Costi" %}</h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.purchase_cost.id_for_label }}">{{ form.purchase_cost.label }}</label>
+                                            {{ form.purchase_cost }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.installation_cost.id_for_label }}">{{ form.installation_cost.label }}</label>
+                                            {{ form.installation_cost }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ form.maintenance_cost.id_for_label }}">{{ form.maintenance_cost.label }}</label>
+                                    {{ form.maintenance_cost }}
+                                </div>
+                                
+                                <h6 class="text-primary mt-3">{% trans "Costi Connettività" %}</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.modem_4g_cost.id_for_label }}">{{ form.modem_4g_cost.label }}</label>
+                                            {{ form.modem_4g_cost }}
+                                            <small class="form-text text-muted">Costo aggiuntivo per il modem 4G</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.sim_annual_cost.id_for_label }}">{{ form.sim_annual_cost.label }}</label>
+                                            {{ form.sim_annual_cost }}
+                                            <small class="form-text text-muted">Costo annuale per la SIM dati</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h5 class="text-primary mb-3">{% trans "Funzionalità" %}</h5>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-check mb-3">
+                                            {{ form.has_display }}
+                                            <label for="{{ form.has_display.id_for_label }}" class="form-check-label">{{ form.has_display.label }}</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check mb-3">
+                                            {{ form.has_rfid }}
+                                            <label for="{{ form.has_rfid.id_for_label }}" class="form-check-label">{{ form.has_rfid.label }}</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check mb-3">
+                                            {{ form.has_app_control }}
+                                            <label for="{{ form.has_app_control.id_for_label }}" class="form-check-label">{{ form.has_app_control.label }}</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-check mb-3">
+                                            {{ form.has_lan }}
+                                            <label for="{{ form.has_lan.id_for_label }}" class="form-check-label">{{ form.has_lan.label }}</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check mb-3">
+                                            {{ form.has_wifi }}
+                                            <label for="{{ form.has_wifi.id_for_label }}" class="form-check-label">{{ form.has_wifi.label }}</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check mb-3">
+                                            {{ form.has_4g }}
+                                            <label for="{{ form.has_4g.id_for_label }}" class="form-check-label">{{ form.has_4g.label }}</label>
+                                            <small class="form-text text-muted d-block mt-1">Se attivato, include automaticamente i costi del modem e della SIM</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 text-end">
+                            <a href="{% url 'infrastructure:template-list' %}" class="btn btn-secondary">
+                                {% trans "Annulla" %}
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                {% if form.instance.pk %}
+                                    {% trans "Aggiorna Template" %}
+                                {% else %}
+                                    {% trans "Crea Template" %}
+                                {% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

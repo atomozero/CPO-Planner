@@ -1,0 +1,50 @@
+{% extends 'layouts/form_base.html' %}
+
+{% block title %}Conferma Eliminazione {{ project.name }} | CPO Planner{% endblock %}
+
+{% block page_title %}
+<h1 class="h3 mb-0 text-gray-800">Conferma Eliminazione</h1>
+{% endblock %}
+
+{% block form %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Eliminare il progetto {{ project.name }}?</h6>
+    </div>
+    <div class="card-body">
+        <p class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle mr-2"></i>
+            Sei sicuro di voler eliminare il progetto <strong>{{ project.name }}</strong>?
+            Questa azione non può essere annullata.
+        </p>
+        
+        <p>
+            <strong>Nome:</strong> {{ project.name }}<br>
+            <strong>Comune:</strong> {{ project.municipality.name }}<br>
+            <strong>Budget:</strong> € {{ project.budget|floatformat:2 }}<br>
+            <strong>Data inizio:</strong> {{ project.start_date|date:"d/m/Y" }}<br>
+            <strong>Data fine:</strong> {{ project.end_date|date:"d/m/Y" }}<br>
+        </p>
+        
+        {% if project.chargingstation_set.exists %}
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-circle mr-2"></i>
+            <strong>Attenzione!</strong> Questo progetto ha {{ project.chargingstation_set.count }} stazioni di ricarica associate. 
+            Eliminando il progetto, verranno eliminate anche tutte le stazioni collegate.
+        </div>
+        {% endif %}
+        
+        <form method="post">
+            {% csrf_token %}
+            <div class="mt-4">
+                <a href="{% url 'infrastructure:project-detail' project.id %}" class="btn btn-secondary">
+                    <i class="fas fa-times mr-2"></i>Annulla
+                </a>
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-trash mr-2"></i>Conferma Eliminazione
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

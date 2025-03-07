@@ -1,0 +1,163 @@
+/* Stili Base */
+body {
+    font-family: 'Nunito', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: #f8f9fc;
+}
+
+/* Stili Dashboard */
+.card-header .title {
+    margin-bottom: 0;
+    font-weight: 700;
+}
+
+.stats-card .icon {
+    font-size: 2rem;
+    opacity: 0.5;
+}
+
+/* Stili Login */
+.bg-login-image {
+    background-size: cover !important;
+    background-position: center !important;
+}
+
+/* Stili Tabelle */
+.table-hover tbody tr:hover {
+    background-color: rgba(78, 115, 223, 0.05);
+}
+
+/* Stili per le righe cliccabili nelle tabelle */
+.clickable-row {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.clickable-row:hover {
+    background-color: rgba(0, 123, 255, 0.08);
+}
+
+/* Stile per circoli con icone */
+.icon-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Stili Badge */
+.badge {
+    font-weight: 600;
+    padding: 0.4em 0.6em;
+}
+
+/* Progress bar */
+.progress-sm {
+    height: 0.5rem;
+}
+
+/* Stili bottoni */
+.btn-circle {
+    border-radius: 100%;
+    height: 2.5rem;
+    width: 2.5rem;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-circle.btn-sm {
+    height: 1.8rem;
+    width: 1.8rem;
+    font-size: 0.75rem;
+}
+
+/* Stili per i componenti delle carte */
+.card {
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    border: none;
+    border-radius: 0.35rem;
+}
+
+.card .card-header {
+    background-color: #f8f9fc;
+    border-bottom: 1px solid #e3e6f0;
+}
+
+.border-left-primary {
+    border-left: 0.25rem solid #4e73df !important;
+}
+
+.border-left-success {
+    border-left: 0.25rem solid #1cc88a !important;
+}
+
+.border-left-info {
+    border-left: 0.25rem solid #36b9cc !important;
+}
+
+.border-left-warning {
+    border-left: 0.25rem solid #f6c23e !important;
+}
+
+.border-left-danger {
+    border-left: 0.25rem solid #e74a3b !important;
+}
+
+/* Stili per grafici */
+.chart-area {
+    position: relative;
+    height: 20rem;
+}
+
+.chart-pie {
+    position: relative;
+    height: 15rem;
+}
+
+.chart-bar {
+    position: relative;
+    height: 20rem;
+}
+
+/* Stili breadcrumb */
+.breadcrumb {
+    background-color: transparent;
+    padding: 0.75rem 0;
+    margin-bottom: 1.5rem;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: "›";
+    font-size: 1.1rem;
+}
+
+/* Colori testo */
+.text-gray-100 { color: #f8f9fc !important; }
+.text-gray-200 { color: #eaecf4 !important; }
+.text-gray-300 { color: #dddfeb !important; }
+.text-gray-400 { color: #d1d3e2 !important; }
+.text-gray-500 { color: #b7b9cc !important; }
+.text-gray-600 { color: #858796 !important; }
+.text-gray-700 { color: #6e707e !important; }
+.text-gray-800 { color: #5a5c69 !important; }
+.text-gray-900 { color: #3a3b45 !important; }
+
+/* Background colors */
+.bg-gray-100 { background-color: #f8f9fc !important; }
+.bg-gray-200 { background-color: #eaecf4 !important; }
+.bg-gray-300 { background-color: #dddfeb !important; }
+.bg-gray-400 { background-color: #d1d3e2 !important; }
+.bg-gray-500 { background-color: #b7b9cc !important; }
+.bg-gray-600 { background-color: #858796 !important; }
+.bg-gray-700 { background-color: #6e707e !important; }
+.bg-gray-800 { background-color: #5a5c69 !important; }
+.bg-gray-900 { background-color: #3a3b45 !important; }
+
+.bg-primary { background-color: #4e73df !important; }
+.bg-success { background-color: #1cc88a !important; }
+.bg-info { background-color: #36b9cc !important; }
+.bg-warning { background-color: #f6c23e !important; }
+.bg-danger { background-color: #e74a3b !important; }

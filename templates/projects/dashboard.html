@@ -1,140 +1,63 @@
-<!-- templates/projects/dashboard.html -->
-{% extends 'base.html' %}
+{% extends 'layouts/dashboard_base.html' %}
 {% load humanize %}
 
-{% block title %}Dashboard | CPO Planner{% endblock %}
+{% block title %}Dashboard Progetti | CPO Planner{% endblock %}
 
-{% block content %}
-<!-- Page Heading -->
-<div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
-    <a href="{% url 'projects:project_create' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-        <i class="fas fa-plus fa-sm text-white-50 mr-2"></i>Nuovo Progetto
-    </a>
-</div>
-
-<!-- Content Row - Stats Cards -->
-<div class="row">
+{% block stats %}
     <!-- Totale Progetti -->
     <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-primary shadow h-100 py-2">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                            Totale Progetti</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_projects }}</div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-project-diagram fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {% include "components/stats_card.html" with title="Totale Progetti" value=total_projects icon="fas fa-project-diagram" color="primary" %}
     </div>
 
     <!-- Progetti Attivi -->
     <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-success shadow h-100 py-2">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                            Progetti Attivi</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_projects }}</div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-rocket fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {% include "components/stats_card.html" with title="Progetti Attivi" value=active_projects icon="fas fa-rocket" color="success" %}
     </div>
 
     <!-- Stazioni di Ricarica -->
     <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-info shadow h-100 py-2">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                            Stazioni di Ricarica</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_stations }}</div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-charging-station fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {% include "components/stats_card.html" with title="Stazioni di Ricarica" value=total_stations icon="fas fa-charging-station" color="info" %}
     </div>
 
-    <!-- Budget Totale -->
+    <!-- Investimento Totale -->
     <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-warning shadow h-100 py-2">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                            Investimento Totale</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">€ {{ total_investment|intcomma }}</div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-euro-sign fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {% include "components/stats_card.html" with title="Investimento Totale" value="€ "|add:total_investment|intcomma icon="fas fa-euro-sign" color="warning" %}
     </div>
-</div>
+{% endblock %}
 
-<!-- Content Row - Charts -->
-<div class="row">
+{% block charts %}
     <!-- Progetti per Stato -->
     <div class="col-xl-4 col-lg-5">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Stato dei Progetti</h6>
-            </div>
-            <div class="card-body">
-                <div class="chart-pie pt-4">
-                    <canvas id="projectStatusChart"></canvas>
-                </div>
-                <div class="mt-4 text-center small">
-                    <span class="mr-2">
-                        <i class="fas fa-circle text-info"></i> Pianificazione
-                    </span>
-                    <span class="mr-2">
-                        <i class="fas fa-circle text-primary"></i> In Corso
-                    </span>
-                    <span class="mr-2">
-                        <i class="fas fa-circle text-success"></i> Completati
-                    </span>
-                    <span class="mr-2">
-                        <i class="fas fa-circle text-warning"></i> Sospesi
-                    </span>
-                </div>
-            </div>
+        {% include "components/card.html" with title="Stato dei Progetti" header_class="py-3" content='
+        <div class="chart-pie pt-4">
+            <canvas id="projectStatusChart"></canvas>
         </div>
+        <div class="mt-4 text-center small">
+            <span class="mr-2">
+                <i class="fas fa-circle text-info"></i> Pianificazione
+            </span>
+            <span class="mr-2">
+                <i class="fas fa-circle text-primary"></i> In Corso
+            </span>
+            <span class="mr-2">
+                <i class="fas fa-circle text-success"></i> Completati
+            </span>
+            <span class="mr-2">
+                <i class="fas fa-circle text-warning"></i> Sospesi
+            </span>
+        </div>' %}
     </div>
 
     <!-- Progetti per Regione -->
     <div class="col-xl-8 col-lg-7">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Progetti per Regione</h6>
-            </div>
-            <div class="card-body">
-                <div class="chart-bar">
-                    <canvas id="projectsByRegionChart"></canvas>
-                </div>
-            </div>
-        </div>
+        {% include "components/card.html" with title="Progetti per Regione" header_class="py-3" content='
+        <div class="chart-bar">
+            <canvas id="projectsByRegionChart"></canvas>
+        </div>' %}
     </div>
-</div>
+{% endblock %}
 
-<!-- Progetti Recenti e Stazioni Recenti -->
-<div class="row">
+{% block tables %}
     <!-- Progetti Recenti -->
     <div class="col-xl-6 col-lg-6">
         <div class="card shadow mb-4">
@@ -161,15 +84,7 @@
                                 <td>{{ project.name }}</td>
                                 <td>{{ project.municipality }}</td>
                                 <td>
-                                    {% if project.status == 'planning' %}
-                                        <span class="badge badge-info">Pianificazione</span>
-                                    {% elif project.status == 'in_progress' %}
-                                        <span class="badge badge-primary">In Corso</span>
-                                    {% elif project.status == 'completed' %}
-                                        <span class="badge badge-success">Completato</span>
-                                    {% elif project.status == 'suspended' %}
-                                        <span class="badge badge-warning">Sospeso</span>
-                                    {% endif %}
+                                    {% include "components/status_badge.html" with status=project.status custom_text=project.get_status_display %}
                                 </td>
                                 <td>
                                     <a href="{% url 'projects:project_detail' project.id %}" class="btn btn-sm btn-info">
@@ -215,15 +130,7 @@
                                 <td>{{ station.name }}</td>
                                 <td>{{ station.address }}</td>
                                 <td>
-                                    {% if station.status == 'planned' %}
-                                        <span class="badge badge-info">Pianificata</span>
-                                    {% elif station.status == 'active' %}
-                                        <span class="badge badge-success">Attiva</span>
-                                    {% elif station.status == 'maintenance' %}
-                                        <span class="badge badge-warning">Manutenzione</span>
-                                    {% elif station.status == 'inactive' %}
-                                        <span class="badge badge-danger">Inattiva</span>
-                                    {% endif %}
+                                    {% include "components/status_badge.html" with status=station.status custom_text=station.get_status_display %}
                                 </td>
                                 <td>{{ station.total_power }} kW</td>
                             </tr>
@@ -238,10 +145,9 @@
             </div>
         </div>
     </div>
-</div>
 {% endblock %}
 
-{% block extra_js %}
+{% block dashboard_js %}
 <script>
     // Grafico stato progetti
     var statusCtx = document.getElementById("projectStatusChart");

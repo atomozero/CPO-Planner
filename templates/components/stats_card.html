@@ -1,0 +1,35 @@
+{% comment %}
+Stats card component - Componente riutilizzabile per le card statistiche
+Parametri:
+- title: Titolo della statistica
+- value: Valore numerico
+- icon: Classe dell'icona (fontawesome)
+- color: Colore principale (primary, success, danger, warning, info)
+- trend_value: Valore del trend (opzionale)
+- trend_up: True se il trend è in salita, False se in discesa (default: True)
+{% endcomment %}
+
+<div class="card border-left-{{ color|default:'primary' }} shadow h-100 py-2">
+    <div class="card-body">
+        <div class="row no-gutters align-items-center">
+            <div class="col mr-2">
+                <div class="text-xs font-weight-bold text-{{ color|default:'primary' }} text-uppercase mb-1">
+                    {{ title }}</div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ value }}</div>
+                {% if trend_value %}
+                <div class="mt-2 small">
+                    {% if trend_up %}
+                    <span class="text-success"><i class="fas fa-arrow-up"></i> {{ trend_value }}</span>
+                    {% else %}
+                    <span class="text-danger"><i class="fas fa-arrow-down"></i> {{ trend_value }}</span>
+                    {% endif %}
+                    <span class="text-muted">rispetto al periodo precedente</span>
+                </div>
+                {% endif %}
+            </div>
+            <div class="col-auto">
+                <i class="{{ icon|default:'fas fa-calendar' }} fa-2x text-gray-300"></i>
+            </div>
+        </div>
+    </div>
+</div>

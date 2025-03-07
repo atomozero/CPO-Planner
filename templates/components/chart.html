@@ -1,0 +1,24 @@
+{% comment %}
+Chart component - Componente riutilizzabile per i grafici
+Parametri:
+- chart_id: ID univoco del grafico
+- chart_type: Tipo di grafico (line, bar, pie)
+- chart_data: Dati del grafico in formato JSON
+- chart_options: Opzioni del grafico in formato JSON (opzionale)
+- height: Altezza del grafico in px (default: 300)
+{% endcomment %}
+
+<canvas id="{{ chart_id }}" style="height: {{ height|default:'300' }}px;"></canvas>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var ctx = document.getElementById('{{ chart_id }}').getContext('2d');
+    var chartData = {{ chart_data|safe }};
+    var chartOptions = {{ chart_options|default:'{}' |safe }};
+    
+    var {{ chart_id }}Chart = new Chart(ctx, {
+        type: '{{ chart_type }}',
+        data: chartData,
+        options: chartOptions
+    });
+});
+</script>

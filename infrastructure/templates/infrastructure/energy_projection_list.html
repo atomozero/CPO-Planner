@@ -1,0 +1,431 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load humanize %}
+
+{% block title %}{% trans "Proiezioni Prezzi Energia" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">{% trans "Proiezioni Prezzi Energia" %}</h1>
+    
+    <div class="row">
+        <!-- Informazioni Proiezioni -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">{% trans "Informazioni Proiezioni" %}</h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-chart-line fa-4x text-primary mb-3"></i>
+                        <h4>{% trans "Proiezioni costi energia" %}</h4>
+                        <p>{% trans "Basate su dati PUN e tasso di inflazione" %}</p>
+                    </div>
+                    
+                    <div class="p-3 bg-light rounded mb-3">
+                        <div class="row">
+                            <div class="col-7">
+                                <p class="font-weight-bold mb-0">{% trans "Tasso inflazione:" %}</p>
+                            </div>
+                            <div class="col-5">
+                                <p class="mb-0 text-right">{{ inflation_rate|floatformat:2 }}%</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if current_projection %}
+                    <div class="p-3 bg-primary text-white rounded mb-3">
+                        <h5 class="text-center">{% trans "Proiezione Corrente" %}</h5>
+                        <div class="row">
+                            <div class="col-7">
+                                <p class="mb-0">{% trans "Mese attuale:" %}</p>
+                            </div>
+                            <div class="col-5">
+                                <p class="mb-0 text-right">{{ current_projection.month }}/{{ current_projection.year }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-7">
+                                <p class="mb-0">{% trans "Prezzo medio:" %}</p>
+                            </div>
+                            <div class="col-5">
+                                <p class="mb-0 text-right">{{ current_projection.avg_price|floatformat:4 }} €/kWh</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        {% trans "Nessuna proiezione disponibile per il mese corrente." %}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="text-center mt-4">
+                        <a href="{% url 'infrastructure:pun-data-download' %}" class="btn btn-primary">
+                            <i class="fas fa-sync-alt mr-1"></i> {% trans "Aggiorna Proiezioni" %}
+                        </a>
+                        <a href="{% url 'infrastructure:pun-data-list' %}" class="btn btn-secondary">
+                            <i class="fas fa-database mr-1"></i> {% trans "Vedi Dati PUN" %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Grafico Proiezioni -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">{% trans "Trend Prezzi Energia" %}</h6>
+                    <div>
+                        <button id="toggleChart" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-sync-alt mr-1"></i> {% trans "Cambia Visualizzazione" %}
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <canvas id="projectionChart"></canvas>
+                    </div>
+                    <div class="mt-4 text-center small">
+                        <span class="mr-2">
+                            <i class="fas fa-circle text-danger"></i> F1 (Ore di punta)
+                        </span>
+                        <span class="mr-2">
+                            <i class="fas fa-circle text-warning"></i> F2 (Ore intermedie)
+                        </span>
+                        <span class="mr-2">
+                            <i class="fas fa-circle text-success"></i> F3 (Ore fuori punta)
+                        </span>
+                        <span>
+                            <i class="fas fa-circle text-primary"></i> Media
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tabella proiezioni -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">{% trans "Proiezioni Mensili" %}</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>{% trans "Anno" %}</th>
+                            <th>{% trans "Mese" %}</th>
+                            <th>{% trans "F1 (€/kWh)" %}</th>
+                            <th>{% trans "F2 (€/kWh)" %}</th>
+                            <th>{% trans "F3 (€/kWh)" %}</th>
+                            <th>{% trans "Media (€/kWh)" %}</th>
+                            <th>{% trans "Creata il" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for projection in projections %}
+                        <tr>
+                            <td>{{ projection.year }}</td>
+                            <td>{{ projection.month }}</td>
+                            <td>{{ projection.f1_price|floatformat:4 }}</td>
+                            <td>{{ projection.f2_price|floatformat:4 }}</td>
+                            <td>{{ projection.f3_price|floatformat:4 }}</td>
+                            <td class="font-weight-bold">{{ projection.avg_price|floatformat:4 }}</td>
+                            <td>{{ projection.created_at|date:"d/m/Y H:i" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">{% trans "Nessuna proiezione disponibile" %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+
+<script>
+    // Dati proiezioni
+    var projectionData = [
+        {% for projection in projections %}
+        {
+            year: {{ projection.year }},
+            month: {{ projection.month }},
+            f1: {{ projection.f1_price }},
+            f2: {{ projection.f2_price }},
+            f3: {{ projection.f3_price }},
+            avg: {{ projection.avg_price }}
+        },
+        {% endfor %}
+    ];
+    
+    // Formatta le etichette per l'asse X
+    var labels = projectionData.map(function(data) {
+        return data.month + '/' + data.year;
+    });
+    
+    // Estrai i dati per le serie
+    var f1Data = projectionData.map(function(data) { return data.f1; });
+    var f2Data = projectionData.map(function(data) { return data.f2; });
+    var f3Data = projectionData.map(function(data) { return data.f3; });
+    var avgData = projectionData.map(function(data) { return data.avg; });
+    
+    // Configurazione grafico
+    var ctx = document.getElementById('projectionChart').getContext('2d');
+    var chartType = 'line';  // Inizia con il grafico a linee
+    
+    var myChart = new Chart(ctx, {
+        type: chartType,
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'F1 - Ore di punta',
+                    backgroundColor: 'rgba(220, 53, 69, 0.2)',
+                    borderColor: 'rgba(220, 53, 69, 1)',
+                    data: f1Data,
+                    fill: false,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    borderWidth: 2
+                },
+                {
+                    label: 'F2 - Ore intermedie',
+                    backgroundColor: 'rgba(255, 193, 7, 0.2)',
+                    borderColor: 'rgba(255, 193, 7, 1)',
+                    data: f2Data,
+                    fill: false,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    borderWidth: 2
+                },
+                {
+                    label: 'F3 - Ore fuori punta',
+                    backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    data: f3Data,
+                    fill: false,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    borderWidth: 2
+                },
+                {
+                    label: 'Media',
+                    backgroundColor: 'rgba(0, 123, 255, 0.2)',
+                    borderColor: 'rgba(0, 123, 255, 1)',
+                    data: avgData,
+                    fill: false,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    borderWidth: 3,
+                    borderDash: [5, 5]
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            legend: {
+                position: 'top',
+            },
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: false,
+                        callback: function(value) {
+                            return value.toFixed(4) + ' €/kWh';
+                        }
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Prezzo (€/kWh)'
+                    }
+                }],
+                xAxes: [{
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Mese/Anno'
+                    }
+                }]
+            },
+            tooltips: {
+                callbacks: {
+                    label: function(tooltipItem, data) {
+                        return data.datasets[tooltipItem.datasetIndex].label + ': ' + 
+                               tooltipItem.yLabel.toFixed(4) + ' €/kWh';
+                    }
+                }
+            }
+        }
+    });
+    
+    // Toggle tra grafico a linee e a barre
+    document.getElementById('toggleChart').addEventListener('click', function() {
+        if (myChart.config.type === 'line') {
+            myChart.destroy();
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'F1 - Ore di punta',
+                            backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                            data: f1Data,
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'F2 - Ore intermedie',
+                            backgroundColor: 'rgba(255, 193, 7, 0.7)',
+                            data: f2Data,
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'F3 - Ore fuori punta',
+                            backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                            data: f3Data,
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Media',
+                            backgroundColor: 'rgba(0, 123, 255, 0.7)',
+                            data: avgData,
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    legend: {
+                        position: 'top',
+                    },
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero: false,
+                                callback: function(value) {
+                                    return value.toFixed(4) + ' €/kWh';
+                                }
+                            },
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Prezzo (€/kWh)'
+                            }
+                        }],
+                        xAxes: [{
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Mese/Anno'
+                            }
+                        }]
+                    },
+                    tooltips: {
+                        callbacks: {
+                            label: function(tooltipItem, data) {
+                                return data.datasets[tooltipItem.datasetIndex].label + ': ' + 
+                                       tooltipItem.yLabel.toFixed(4) + ' €/kWh';
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            myChart.destroy();
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'F1 - Ore di punta',
+                            backgroundColor: 'rgba(220, 53, 69, 0.2)',
+                            borderColor: 'rgba(220, 53, 69, 1)',
+                            data: f1Data,
+                            fill: false,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'F2 - Ore intermedie',
+                            backgroundColor: 'rgba(255, 193, 7, 0.2)',
+                            borderColor: 'rgba(255, 193, 7, 1)',
+                            data: f2Data,
+                            fill: false,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'F3 - Ore fuori punta',
+                            backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            data: f3Data,
+                            fill: false,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Media',
+                            backgroundColor: 'rgba(0, 123, 255, 0.2)',
+                            borderColor: 'rgba(0, 123, 255, 1)',
+                            data: avgData,
+                            fill: false,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            borderWidth: 3,
+                            borderDash: [5, 5]
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    legend: {
+                        position: 'top',
+                    },
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero: false,
+                                callback: function(value) {
+                                    return value.toFixed(4) + ' €/kWh';
+                                }
+                            },
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Prezzo (€/kWh)'
+                            }
+                        }],
+                        xAxes: [{
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Mese/Anno'
+                            }
+                        }]
+                    },
+                    tooltips: {
+                        callbacks: {
+                            label: function(tooltipItem, data) {
+                                return data.datasets[tooltipItem.datasetIndex].label + ': ' + 
+                                       tooltipItem.yLabel.toFixed(4) + ' €/kWh';
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

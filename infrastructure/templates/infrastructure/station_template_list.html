@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}Template Stazioni di Ricarica{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">{% trans "Template Stazioni di Ricarica" %}</h1>
+    
+    <div class="mb-4">
+        <a href="{% url 'infrastructure:template-create' %}" class="btn btn-primary">
+            <i class="fas fa-plus mr-2"></i>{% trans "Aggiungi Nuovo Template" %}
+        </a>
+    </div>
+    
+    {% if templates %}
+        <div class="row">
+            {% if templates_by_brand %}
+                {% for brand, brand_templates in templates_by_brand.items %}
+                    <div class="col-12 mb-4">
+                        <div class="card shadow">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">{{ brand }}</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered" width="100%" cellspacing="0">
+                                        <thead>
+                                            <tr>
+                                                <th>{% trans "Modello" %}</th>
+                                                <th>{% trans "Potenza" %}</th>
+                                                <th>{% trans "Tipo" %}</th>
+                                                <th>{% trans "Connettori" %}</th>
+                                                <th>{% trans "Costo" %}</th>
+                                                <th>{% trans "Azioni" %}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for template in brand_templates %}
+                                                <tr>
+                                                    <td>{{ template.model }}</td>
+                                                    <td>{{ template.power_kw }} kW</td>
+                                                    <td>{{ template.get_connection_type_display }}</td>
+                                                    <td>{{ template.num_connectors }} x {{ template.get_connector_type_display }}</td>
+                                                    <td>€ {{ template.purchase_cost|floatformat:2 }}</td>
+                                                    <td>
+                                                        <a href="{% url 'infrastructure:template-detail' template.id %}" class="btn btn-info btn-sm">
+                                                            <i class="fas fa-search"></i>
+                                                        </a>
+                                                        <a href="{% url 'infrastructure:template-update' template.id %}" class="btn btn-warning btn-sm">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <a href="{% url 'infrastructure:station-from-template' template.id %}" class="btn btn-success btn-sm">
+                                                            <i class="fas fa-plus"></i> {% trans "Usa" %}
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12">
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">{% trans "Tutti i Template" %}</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered" width="100%" cellspacing="0">
+                                    <thead>
+                                        <tr>
+                                            <th>{% trans "Nome" %}</th>
+                                            <th>{% trans "Marca" %}</th>
+                                            <th>{% trans "Modello" %}</th>
+                                            <th>{% trans "Potenza" %}</th>
+                                            <th>{% trans "Tipo" %}</th>
+                                            <th>{% trans "Costo" %}</th>
+                                            <th>{% trans "Azioni" %}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for template in templates %}
+                                            <tr>
+                                                <td>{{ template.name }}</td>
+                                                <td>{{ template.brand }}</td>
+                                                <td>{{ template.model }}</td>
+                                                <td>{{ template.power_kw }} kW</td>
+                                                <td>{{ template.get_connection_type_display }}</td>
+                                                <td>€ {{ template.purchase_cost|floatformat:2 }}</td>
+                                                <td>
+                                                    <a href="{% url 'infrastructure:template-detail' template.id %}" class="btn btn-info btn-sm">
+                                                        <i class="fas fa-search"></i>
+                                                    </a>
+                                                    <a href="{% url 'infrastructure:template-update' template.id %}" class="btn btn-warning btn-sm">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a href="{% url 'infrastructure:station-from-template' template.id %}" class="btn btn-success btn-sm">
+                                                        <i class="fas fa-plus"></i> {% trans "Usa" %}
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <p>{% trans "Non ci sono ancora template di stazioni di ricarica." %}</p>
+            <p>{% trans "I template ti permettono di definire modelli di stazioni preconfigurati che puoi riutilizzare in diversi progetti." %}</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

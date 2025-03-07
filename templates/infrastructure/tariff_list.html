@@ -1,0 +1,139 @@
+{% extends 'layouts/list_base.html' %}
+{% load humanize %}
+
+{% block title %}Tariffe Elettriche | CPO Planner{% endblock %}
+
+{% block heading %}
+    <h1 class="h3 mb-0 text-gray-800">Tariffe Elettriche</h1>
+    <div>
+        <a href="{% url 'infrastructure:tariff-create' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+            <i class="fas fa-plus fa-sm text-white-50"></i> Nuova Tariffa Standard
+        </a>
+        <a href="{% url 'infrastructure:pun-tariff-create' %}" class="d-none d-sm-inline-block btn btn-sm btn-success shadow-sm ml-2">
+            <i class="fas fa-bolt fa-sm text-white-50"></i> Nuova Tariffa PUN
+        </a>
+    </div>
+{% endblock %}
+
+{% block breadcrumbs %}
+    {% include "components/breadcrumbs.html" with breadcrumbs="Home,Infrastructure,Tariffe Elettriche" urls="#,#," %}
+{% endblock %}
+
+{% block content %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Tariffe Elettriche</h6>
+        <div class="dropdown no-arrow">
+            <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+            </a>
+            <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in" aria-labelledby="dropdownMenuLink">
+                <div class="dropdown-header">Azioni:</div>
+                <a class="dropdown-item" href="{% url 'infrastructure:tariff-create' %}">Nuova Tariffa Standard</a>
+                <a class="dropdown-item" href="{% url 'infrastructure:pun-tariff-create' %}">Nuova Tariffa PUN</a>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item" href="{% url 'infrastructure:tech-config' %}">Dashboard Tecnica</a>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if tariffs %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Fornitore</th>
+                            <th>Stato</th>
+                            <th>AC ≤7kW</th>
+                            <th>AC ≤22kW</th>
+                            <th>DC ≤50kW</th>
+                            <th>DC ≤150kW</th>
+                            <th>DC >150kW</th>
+                            <th>Validità</th>
+                            <th>Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tariff in tariffs %}
+                            <tr {% if tariff.active %}class="table-success"{% endif %}>
+                                <td><a href="{% url 'infrastructure:tariff-detail' tariff.id %}">{{ tariff.name }}</a></td>
+                                <td>{{ tariff.provider }}</td>
+                                <td>
+                                    {% if tariff.active %}
+                                        <span class="badge badge-success">Attiva</span>
+                                    {% else %}
+                                        <span class="badge badge-secondary">Inattiva</span>
+                                    {% endif %}
+                                </td>
+                                <td>€ {{ tariff.cost_tier1 }}</td>
+                                <td>€ {{ tariff.cost_tier2 }}</td>
+                                <td>€ {{ tariff.cost_tier3 }}</td>
+                                <td>€ {{ tariff.cost_tier4 }}</td>
+                                <td>€ {{ tariff.cost_tier5 }}</td>
+                                <td>
+                                    {% if tariff.valid_to %}
+                                        {{ tariff.valid_from|date:"d/m/Y" }} - {{ tariff.valid_to|date:"d/m/Y" }}
+                                    {% else %}
+                                        Dal {{ tariff.valid_from|date:"d/m/Y" }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'infrastructure:tariff-detail' tariff.id %}" class="btn btn-info btn-sm">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'infrastructure:tariff-update' tariff.id %}" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Nessuna tariffa elettrica configurata. 
+                <a href="{% url 'infrastructure:tariff-create' %}" class="alert-link">Crea la tua prima tariffa</a>
+            </div>
+            
+            <div class="mt-4">
+                <h5 class="font-weight-bold">Perché configurare le tariffe elettriche?</h5>
+                <p>Le tariffe elettriche sono fondamentali per calcolare correttamente i costi operativi delle stazioni di ricarica e determinare i prezzi da applicare ai clienti.</p>
+                
+                <div class="mt-3">
+                    <h6 class="font-weight-bold">Vantaggi:</h6>
+                    <ul>
+                        <li>Calcolo preciso dei costi energetici per ogni tipo di stazione</li>
+                        <li>Determinazione accurata dei margini per kWh erogato</li>
+                        <li>Simulazione dei costi operativi mensili e annuali</li>
+                        <li>Supporto alle decisioni di pricing per massimizzare i ricavi</li>
+                    </ul>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="{% url 'infrastructure:tariff-create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Crea Tariffa Standard
+                    </a>
+                    <a href="{% url 'infrastructure:pun-tariff-create' %}" class="btn btn-success ml-2">
+                        <i class="fas fa-bolt"></i> Crea Tariffa PUN
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+    $(document).ready(function() {
+        $('#dataTable').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Italian.json"
+            },
+            "order": [[2, "desc"], [0, "asc"]] // Order by status (active first) then by name
+        });
+    });
+</script>
+{% endblock %}

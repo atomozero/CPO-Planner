@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Accesso negato" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="text-center">
+        <div class="error mx-auto" data-text="403">403</div>
+        <p class="lead text-gray-800 mb-5">{% translate "Accesso negato" %}</p>
+        <p class="text-gray-500 mb-0">{% translate "Non hai l'autorizzazione per accedere a questa pagina." %}</p>
+        <a href="{% url 'cpo_core:dashboard' %}">&larr; {% translate "Torna alla Dashboard" %}</a>
+    </div>
+</div>
+{% endblock %}

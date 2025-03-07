@@ -8,7 +8,8 @@ from .views.subproject_views import (
     SubProjectDetailView, SubProjectCreateView, SubProjectUpdateView, SubProjectDeleteView
 )
 from .views.charging_station_views import (
-    ChargingStationDetailView, ChargingStationCreateView, ChargingStationUpdateView, ChargingStationDeleteView
+    ChargingStationDetailView, ChargingStationCreateView, ChargingStationUpdateView, ChargingStationDeleteView,
+    ChargerListView, ChargerDetailView, ChargerCreateView, ChargerUpdateView, ChargerDeleteView
 )
 from .views.financial_views import (
     FinancialParametersUpdateView, RunFinancialAnalysisView,
@@ -46,6 +47,10 @@ urlpatterns = [
     path('subproject/<int:pk>/', SubProjectDetailView.as_view(), name='subproject_detail'),
     path('subproject/<int:pk>/update/', SubProjectUpdateView.as_view(), name='subproject_update'),
     path('subproject/<int:pk>/delete/', SubProjectDeleteView.as_view(), name='subproject_delete'),
+    path('subproject/<int:pk>/update-status/<str:status>/', SubProjectUpdateView.as_view(
+        template_name='projects/subproject_status_form.html',
+        fields=['status']
+    ), name='subproject_update_status'),
     
     # ChargingStation views
     path('subproject/<int:subproject_id>/station/create/', ChargingStationCreateView.as_view(), name='station_create'),
@@ -133,4 +138,34 @@ urlpatterns = [
     path('<int:project_id>/failure-simulation-results/', 
         FailureSimulationResultsView.as_view(), 
         name='failure_simulation_results'),
+        
+    # Charger views (new)
+    path('subproject/<int:subproject_id>/chargers/', 
+        ChargerListView.as_view(), 
+        name='charger_list'),
+        
+    path('subproject/<int:subproject_id>/chargers/add/', 
+        ChargerCreateView.as_view(), 
+        name='charger_create'),
+        
+    # Charger views for charging stations
+    path('station/<uuid:charging_station_id>/chargers/', 
+        ChargerListView.as_view(), 
+        name='station_charger_list'),
+        
+    path('station/<uuid:charging_station_id>/chargers/add/', 
+        ChargerCreateView.as_view(), 
+        name='station_charger_create'),
+        
+    path('charger/<int:pk>/', 
+        ChargerDetailView.as_view(), 
+        name='charger_detail'),
+        
+    path('charger/<int:pk>/update/', 
+        ChargerUpdateView.as_view(), 
+        name='charger_update'),
+        
+    path('charger/<int:pk>/delete/', 
+        ChargerDeleteView.as_view(), 
+        name='charger_delete'),
 ]

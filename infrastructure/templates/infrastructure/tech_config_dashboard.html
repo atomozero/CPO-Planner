@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Configurazione Tecnica" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">{% trans "Configurazione Tecnica" %}</h1>
+    
+    <!-- Riepilogo Generale -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                {% trans "Template Stazioni" %}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ station_templates_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-charging-station fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                {% trans "Profili di Utilizzo" %}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ usage_profiles_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                {% trans "Tariffe Elettriche" %}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_electricity_tariffs.count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-bolt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                {% trans "Configurazioni Tariffarie" %}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_management_fees.count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Impostazioni Globali -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">{% trans "Impostazioni Globali" %}</h6>
+                    <div>
+                        {% if global_settings %}
+                        <a href="{% url 'infrastructure:global-settings-update' global_settings.id %}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-edit fa-sm"></i> {% trans "Modifica" %}
+                        </a>
+                        {% else %}
+                        <a href="{% url 'infrastructure:global-settings' %}" class="btn btn-sm btn-success">
+                            <i class="fas fa-plus fa-sm"></i> {% trans "Crea" %}
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if global_settings %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <tr>
+                                            <th colspan="2" class="bg-light">{% trans "Costi Connettività" %}</th>
+                                        </tr>
+                                        <tr>
+                                            <th>{% trans "Costo mensile SIM dati" %}</th>
+                                            <td>€ {{ global_settings.sim_data_cost_monthly|floatformat:2 }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>{% trans "Costo modem 4G" %}</th>
+                                            <td>€ {{ global_settings.modem_4g_cost|floatformat:2 }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th colspan="2" class="bg-light">{% trans "Costi Energetici" %}</th>
+                                        </tr>
+                                        <tr>
+                                            <th>{% trans "Costo energia predefinito" %}</th>
+                                            <td>€ {{ global_settings.default_energy_cost|floatformat:4 }} /kWh</td>
+                                        </tr>
+                                        <tr>
+                                            <th>{% trans "Prezzo ricarica predefinito" %}</th>
+                                            <td>€ {{ global_settings.default_energy_price|floatformat:4 }} /kWh</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <tr>
+                                            <th colspan="2" class="bg-light">{% trans "Costi Operativi" %}</th>
+                                        </tr>
+                                        <tr>
+                                            <th>{% trans "Assicurazione per stazione" %}</th>
+                                            <td>€ {{ global_settings.insurance_cost_per_station|floatformat:2 }} /anno</td>
+                                        </tr>
+                                        <tr>
+                                            <th>{% trans "Manutenzione annuale" %}</th>
+                                            <td>{{ global_settings.maintenance_cost_percentage|floatformat:2 }}% del costo</td>
+                                        </tr>
+                                        <tr>
+                                            <th colspan="2" class="bg-light">{% trans "Tasse e Parametri" %}</th>
+                                        </tr>
+                                        <tr>
+                                            <th>{% trans "Tassa occupazione suolo" %}</th>
+                                            <td>€ {{ global_settings.public_land_fee_per_sqm|floatformat:2 }} /mq/anno</td>
+                                        </tr>
+                                        <tr>
+                                            <th>{% trans "Tasso inflazione" %}</th>
+                                            <td>{{ global_settings.inflation_rate|floatformat:2 }}%</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="alert alert-info mt-3">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            {% trans "Configurazione attiva" %}: {{ global_settings.name }} ({% trans "Aggiornata il" %} {{ global_settings.updated_at|date:"d/m/Y" }})
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            {% trans "Non sono state configurate le impostazioni globali del sistema." %}
+                            <a href="{% url 'infrastructure:global-settings' %}" class="alert-link">
+                                {% trans "Configurare ora" %} &raquo;
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tariffe e Template -->
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">{% trans "Tariffe Elettriche" %}</h6>
+                    <a href="{% url 'infrastructure:tariff-create' %}" class="btn btn-sm btn-success">
+                        <i class="fas fa-plus fa-sm"></i> {% trans "Nuova" %}
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if active_electricity_tariffs %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th>{% trans "Nome" %}</th>
+                                        <th>{% trans "Fornitore" %}</th>
+                                        <th>{% trans "Costo (22kW)" %}</th>
+                                        <th>{% trans "Azioni" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for tariff in active_electricity_tariffs %}
+                                        <tr>
+                                            <td>{{ tariff.name }}</td>
+                                            <td>{{ tariff.provider }}</td>
+                                            <td>€ {{ tariff.cost_tier2|floatformat:4 }}/kWh</td>
+                                            <td>
+                                                <a href="{% url 'infrastructure:tariff-detail' tariff.id %}" class="btn btn-info btn-sm">
+                                                    <i class="fas fa-search"></i>
+                                                </a>
+                                                <a href="{% url 'infrastructure:tariff-update' tariff.id %}" class="btn btn-warning btn-sm">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <a href="{% url 'infrastructure:tariff-list' %}" class="btn btn-light btn-sm mt-2">
+                            {% trans "Vedi tutte le tariffe" %} &raquo;
+                        </a>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            {% trans "Non ci sono tariffe elettriche attive configurate." %}
+                            <a href="{% url 'infrastructure:tariff-create' %}" class="alert-link">
+                                {% trans "Configurare ora" %} &raquo;
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">{% trans "Template Stazioni" %}</h6>
+                    <a href="{% url 'infrastructure:template-create' %}" class="btn btn-sm btn-success">
+                        <i class="fas fa-plus fa-sm"></i> {% trans "Nuovo" %}
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if station_templates_count > 0 %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            {% trans "Ci sono" %} {{ station_templates_count }} {% trans "template di stazioni configurati." %}
+                        </div>
+                        <a href="{% url 'infrastructure:template-list' %}" class="btn btn-primary">
+                            <i class="fas fa-list mr-1"></i> {% trans "Visualizza tutti i template" %}
+                        </a>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            {% trans "Non ci sono template di stazioni configurati." %}
+                            <a href="{% url 'infrastructure:template-create' %}" class="alert-link">
+                                {% trans "Configurare ora" %} &raquo;
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

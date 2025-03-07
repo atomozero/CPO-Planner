@@ -1,4 +1,7 @@
 # cpo_core/models.py
+# Manteniamo questo file per retrocompatibilità
+# Tutte le definizioni dei modelli sono state spostate nei file nella cartella models/
+
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -6,6 +9,13 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
 import random
 import uuid
+
+# Importa i modelli consolidati
+from .models.organization import Organization
+from .models.project import Project
+from .models.municipality import Municipality
+from .models.subproject import SubProject
+from .models.charging_station import ChargingStation, SolarInstallation
 
 class FinancialProjection(models.Model):
     """Modello per le proiezioni finanziarie di un progetto"""

@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Nuova Tariffa PUN" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">
+        {% trans "Nuova Tariffa Elettrica PUN" %}
+    </h1>
+    
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">{% trans "Dati Tariffa" %}</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="tariff-form">
+                        {% csrf_token %}
+                        
+                        <!-- Campo nascosto per il tipo di tariffa -->
+                        <input type="hidden" name="tariff_type" value="pun" id="id_tariff_type">
+                        
+                        <!-- Informazioni di base -->
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="id_name">{% trans "Nome tariffa" %}*</label>
+                                    <input type="text" name="name" class="form-control" id="id_name" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="id_provider">{% trans "Fornitore" %}*</label>
+                                    <input type="text" name="provider" class="form-control" id="id_provider" required>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group mt-4">
+                                    <div class="form-check">
+                                        <input type="checkbox" name="active" class="form-check-input" id="id_active" checked>
+                                        <label for="id_active" class="form-check-label ml-2">
+                                            {% trans "Attiva" %}
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Validità -->
+                        <div class="row mt-3">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="id_valid_from">{% trans "Valido dal" %}*</label>
+                                    <input type="date" name="valid_from" class="form-control" id="id_valid_from" required 
+                                           value="{{ today|date:'Y-m-d' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="id_valid_to">{% trans "Valido fino al" %}</label>
+                                    <input type="date" name="valid_to" class="form-control" id="id_valid_to">
+                                    <small class="form-text text-muted">{% trans "Lasciare vuoto se la tariffa non ha scadenza" %}</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Sezione commissioni PUN -->
+                        <div class="mt-4 pt-3 border-top">
+                            <h4 class="text-primary mb-3">{% trans "Commissioni su PUN" %}</h4>
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                {% trans "Queste commissioni sono i valori aggiuntivi applicati al prezzo PUN per coprire oneri di sistema, dispacciamento e margine. Il prezzo finale per il cliente sarà: PUN + commissione indicata." %}
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="id_pun_fee_f1">{% trans "Commissione su PUN F1 (€/kWh)" %}*</label>
+                                        <input type="number" name="pun_fee_f1" class="form-control" id="id_pun_fee_f1"
+                                               value="0.02" step="0.0001" required>
+                                        <small class="form-text text-muted">{% trans "Commissione su F1 (ore di punta: Lun-Ven 8-19)" %}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="id_pun_fee_f2">{% trans "Commissione su PUN F2 (€/kWh)" %}*</label>
+                                        <input type="number" name="pun_fee_f2" class="form-control" id="id_pun_fee_f2"
+                                               value="0.02" step="0.0001" required>
+                                        <small class="form-text text-muted">{% trans "Commissione su F2 (ore intermedie: Lun-Ven 7-8/19-23, Sab 7-23)" %}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="id_pun_fee_f3">{% trans "Commissione su PUN F3 (€/kWh)" %}*</label>
+                                        <input type="number" name="pun_fee_f3" class="form-control" id="id_pun_fee_f3"
+                                               value="0.02" step="0.0001" required>
+                                        <small class="form-text text-muted">{% trans "Commissione su F3 (ore fuori punta: notti, domeniche, festivi)" %}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <a href="{% url 'infrastructure:pun-data-list' %}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-external-link-alt mr-1"></i>
+                                    {% trans "Visualizza dati PUN correnti" %}
+                                </a>
+                                <a href="{% url 'infrastructure:energy-projection-list' %}" target="_blank" class="btn btn-sm btn-outline-info">
+                                    <i class="fas fa-chart-line mr-1"></i>
+                                    {% trans "Vedi proiezioni future" %}
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <!-- Input nascosti per i campi fixed price (con valori di default) -->
+                        <input type="hidden" name="cost_tier1" value="0.30" id="id_cost_tier1">
+                        <input type="hidden" name="cost_tier2" value="0.30" id="id_cost_tier2">
+                        <input type="hidden" name="cost_tier3" value="0.35" id="id_cost_tier3">
+                        <input type="hidden" name="cost_tier4" value="0.40" id="id_cost_tier4">
+                        <input type="hidden" name="cost_tier5" value="0.45" id="id_cost_tier5">
+                        <input type="hidden" name="customer_price_tier1" value="0.50" id="id_customer_price_tier1">
+                        
+                        <!-- Costi fissi -->
+                        <div class="mt-4 pt-3 border-top">
+                            <h4 class="text-primary mb-3">{% trans "Costi Fissi" %}</h4>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="id_connection_fee">{% trans "Costo fisso di connessione (€/mese)" %}</label>
+                                        <input type="number" name="connection_fee" class="form-control" id="id_connection_fee"
+                                               value="50.00" step="0.01">
+                                        <small class="form-text text-muted">{% trans "Costo fisso mensile per ogni punto di prelievo" %}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="id_power_fee">{% trans "Costo potenza impegnata (€/kW/mese)" %}</label>
+                                        <input type="number" name="power_fee" class="form-control" id="id_power_fee"
+                                               value="1.50" step="0.01">
+                                        <small class="form-text text-muted">{% trans "Costo mensile per kW di potenza impegnata" %}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Note -->
+                        <div class="mt-4 pt-3 border-top">
+                            <div class="form-group">
+                                <label for="id_notes">{% trans "Note" %}</label>
+                                <textarea name="notes" id="id_notes" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                        
+                        <!-- Pulsanti -->
+                        <div class="text-right mt-4">
+                            <a href="{% url 'infrastructure:tariff-list' %}" class="btn btn-secondary">
+                                {% trans "Annulla" %}
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                {% trans "Crea Tariffa PUN" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Imposta la data corrente nel campo valid_from
+    if (!document.getElementById('id_valid_from').value) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        document.getElementById('id_valid_from').value = `${yyyy}-${mm}-${dd}`;
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends 'layouts/list_base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Profili di utilizzo stazioni" %}{% endblock %}
+
+{% block list_title %}{% trans "Profili di utilizzo stazioni" %}{% endblock %}
+
+{% block page_title %}{% trans "Profili di utilizzo stazioni" %}{% endblock %}
+
+{% block list_actions %}
+<a href="{% url 'infrastructure:profile-create' %}" class="btn btn-primary">
+    <i class="fas fa-plus"></i> {% trans "Nuovo profilo" %}
+</a>
+{% endblock %}
+
+{% block list_content %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>{% trans "Nome" %}</th>
+                    <th>{% trans "Tipo cliente" %}</th>
+                    <th>{% trans "Sessioni medie (giorno)" %}</th>
+                    <th>{% trans "Energia media (kWh/sessione)" %}</th>
+                    <th class="text-end">{% trans "Azioni" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for profile in profiles %}
+                <tr>
+                    <td>
+                        <a href="{% url 'infrastructure:profile-detail' profile.id %}">{{ profile.name }}</a>
+                    </td>
+                    <td>
+                        {{ profile.get_customer_profile_display }}
+                    </td>
+                    <td>
+                        {{ profile.avg_daily_sessions }}
+                    </td>
+                    <td>
+                        {{ profile.avg_energy_per_session }}
+                    </td>
+                    <td class="text-end">
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-link dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'infrastructure:profile-detail' profile.id %}">
+                                        <i class="fas fa-eye me-2"></i> {% trans "Visualizza" %}
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'infrastructure:profile-update' profile.id %}">
+                                        <i class="fas fa-edit me-2"></i> {% trans "Modifica" %}
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-4">
+                        <div class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i> {% trans "Nessun profilo di utilizzo definito" %}
+                        </div>
+                        <div class="mt-3">
+                            <a href="{% url 'infrastructure:profile-create' %}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-plus me-1"></i> {% trans "Crea primo profilo" %}
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if profiles %}
+<div class="mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">{% trans "Informazioni" %}</h5>
+        </div>
+        <div class="card-body">
+            <p>{% trans "I profili di utilizzo permettono di modellare il comportamento degli utenti presso le stazioni di ricarica e sono utilizzati per le previsioni di utilizzo e di ricavi." %}</p>
+            <p>{% trans "Ogni profilo contiene parametri come il numero medio di sessioni giornaliere, la durata media delle sessioni e l'energia media erogata per sessione." %}</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

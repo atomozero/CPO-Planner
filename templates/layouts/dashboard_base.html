@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title|default:"Dashboard" }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    {% if page_title %}
+    <h1 class="h3 mb-4 text-gray-800">{{ page_title }}</h1>
+    {% endif %}
+    
+    {% if show_breadcrumbs|default:True and breadcrumbs %}
+        {% include "components/breadcrumbs.html" with breadcrumbs=breadcrumbs %}
+    {% endif %}
+    
+    {# Sezione Stats #}
+    {% if show_stats|default:True %}
+    <div class="row mb-4">
+        {% block stats %}
+        {# Contenuto inserito da template figlio #}
+        {% endblock %}
+    </div>
+    {% endif %}
+    
+    {# Sezione Grafici #}
+    <div class="row">
+        {% block charts %}
+        {# Contenuto inserito da template figlio #}
+        {% endblock %}
+    </div>
+    
+    {# Sezione Tabelle #}
+    <div class="row">
+        {% block tables %}
+        {# Contenuto inserito da template figlio #}
+        {% endblock %}
+    </div>
+    
+    {# Contenuto Addizionale #}
+    {% block additional_content %}
+    {# Contenuto inserito da template figlio #}
+    {% endblock %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{# JS per chart.js #}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+{% block dashboard_js %}{% endblock %}
+{% endblock %}

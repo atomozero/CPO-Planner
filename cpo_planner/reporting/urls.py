@@ -55,4 +55,9 @@ urlpatterns = [
     path('crea-in-blocco/', 
          views.ReportBulkCreateView.as_view(), 
          name='report_bulk_create'),
+         
+    # Generazione report per stazione di ricarica
+    path('charging-station/<int:pk>/installation-report/', 
+         views.generate_charging_station_installation_report, 
+         name='charging_station_installation_report'),
 ]

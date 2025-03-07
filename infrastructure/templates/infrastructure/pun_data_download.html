@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Scarica Dati PUN" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">{% trans "Scarica Dati PUN e Genera Proiezioni" %}</h1>
+    
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">{% trans "Configurazione Download" %}</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-4">
+                        {% trans "Questo strumento permette di scaricare i dati PUN (Prezzo Unico Nazionale) recenti e di generare proiezioni future basate su inflazione e trend storici." %}
+                    </p>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        {% trans "I dati PUN sono utilizzati per calcolare i costi dell'energia quando si utilizzano tariffe indicizzate. Le proiezioni vengono utilizzate per le simulazioni finanziarie future." %}
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="form-check mb-4">
+                            {{ form.include_download }}
+                            <label for="{{ form.include_download.id_for_label }}" class="form-check-label">
+                                {{ form.include_download.label }}
+                            </label>
+                            <small class="form-text text-muted">
+                                {% trans "Scarica i dati PUN recenti prima di generare le proiezioni" %}
+                            </small>
+                        </div>
+                        
+                        <div class="form-group" id="start_date_group">
+                            <label for="{{ form.start_date.id_for_label }}">{{ form.start_date.label }}</label>
+                            {{ form.start_date }}
+                            <small class="form-text text-muted">
+                                {% trans "Se non specificato, verranno scaricati i dati degli ultimi 3 mesi" %}
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.months_ahead.id_for_label }}">{{ form.months_ahead.label }}</label>
+                            {{ form.months_ahead }}
+                            <small class="form-text text-muted">
+                                {% trans "Numero di mesi futuri per cui generare proiezioni di prezzo" %}
+                            </small>
+                        </div>
+                        
+                        <div class="text-center mt-4">
+                            <a href="{% url 'infrastructure:pun-data-list' %}" class="btn btn-secondary">
+                                {% trans "Annulla" %}
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-cloud-download-alt mr-1"></i>
+                                {% trans "Scarica e Genera Proiezioni" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Informazioni sul PUN -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">{% trans "Informazioni sulle Fasce Orarie" %}</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="p-3 bg-danger text-white rounded mb-3">
+                                <h5>Fascia F1</h5>
+                                <p class="mb-0">Lunedì-Venerdì, 8:00-19:00 (esclusi festivi)</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 bg-warning text-dark rounded mb-3">
+                                <h5>Fascia F2</h5>
+                                <p class="mb-0">Lunedì-Venerdì, 7:00-8:00 e 19:00-23:00<br>Sabato, 7:00-23:00</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 bg-success text-white rounded mb-3">
+                                <h5>Fascia F3</h5>
+                                <p class="mb-0">Lunedì-Sabato, 23:00-7:00<br>Domenica e festivi, tutto il giorno</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <p class="mt-3">
+                        <strong>Fonte dati:</strong> I dati PUN sono prelevati dal Gestore Mercati Energetici (GME) e sono espressi in €/MWh. Per l'uso nelle fatturazioni, questi prezzi vengono convertiti in €/kWh (dividendo per 1000).
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Mostra/nascondi il campo data in base allo stato della checkbox
+    $(document).ready(function() {
+        function updateStartDateVisibility() {
+            if ($('#{{ form.include_download.id_for_label }}').is(':checked')) {
+                $('#start_date_group').show();
+            } else {
+                $('#start_date_group').hide();
+            }
+        }
+        
+        // Esegui all'inizio
+        updateStartDateVisibility();
+        
+        // Esegui al cambio della checkbox
+        $('#{{ form.include_download.id_for_label }}').change(function() {
+            updateStartDateVisibility();
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Errore del server" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="text-center">
+        <div class="error mx-auto" data-text="500">500</div>
+        <p class="lead text-gray-800 mb-5">{% translate "Errore interno del server" %}</p>
+        <p class="text-gray-500 mb-0">{% translate "Qualcosa è andato storto. Si prega di riprovare più tardi o contattare l'amministratore." %}</p>
+        <a href="{% url 'cpo_core:dashboard' %}">&larr; {% translate "Torna alla Dashboard" %}</a>
+    </div>
+</div>
+{% endblock %}

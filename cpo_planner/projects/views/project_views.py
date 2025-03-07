@@ -4,9 +4,12 @@ from django.urls import reverse_lazy
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils.translation import gettext_lazy as _
+from django.shortcuts import redirect
+from django.db import transaction
 
-from ..models.project import Project
-from ..models.subproject import SubProject
+# Importa dai modelli consolidati
+from cpo_core.models.project import Project
+from cpo_core.models.subproject import SubProject
 from ..forms.project_forms import ProjectForm
 
 class ProjectListView(LoginRequiredMixin, ListView):
@@ -14,6 +17,13 @@ class ProjectListView(LoginRequiredMixin, ListView):
     template_name = 'projects/project_list.html'
     context_object_name = 'projects'
     ordering = ['-start_date']
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Ensure budget calculations are up to date
+        for project in queryset:
+            project.calculate_total_metrics()
+        return queryset
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -52,8 +62,9 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
         return context
     
     def form_valid(self, form):
+        self.object = form.save()
         messages.success(self.request, _('Progetto creato con successo!'))
-        return super().form_valid(form)
+        return super(CreateView, self).form_valid(form)
 
 class ProjectUpdateView(LoginRequiredMixin, UpdateView):
     model = Project
@@ -77,6 +88,26 @@ class ProjectDeleteView(LoginRequiredMixin, DeleteView):
     template_name = 'projects/project_confirm_delete.html'
     success_url = reverse_lazy('projects:project_list')
     
+    def form_valid(self, form):
+        try:
+            self.object = self.get_object()
+            
+            # Ottieni l'ID prima di eliminare
+            project_id = self.object.id
+            project_name = self.object.name
+            
+            # Bypassa il sistema di eliminazione in cascata di Django
+            # ed esegui direttamente la query SQL
+            from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM projects_project WHERE id = %s", [project_id])
+            
+            messages.success(self.request, _(f'Progetto "{project_name}" eliminato con successo!'))
+            return redirect('projects:project_list')
+        except Exception as e:
+            messages.error(self.request, _('Errore durante l\'eliminazione: {}').format(str(e)))
+            return redirect('projects:project_list')
+            
     def delete(self, request, *args, **kwargs):
-        messages.success(request, _('Progetto eliminato con successo!'))
-        return super().delete(request, *args, **kwargs)
+        # Questo metodo è deprecato ma lo manteniamo per compatibilità
+        return self.form_valid(None)

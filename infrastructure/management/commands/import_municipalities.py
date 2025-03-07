@@ -1,14 +1,29 @@
 import os
-import requests
 import pandas as pd
 from io import StringIO
 import numpy as np
+import requests  # Importiamo requests a livello globale
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from infrastructure.models import Municipality  # Adatta questa importazione al tuo modello effettivo
 
 class Command(BaseCommand):
     help = 'Scarica e importa comuni italiani con popolazione nel database'
+    
+    """
+    Comando per l'importazione della lista dei comuni italiani con dati demografici reali.
+    
+    Fonti dati:
+    1. Lista comuni: ISTAT "Elenco-comuni-italiani.csv"
+       URL: https://www.istat.it/storage/codici-unita-amministrative/Elenco-comuni-italiani.csv
+       
+    2. Dati demografici: GeoJSON OpenPolis 2021
+       URL: https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_municipalities_2021.geojson
+       Fonte originale: ISTAT, Censimento 2021
+       
+    3. Fonte alternativa: GitHub - comunijson
+       URL: https://raw.githubusercontent.com/matteocontrini/comuni-json/master/comuni.json
+    """
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -38,22 +53,33 @@ class Command(BaseCommand):
                 
         # Nel metodo handle() del comando
         if df is not None:
+            # Numero totale di comuni da importare
+            total_comuni = len(df)
+            self.stdout.write(f"Avvio importazione di {total_comuni} comuni...")
+            
             # Importa nel database
             count = 0
             for _, row in df.iterrows():
                 Municipality.objects.create(
                     name=row['Comune'],
                     province=row['Provincia'],
-                    # Non includere 'region' poiché non esiste nel modello
+                    region=row.get('Regione', ''),  # Aggiungiamo anche la regione
                     population=int(row.get('Popolazione', 0))
                     # ev_adoption_rate rimane al valore predefinito 2.0
                 )
                 count += 1
                 
-                # Mostra progresso ogni 100 comuni
-                if count % 100 == 0:
-                    self.stdout.write(f"Importati {count} comuni...")
-                    self.stdout.write(self.style.SUCCESS(f'Importati con successo {count} comuni italiani'))
+                # Calcola percentuale di avanzamento
+                progress = int((count / total_comuni) * 100)
+                
+                # Mostra progresso ogni 100 comuni o ogni percentuale
+                if count % 100 == 0 or progress % 5 == 0:
+                    self.stdout.write(f"Importati {count}/{total_comuni} comuni... ({progress}%)")
+                    
+                # Se stai usando la sessione per tracciare il progresso (come nella vista RunImportView)
+                # potresti aggiornare qui il progresso, ma questo richiede modifiche più profonde
+                
+            self.stdout.write(self.style.SUCCESS(f'Importati con successo {count} comuni italiani'))
             
     def scarica_comuni_italiani(self):
         """
@@ -82,10 +108,50 @@ class Command(BaseCommand):
             
             df_comuni = df_comuni.rename(columns=colonne_mappate)
             
-            # Metodo alternativo: usa popolazione simulata per semplicità
-            # Nella versione reale dovresti collegare a dati effettivi di popolazione
-            self.stdout.write("Generazione dati di popolazione simulati...")
-            df_comuni['Popolazione'] = np.random.randint(1000, 100000, size=len(df_comuni))
+            # Scarica dati demografici reali
+            self.stdout.write("Scaricamento dati demografici reali...")
+            try:
+                # URL per i dati demografici ISTAT (ultimo censimento)
+                url_demografia = "https://www.istat.it/storage/cartografia/confini_amministrativi/generalizzati/2023/Elenco-codici-statistici-e-denominazioni-delle-unità-territoriali.zip"
+                
+                # Se il download ISTAT non funziona, utilizziamo un dataset su GitHub con dati del 2021
+                url_demografia_alt = "https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_municipalities_2021.geojson"
+                
+                # Proviamo prima con dataset GitHub che è più affidabile
+                self.stdout.write("Download dati demografici da GitHub...")
+                try:
+                    import json
+                    
+                    response = requests.get(url_demografia_alt)
+                    response.raise_for_status()
+                    
+                    data = response.json()
+                    popolazione_comuni = {}
+                    
+                    # Estrai dati demografici
+                    for feature in data['features']:
+                        properties = feature['properties']
+                        nome = properties.get('name')
+                        popolazione = properties.get('population')
+                        
+                        if nome and popolazione:
+                            popolazione_comuni[nome] = int(popolazione)
+                    
+                    # Applica i dati demografici al dataframe
+                    def get_popolazione(comune):
+                        return popolazione_comuni.get(comune, 5000)  # Valore default se non trovato
+                    
+                    df_comuni['Popolazione'] = df_comuni['Comune'].apply(get_popolazione)
+                    self.stdout.write(f"Dati demografici caricati con successo per {len(popolazione_comuni)} comuni")
+                except Exception as e:
+                    self.stdout.write(self.style.WARNING(f"Errore nei dati demografici: {e}"))
+                    self.stdout.write("Usati valori demografici stimati (10000 abitanti)")
+                    df_comuni['Popolazione'] = 10000  # valore di default
+            except Exception as e:
+                self.stdout.write(self.style.WARNING(f"Errore nel download dei dati demografici: {e}"))
+                self.stdout.write("Usati valori demografici stimati (10000 abitanti)")
+                df_comuni['Popolazione'] = 10000  # valore di default
+            
             df_completo = df_comuni
                 
             # Seleziona solo le colonne necessarie
@@ -111,8 +177,38 @@ class Command(BaseCommand):
                 # Converti JSON in DataFrame
                 df_alt = pd.DataFrame(comuni_json)
                 
-                # Aggiungi popolazione simulata (da sostituire con dati reali)
-                df_alt['popolazione'] = np.random.randint(1000, 100000, size=len(df_alt))
+                # Scarica dati demografici reali anche per il metodo alternativo
+                try:
+                    # Utilizziamo lo stesso dataset di GitHub usato sopra
+                    url_demografia_alt = "https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_municipalities_2021.geojson"
+                    
+                    self.stdout.write("Download dati demografici da GitHub (metodo alternativo)...")
+                    
+                    response_demo = requests.get(url_demografia_alt)
+                    response_demo.raise_for_status()
+                    
+                    data = response_demo.json()
+                    popolazione_comuni = {}
+                    
+                    # Estrai dati demografici
+                    for feature in data['features']:
+                        properties = feature['properties']
+                        nome = properties.get('name')
+                        popolazione = properties.get('population')
+                        
+                        if nome and popolazione:
+                            popolazione_comuni[nome] = int(popolazione)
+                    
+                    # Applica i dati demografici al dataframe
+                    def get_popolazione(comune):
+                        return popolazione_comuni.get(comune, 5000)  # Valore default se non trovato
+                    
+                    df_alt['popolazione'] = df_alt['nome'].apply(get_popolazione)
+                    self.stdout.write(f"Dati demografici caricati con successo per {len(popolazione_comuni)} comuni (metodo alternativo)")
+                except Exception as e:
+                    self.stdout.write(self.style.WARNING(f"Errore nei dati demografici alternativi: {e}"))
+                    self.stdout.write("Usati valori demografici stimati (10000 abitanti)")
+                    df_alt['popolazione'] = 10000  # valore di default
                 
                 # Rinomina colonne
                 df_alt = df_alt.rename(columns={

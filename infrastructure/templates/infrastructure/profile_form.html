@@ -1,0 +1,82 @@
+{% extends 'layouts/form_base.html' %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if form.instance.pk %}{% trans "Modifica profilo di utilizzo" %}{% else %}{% trans "Nuovo profilo di utilizzo" %}{% endif %}{% endblock %}
+
+{% block form_title %}
+{% if form.instance.pk %}
+    {% trans "Modifica profilo di utilizzo" %}: {{ form.instance.name }}
+{% else %}
+    {% trans "Crea nuovo profilo di utilizzo" %}
+{% endif %}
+{% endblock %}
+
+{% block page_title %}
+{% if form.instance.pk %}
+    {% trans "Modifica profilo di utilizzo" %}
+{% else %}
+    {% trans "Nuovo profilo di utilizzo" %}
+{% endif %}
+{% endblock %}
+
+{% block form_content %}
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">{% trans "Informazioni di base" %}</h5>
+                    </div>
+                    <div class="card-body">
+                        {{ form.name|as_crispy_field }}
+                        {{ form.description|as_crispy_field }}
+                        {{ form.customer_profile|as_crispy_field }}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">{% trans "Parametri di utilizzo" %}</h5>
+                    </div>
+                    <div class="card-body">
+                        {{ form.avg_session_duration|as_crispy_field }}
+                        {{ form.avg_energy_per_session|as_crispy_field }}
+                        {{ form.avg_daily_sessions|as_crispy_field }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">{% trans "Distribuzione utilizzo" %}</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="mb-3">{% trans "Giorni feriali" %}</h6>
+                        {{ form.weekday_morning_usage|as_crispy_field }}
+                        {{ form.weekday_afternoon_usage|as_crispy_field }}
+                        {{ form.weekday_evening_usage|as_crispy_field }}
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="mb-3">{% trans "Weekend e festivi" %}</h6>
+                        {{ form.weekend_morning_usage|as_crispy_field }}
+                        {{ form.weekend_afternoon_usage|as_crispy_field }}
+                        {{ form.weekend_evening_usage|as_crispy_field }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="d-flex justify-content-between">
+            <a href="{% url 'infrastructure:profile-list' %}" class="btn btn-secondary">{% trans "Annulla" %}</a>
+            <button type="submit" class="btn btn-primary">{% trans "Salva" %}</button>
+        </div>
+    </form>
+{% endblock %}

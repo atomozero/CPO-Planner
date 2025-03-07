@@ -1,0 +1,36 @@
+/* Environmental module styles */
+
+/* Chart containers */
+.chart-area {
+  position: relative;
+  height: 20rem;
+  width: 100%;
+}
+
+.chart-pie {
+  position: relative;
+  height: 15rem;
+  width: 100%;
+}
+
+/* Stats customization */
+.stats-card-environmental .icon {
+  color: #28a745;
+}
+
+/* Custom colors for environmental metrics */
+.co2-saved {
+  color: #28a745;
+}
+
+.co2-emitted {
+  color: #dc3545;
+}
+
+.trees-equivalent {
+  color: #198754;
+}
+
+.energy-delivered {
+  color: #0dcaf0;
+}

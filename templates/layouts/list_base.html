@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title|default:"Lista" }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    {% if page_title %}
+    <h1 class="h3 mb-4 text-gray-800">{{ page_title }}</h1>
+    {% endif %}
+    
+    {% if show_breadcrumbs|default:True %}
+        {% include "components/breadcrumbs.html" with breadcrumbs=breadcrumbs %}
+    {% endif %}
+    
+    {# Filtri e ricerca #}
+    {% if show_filters|default:True %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Filtri</h6>
+                    <div class="dropdown no-arrow">
+                        <a class="dropdown-toggle" href="#" role="button" id="filterMenuLink" data-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in">
+                            <a class="dropdown-item" href="#" id="resetFilters">Reset Filtri</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% block filter_form %}
+                    {# Form di filtro inserito da template figlio #}
+                    {% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {# Pulsanti azioni #}
+    {% if show_actions|default:True %}
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between">
+                <div>
+                    {% block list_actions %}
+                    {# Azioni inserite da template figlio #}
+                    {% endblock %}
+                </div>
+                <div>
+                    {% block additional_actions %}
+                    {# Azioni aggiuntive inserite da template figlio #}
+                    {% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {# Lista elementi #}
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">{{ list_title|default:page_title }}</h6>
+                </div>
+                <div class="card-body">
+                    {% block list_content %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    {% block table_header %}
+                                    {# Header tabella inserito da template figlio #}
+                                    {% endblock %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% block table_body %}
+                                {# Body tabella inserito da template figlio #}
+                                {% endblock %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {# Paginazione #}
+    {% if show_pagination|default:True and page_obj %}
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="Paginazione">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" aria-label="Prima">
+                            <span aria-hidden="true">&laquo;&laquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" aria-label="Precedente">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" aria-label="Prima">
+                            <span aria-hidden="true">&laquo;&laquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" aria-label="Precedente">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for i in page_obj.paginator.page_range %}
+                        {% if page_obj.number == i %}
+                            <li class="page-item active"><a class="page-link" href="#">{{ i }}</a></li>
+                        {% elif i > page_obj.number|add:"-3" and i < page_obj.number|add:"3" %}
+                            <li class="page-item"><a class="page-link" href="?page={{ i }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">{{ i }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" aria-label="Successiva">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" aria-label="Ultima">
+                            <span aria-hidden="true">&raquo;&raquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" aria-label="Successiva">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" aria-label="Ultima">
+                            <span aria-hidden="true">&raquo;&raquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if enable_datatable|default:False %}
+<script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.25/js/dataTables.bootstrap4.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#dataTable').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Italian.json"
+            }
+        });
+    });
+</script>
+{% endif %}
+{% block list_js %}{% endblock %}
+{% endblock %}

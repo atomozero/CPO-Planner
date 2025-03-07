@@ -1,0 +1,18 @@
+{% comment %}
+Breadcrumbs component - Componente riutilizzabile per i breadcrumbs
+Parametri:
+- breadcrumbs: Lista di dizionari con 'title' e 'url' (opzionale per l'ultimo elemento)
+{% endcomment %}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'cpo_core:dashboard' %}">Home</a></li>
+        {% for crumb in breadcrumbs %}
+            {% if forloop.last %}
+                <li class="breadcrumb-item active" aria-current="page">{{ crumb.title }}</li>
+            {% else %}
+                <li class="breadcrumb-item"><a href="{{ crumb.url }}">{{ crumb.title }}</a></li>
+            {% endif %}
+        {% endfor %}
+    </ol>
+</nav>

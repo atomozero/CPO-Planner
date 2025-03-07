@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title|default:"Form" }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    {% if page_title %}
+    <h1 class="h3 mb-4 text-gray-800">{{ page_title }}</h1>
+    {% endif %}
+    
+    {% if show_breadcrumbs|default:True %}
+        {% include "components/breadcrumbs.html" with breadcrumbs=breadcrumbs %}
+    {% endif %}
+    
+    {# Pulsanti azioni #}
+    {% if show_actions|default:True %}
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex">
+                {% block action_buttons %}
+                <a href="javascript:history.back()" class="btn btn-secondary mr-2">
+                    <i class="fas fa-arrow-left"></i> Indietro
+                </a>
+                {% endblock %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {# Form #}
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">{{ form_title|default:"Inserisci dati" }}</h6>
+                </div>
+                <div class="card-body">
+                    {% if form.errors %}
+                    <div class="alert alert-danger" role="alert">
+                        <h4 class="alert-heading">Errori nel form</h4>
+                        <p>Si prega di correggere i seguenti errori:</p>
+                        {{ form.errors }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if messages %}
+                    <div class="messages">
+                        {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <form method="post" enctype="multipart/form-data" id="mainForm" novalidate>
+                        {% csrf_token %}
+                        
+                        {% block form_content %}
+                        {# Inserire qui il contenuto del form #}
+                        {% endblock %}
+                        
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> {{ submit_text|default:"Salva" }}
+                            </button>
+                            {% block form_additional_buttons %}{% endblock %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% block form_js %}{% endblock %}
+{% endblock %}

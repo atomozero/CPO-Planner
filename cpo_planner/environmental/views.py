@@ -7,9 +7,11 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.urls import reverse, reverse_lazy
 from django.contrib import messages
 from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
 from django.http import JsonResponse
-from django.db.models import Sum, Avg, Count
+from django.db.models import Sum, Avg, Count, Q
 from django.contrib.contenttypes.models import ContentType
+import json
 
 from cpo_planner.projects.models import Project, SubProject, ChargingStation
 from .models import (
@@ -43,6 +45,36 @@ class EnvironmentalDashboardView(LoginRequiredMixin, TemplateView):
         context['total_co2_saved'] = EnvironmentalAnalysis.objects.aggregate(
             total=Sum('total_co2_saved')
         )['total'] or 0
+        
+        # Calcolo alberi equivalenti (1 albero assorbe circa 20kg CO2/anno)
+        context['total_trees'] = int(context['total_co2_saved'] * 1000 / 20) if context['total_co2_saved'] else 0
+        
+        # Dati per il grafico CO2 risparmiata per anno
+        yearly_data = YearlyEnvironmentalData.objects.values('year').annotate(
+            saved=Sum('co2_saved')
+        ).order_by('year')
+        
+        years = [data['year'] for data in yearly_data]
+        saved = [data['saved'] or 0 for data in yearly_data]
+        
+        # Se non ci sono dati, inizializza con valori vuoti
+        if not years:
+            current_year = timezone.now().year
+            years = list(range(current_year, current_year + 5))
+            saved = [0] * len(years)
+            
+        context['chart_years'] = json.dumps(years)
+        context['chart_saved'] = json.dumps(saved)
+        
+        # Dati per il grafico bilancio emissioni
+        total_emissions = EnvironmentalAnalysis.objects.aggregate(
+            total=Sum('total_co2_emissions')
+        )['total'] or 0
+        
+        context['emissions_balance'] = {
+            'saved': context['total_co2_saved'],
+            'emitted': total_emissions
+        }
         
         return context
 

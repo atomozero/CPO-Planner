@@ -28,9 +28,9 @@
         <h1 class="h3 mb-0 text-gray-800">{% if form.instance.pk %}Modifica{% else %}Nuovo{% endif %} Progetto</h1>
     </div>
     
-    <form method="post" class="mt-3">
+    <form method="post" class="mt-3" enctype="multipart/form-data"> <!-- Verifica che enctype sia corretto -->
         {% csrf_token %}
-        
+        {{ form.errors }}
         <div class="card mb-4 shadow">
             <div class="card-header py-3">
                 <h6 class="m-0 font-weight-bold text-primary">Informazioni Generali</h6>
@@ -50,15 +50,41 @@
                     <div class="col-md-6 mb-3">
                         <label for="id_municipality_autocomplete" class="form-label">Comune</label>
                         <select id="id_municipality_autocomplete" class="form-control municipality-autocomplete" style="width: 100%">
-                            {% if form.instance.municipality %}
-                            <option value="{{ form.instance.municipality.id }}" selected>{{ form.instance.municipality.name }} ({{ form.instance.municipality.province }})</option>
+                            {% if form.instance.region %}
+                            <option value="{{ form.instance.region }}" selected>{{ form.instance.region }}</option>
                             {% endif %}
                         </select>
-                        <input type="hidden" name="municipality" id="id_municipality" value="{{ form.instance.municipality.id|default:'' }}">
+                        <input type="hidden" name="region" id="id_region" value="{{ form.region.value|default:'' }}">
+                        {% if form.errors.region %}
+                        <div class="invalid-feedback d-block">{{ form.errors.region }}</div>
+                        {% endif %}
                         <div id="municipality-details" class="mt-2"></div>
-                        {% if form.municipality.errors %}
+                        {% if form.region.errors %}
                         <div class="invalid-feedback d-block">
-                            {{ form.municipality.errors }}
+                            {{ form.region.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="id_logo" class="form-label">Logo Progetto</label>
+                        
+                        <!-- Uso diretto del form field in modalità Bootstrap -->
+                        {{ form.logo }}
+                        
+                        <div class="form-text">Scegli un'immagine per il logo del progetto</div>
+                        
+                        {% if form.instance.logo %}
+                        <div class="mt-2">
+                            <img src="{{ form.instance.logo.url }}" alt="Logo Attuale" class="img-thumbnail" style="max-height: 100px;">
+                            <p class="small text-muted">Logo attuale</p>
+                        </div>
+                        {% endif %}
+                        {% if form.logo.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.logo.errors }}
                         </div>
                         {% endif %}
                     </div>
@@ -67,7 +93,7 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="id_start_date" class="form-label">Data di inizio</label>
-                        <input type="date" name="start_date" id="id_start_date" value="{{ form.start_date.value|date:'Y-m-d'|default:'' }}" class="form-control">
+                        <input type="date" name="start_date" id="id_start_date" value="{{ form.instance.start_date|date:'Y-m-d' }}" class="form-control">
                         {% if form.start_date.errors %}
                         <div class="invalid-feedback d-block">
                             {{ form.start_date.errors }}
@@ -76,11 +102,11 @@
                     </div>
                     
                     <div class="col-md-6 mb-3">
-                        <label for="id_estimated_completion_date" class="form-label">Data di completamento stimata</label>
-                        <input type="date" name="estimated_completion_date" id="id_estimated_completion_date" value="{{ form.estimated_completion_date.value|date:'Y-m-d'|default:'' }}" class="form-control">
-                        {% if form.estimated_completion_date.errors %}
+                        <label for="id_expected_completion_date" class="form-label">Data di completamento stimata</label>
+                        <input type="date" name="expected_completion_date" id="id_expected_completion_date" value="{{ form.instance.expected_completion_date|date:'Y-m-d' }}" class="form-control">
+                        {% if form.expected_completion_date.errors %}
                         <div class="invalid-feedback d-block">
-                            {{ form.estimated_completion_date.errors }}
+                            {{ form.expected_completion_date.errors }}
                         </div>
                         {% endif %}
                     </div>
@@ -104,151 +130,20 @@
             </div>
         </div>
         
-        <div class="card mb-4 shadow">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Informazioni Finanziarie</h6>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="id_budget" class="form-label">Budget totale (€)</label>
-                        <input type="number" name="budget" id="id_budget" value="{{ form.budget.value|default:'' }}" class="form-control" step="0.01" min="0">
-                        {% if form.budget.errors %}
-                        <div class="invalid-feedback d-block">
-                            {{ form.budget.errors }}
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-                
-                <!-- Altri campi finanziari se necessario -->
-                {% if form.total_budget %}
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="id_total_budget" class="form-label">{{ form.total_budget.label }}</label>
-                        {{ form.total_budget }}
-                        {% if form.total_budget.help_text %}
-                        <div class="form-text">{{ form.total_budget.help_text }}</div>
-                        {% endif %}
-                        {% if form.total_budget.errors %}
-                        <div class="invalid-feedback d-block">
-                            {{ form.total_budget.errors }}
-                        </div>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="col-md-6 mb-3">
-                        <label for="id_loan_amount" class="form-label">{{ form.loan_amount.label }}</label>
-                        {{ form.loan_amount }}
-                        {% if form.loan_amount.help_text %}
-                        <div class="form-text">{{ form.loan_amount.help_text }}</div>
-                        {% endif %}
-                        {% if form.loan_amount.errors %}
-                        <div class="invalid-feedback d-block">
-                            {{ form.loan_amount.errors }}
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-                
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label for="id_loan_rate" class="form-label">{{ form.loan_rate.label }}</label>
-                        {{ form.loan_rate }}
-                        {% if form.loan_rate.help_text %}
-                        <div class="form-text">{{ form.loan_rate.help_text }}</div>
-                        {% endif %}
-                        {% if form.loan_rate.errors %}
-                        <div class="invalid-feedback d-block">
-                            {{ form.loan_rate.errors }}
-                        </div>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="col-md-4 mb-3">
-                        <label for="id_loan_term" class="form-label">{{ form.loan_term.label }}</label>
-                        {{ form.loan_term }}
-                        {% if form.loan_term.help_text %}
-                        <div class="form-text">{{ form.loan_term.help_text }}</div>
-                        {% endif %}
-                        {% if form.loan_term.errors %}
-                        <div class="invalid-feedback d-block">
-                            {{ form.loan_term.errors }}
-                        </div>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="col-md-4 mb-3">
-                        <label for="id_grace_period" class="form-label">{{ form.grace_period.label }}</label>
-                        {{ form.grace_period }}
-                        {% if form.grace_period.help_text %}
-                        <div class="form-text">{{ form.grace_period.help_text }}</div>
-                        {% endif %}
-                        {% if form.grace_period.errors %}
-                        <div class="invalid-feedback d-block">
-                            {{ form.grace_period.errors }}
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-                
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="id_expected_roi" class="form-label">{{ form.expected_roi.label }}</label>
-                        {{ form.expected_roi }}
-                        {% if form.expected_roi.help_text %}
-                        <div class="form-text">{{ form.expected_roi.help_text }}</div>
-                        {% endif %}
-                        {% if form.expected_roi.errors %}
-                        <div class="invalid-feedback d-block">
-                            {{ form.expected_roi.errors }}
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endif %}
-            </div>
+        <!-- Campi nascosti -->
+        <input type="hidden" name="total_budget" id="id_total_budget" value="0">
+        <input type="hidden" name="total_expected_revenue" id="id_total_expected_revenue" value="0">
+        <input type="hidden" name="photovoltaic_integration" id="id_photovoltaic_integration" value="false">
+        
+        <div class="alert alert-info mb-4">
+            <i class="fas fa-info-circle mr-2"></i>
+            Le informazioni finanziarie e l'integrazione fotovoltaica verranno gestite a livello di singola stazione di ricarica.
         </div>
         
-        {% if form.market_penetration %}
-        <div class="card mb-4 shadow">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Previsioni di Mercato</h6>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="id_market_penetration" class="form-label">{{ form.market_penetration.label }}</label>
-                        {{ form.market_penetration }}
-                        {% if form.market_penetration.help_text %}
-                        <div class="form-text">{{ form.market_penetration.help_text }}</div>
-                        {% endif %}
-                        {% if form.market_penetration.errors %}
-                        <div class="invalid-feedback d-block">
-                            {{ form.market_penetration.errors }}
-                        </div>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="col-md-6 mb-3">
-                        <label for="id_extended_period" class="form-label">{{ form.extended_period.label }}</label>
-                        {{ form.extended_period }}
-                        {% if form.extended_period.help_text %}
-                        <div class="form-text">{{ form.extended_period.help_text }}</div>
-                        {% endif %}
-                        {% if form.extended_period.errors %}
-                        <div class="invalid-feedback d-block">
-                            {{ form.extended_period.errors }}
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
+        <!-- Rimosso sezione previsioni di mercato che non esiste nel modello -->
         
         <div class="d-flex justify-content-between mb-4">
-            <a href="{% url 'infrastructure:project-list' %}" class="btn btn-secondary">Annulla</a>
+            <a href="{% url 'projects:project_list' %}" class="btn btn-secondary">Annulla</a>
             <button type="submit" class="btn btn-primary">Salva Progetto</button>
         </div>
     </form>
@@ -285,8 +180,13 @@ $(document).ready(function() {
     // Quando viene selezionato un comune
     $('.municipality-autocomplete').on('select2:select', function(e) {
         var data = e.params.data;
-        // Imposta l'ID nel campo nascosto
-        $('#id_municipality').val(data.id);
+        // Imposta il nome del comune nel campo regione
+        var comune = data.text.split(' (')[0];
+        $('#id_region').val(comune);
+        console.log('Comune selezionato: ' + comune);
+        
+        // Rimuovi qualsiasi messaggio di errore
+        $('.invalid-feedback').hide();
         
         // Mostra dettagli aggiuntivi del comune
         var populationDisplay = data.population ? data.population.toLocaleString() : 'N/D';
@@ -295,6 +195,11 @@ $(document).ready(function() {
             <div class="card border-left-info shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
+                        ${data.logo_url ? `
+                        <div class="col-auto mr-3">
+                            <img src="${data.logo_url}" alt="Logo Comune" class="img-fluid" style="max-height: 60px;">
+                        </div>
+                        ` : ''}
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                                 Popolazione</div>
@@ -328,6 +233,11 @@ $(document).ready(function() {
                         <div class="card border-left-info shadow h-100 py-2">
                             <div class="card-body">
                                 <div class="row no-gutters align-items-center">
+                                    ${municipality.logo_url ? `
+                                    <div class="col-auto mr-3">
+                                        <img src="${municipality.logo_url}" alt="Logo Comune" class="img-fluid" style="max-height: 60px;">
+                                    </div>
+                                    ` : ''}
                                     <div class="col mr-2">
                                         <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                                             Popolazione</div>

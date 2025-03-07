@@ -1,0 +1,412 @@
+{% extends "layouts/detail_base.html" %}
+
+{% block title %}Dettaglio Progetto: {{ project.name }}{% endblock %}
+
+{% block page_title %}Progetto: {{ project.name }}{% endblock %}
+
+{% block actions %}
+<a href="{% url 'projects:project_update' project.id %}" class="btn btn-sm btn-warning">
+    <i class="fas fa-edit"></i> Modifica
+</a>
+<a href="{% url 'projects:project_delete' project.id %}" class="btn btn-sm btn-danger">
+    <i class="fas fa-trash"></i> Elimina
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Informazioni Generali -->
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Informazioni Generali</h6>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4 d-flex justify-content-center align-items-center">
+                    {% if project.logo and project.logo.name %}
+                    <div class="mx-3">
+                        <img src="{{ project.logo.url }}" alt="Logo del Progetto" class="img-fluid" style="max-height: 120px;">
+                        <p class="text-muted small mt-1">Logo del Progetto</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% for subproject in subprojects %}
+                        {% if subproject.municipality.logo and subproject.municipality.logo.name and forloop.first %}
+                        <div class="mx-3">
+                            <img src="{{ subproject.municipality.logo.url }}" alt="Logo del Comune" class="img-fluid" style="max-height: 120px;">
+                            <p class="text-muted small mt-1">Logo del Comune</p>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                
+                <div class="debug-info" style="display:none;">
+                    <p>Debug info: progetto.logo = {{ project.logo|default:"None" }}</p>
+                </div>
+                
+                {% if not project.logo or not project.logo.name %}
+                <div class="alert alert-info mb-3">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <a href="{% url 'projects:project_update' project.id %}">Aggiungi un logo</a> per questo progetto.
+                </div>
+                {% endif %}
+                
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <tbody>
+                            <tr>
+                                <th width="30%">Nome</th>
+                                <td>{{ project.name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Comune</th>
+                                <td>
+                                    {% for subproject in subprojects %}
+                                        {% if forloop.first %}
+                                            <a href="{% url 'infrastructure:municipality-detail' subproject.municipality.id %}" class="text-primary">
+                                                {{ project.region }}
+                                            </a>
+                                        {% endif %}
+                                    {% empty %}
+                                        {{ project.region }}
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Data Inizio</th>
+                                <td>{{ project.start_date|date:"d/m/Y" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Data Fine Prevista</th>
+                                <td>{{ project.expected_completion_date|date:"d/m/Y" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Stato</th>
+                                <td>
+                                    <span class="badge badge-{% if project.status == 'planning' %}info{% elif project.status == 'in_progress' %}primary{% elif project.status == 'completed' %}success{% else %}warning{% endif %}">
+                                        {{ project.get_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Descrizione</th>
+                                <td>{{ project.description|default:"Nessuna descrizione disponibile"|linebreaks }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Informazioni Finanziarie -->
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Informazioni Finanziarie</h6>
+                <div class="dropdown no-arrow">
+                    <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in" aria-labelledby="dropdownMenuLink">
+                        <div class="dropdown-header">Azioni Finanziarie:</div>
+                        <a class="dropdown-item" href="#"><i class="fas fa-chart-line fa-fw mr-2 text-gray-400"></i> Analisi dettagliata</a>
+                        <a class="dropdown-item" href="#"><i class="fas fa-file-invoice-dollar fa-fw mr-2 text-gray-400"></i> Genera report</a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <tbody>
+                            <tr>
+                                <th width="40%">Budget Totale</th>
+                                <td>€ {{ project.total_budget|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Ricavi Previsti</th>
+                                <td>€ {{ project.total_expected_revenue|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>ROI Stimato</th>
+                                <td>
+                                    {% if project.total_roi %}
+                                        {{ project.total_roi|floatformat:2 }}%
+                                    {% else %}
+                                        Non calcolato
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Grafico finanziario di base -->
+                <div class="mt-4">
+                    <canvas id="financialChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sezione Stazioni di Ricarica -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Stazioni di Ricarica</h6>
+        <a href="{% url 'projects:subproject_create' project.id %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-plus"></i> Aggiungi Stazione di Ricarica
+        </a>
+    </div>
+    <div class="card-body">
+        {% if subprojects %}
+            <div class="table-responsive">
+                <table class="table table-bordered" id="subprojectsTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Nome Stazione</th>
+                            <th>Data Inizio</th>
+                            <th>Data Fine Prevista</th>
+                            <th>Stato</th>
+                            <th>Budget</th>
+                            <th>Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for subproject in subprojects %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'projects:subproject_detail' subproject.id %}">{{ subproject.name }}</a>
+                            </td>
+                            <td>{{ subproject.start_date|date:"d/m/Y" }}</td>
+                            <td>{{ subproject.planned_completion_date|date:"d/m/Y" }}</td>
+                            <td>
+                                <div class="dropdown">
+                                    <a href="#" class="dropdown-toggle badge badge-{% if subproject.status == 'planning' %}info{% elif subproject.status == 'in_progress' %}primary{% elif subproject.status == 'completed' %}success{% elif subproject.status == 'operational' %}success{% else %}warning{% endif %}" id="statusDropdown{{ subproject.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        {{ subproject.get_status_display }}
+                                    </a>
+                                    <div class="dropdown-menu shadow" aria-labelledby="statusDropdown{{ subproject.id }}">
+                                        {% for status_code, status_name in subproject.STATUS_CHOICES %}
+                                            <a class="dropdown-item {% if subproject.status == status_code %}active{% endif %}" 
+                                               href="#"
+                                               onclick="updateStatus({{ subproject.id }}, '{{ status_code }}', event)">
+                                                {{ status_name }}
+                                            </a>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>€ {{ subproject.budget|floatformat:2 }}</td>
+                            <td>
+                                <a href="{% url 'projects:subproject_detail' subproject.id %}" class="btn btn-info btn-circle btn-sm">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'projects:subproject_update' subproject.id %}" class="btn btn-warning btn-circle btn-sm">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'projects:subproject_delete' subproject.id %}" class="btn btn-danger btn-circle btn-sm">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                Nessuna stazione di ricarica registrata. <a href="{% url 'projects:subproject_create' project.id %}">Aggiungi la prima stazione</a>.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Sezione Documenti -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Documenti</h6>
+        <a href="{% url 'documents:document_create_entity' 'project' project.id %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-plus"></i> Aggiungi Documento
+        </a>
+    </div>
+    <div class="card-body">
+        {% with documents=project.documents.all %}
+            {% if documents %}
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="documentsTable" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Titolo</th>
+                                <th>Tipo</th>
+                                <th>Data</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for doc in documents %}
+                            <tr>
+                                <td>{{ doc.title }}</td>
+                                <td>{{ doc.get_document_type_display }}</td>
+                                <td>{{ doc.created_at|date:"d/m/Y" }}</td>
+                                <td>
+                                    <a href="{% url 'documents:document_download' doc.id %}" class="btn btn-primary btn-circle btn-sm">
+                                        <i class="fas fa-download"></i>
+                                    </a>
+                                    <a href="{% url 'documents:document_detail' doc.id %}" class="btn btn-info btn-circle btn-sm">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'documents:document_update' doc.id %}" class="btn btn-warning btn-circle btn-sm">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'documents:document_delete' doc.id %}" class="btn btn-danger btn-circle btn-sm">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <p>Nessun documento associato. <a href="{% url 'documents:document_create_entity' 'project' project.id %}">Aggiungi un documento</a>.</p>
+                    <p class="mt-3">Documenti suggeriti:</p>
+                    <ul>
+                        <li>Avviso pubblico di Manifestazione d'interesse</li>
+                        <li>Determina del Comune</li>
+                        <li>Documenti per la partecipazione al Bando</li>
+                        <li>Relazione di presentazione del progetto</li>
+                    </ul>
+                </div>
+            {% endif %}
+        {% endwith %}
+    </div>
+</div>
+
+<!-- Sezione Timeline -->
+{% if timeline %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Cronoprogramma</h6>
+    </div>
+    <div class="card-body">
+        <div id="ganttChart" style="height: 400px;"></div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+$(document).ready(function() {
+    // Inizializza DataTable per i sottoprogetti
+    $('#subprojectsTable').DataTable({
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Italian.json"
+        }
+    });
+    
+    // Inizializza DataTable per i documenti
+    $('#documentsTable').DataTable({
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Italian.json"
+        }
+    });
+
+    // Grafico finanziario di base
+    var ctx = document.getElementById('financialChart').getContext('2d');
+    var myChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Budget', 'Ricavi Attesi'],
+            datasets: [{
+                label: 'Dati Finanziari (€)',
+                data: [{{ project.total_budget }}, {{ project.total_expected_revenue }}],
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.5)',
+                    'rgba(75, 192, 192, 0.5)'
+                ],
+                borderColor: [
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(75, 192, 192, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '€ ' + value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+
+// Funzione per aggiornare lo stato di una stazione
+function updateStatus(subprojectId, statusCode, event) {
+    event.preventDefault();
+    
+    // Mostra un piccolo loader
+    const targetElement = event.target;
+    const originalText = targetElement.innerHTML;
+    targetElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + originalText;
+    
+    // Utilizza un console.log per il debug
+    console.log(`Inviando richiesta aggiornamento stato: id=${subprojectId}, status=${statusCode}`);
+    
+    // Esegui la richiesta AJAX per aggiornare lo stato
+    $.ajax({
+        url: `/projects/subproject/${subprojectId}/update/`,
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        data: {
+            status: statusCode
+        },
+        contentType: 'application/x-www-form-urlencoded',
+        success: function(response) {
+            // Aggiorna l'etichetta di stato nella UI
+            let badgeClass = 'info';
+            if (statusCode === 'in_progress') badgeClass = 'primary';
+            else if (statusCode === 'completed' || statusCode === 'operational') badgeClass = 'success';
+            else if (statusCode === 'suspended' || statusCode === 'maintenance') badgeClass = 'warning';
+            
+            // Trova l'elemento del dropdown e aggiorna il testo
+            const dropdownToggle = $(`#statusDropdown${subprojectId}`);
+            const statusDisplay = $(`#statusDropdown${subprojectId}`).parent().find('.dropdown-menu .dropdown-item.active').text().trim();
+            dropdownToggle.removeClass().addClass(`dropdown-toggle badge badge-${badgeClass}`);
+            dropdownToggle.text(originalText);
+            
+            // Cerca l'elemento corrispondente al nuovo stato
+            $(`.dropdown-menu a[onclick*="${subprojectId}, '${statusCode}'"]`).addClass('active').siblings().removeClass('active');
+            
+            // Aggiorna il testo del badge
+            const statusText = $(`.dropdown-menu a[onclick*="${subprojectId}, '${statusCode}'"]`).text().trim();
+            dropdownToggle.text(statusText);
+            
+            location.reload(); // Ricarica la pagina per vedere le modifiche
+        },
+        error: function(xhr, status, error) {
+            // Mostra dettagli dell'errore
+            console.error("Errore nella richiesta AJAX:", error);
+            console.error("Stato HTTP:", xhr.status);
+            console.error("Risposta:", xhr.responseText);
+            
+            // Ripristina il testo originale
+            targetElement.innerHTML = originalText;
+            alert('Si è verificato un errore durante l\'aggiornamento dello stato');
+        }
+    });
+}
+</script>
+{% endblock %}

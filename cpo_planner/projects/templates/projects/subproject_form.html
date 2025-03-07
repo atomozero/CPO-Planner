@@ -1,0 +1,693 @@
+{% extends "layouts/form_base.html" %}
+
+{% block title %}{% if form.instance.pk %}Modifica{% else %}Nuova{% endif %} Stazione di Ricarica | CPO Planner{% endblock %}
+
+{% block page_title %}{% if form.instance.pk %}Modifica{% else %}Nuova{% endif %} Stazione di Ricarica per {{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Dati Stazione di Ricarica</h6>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.errors }}
+            
+            <!-- Informazioni di base -->
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <label for="id_name" class="form-label">Nome Stazione di Ricarica</label>
+                    <input type="text" name="name" id="id_name" value="{{ form.name.value|default:'' }}" class="form-control" required>
+                    {% if form.name.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.name.errors }}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Campo Comune (preselezionato Milano) -->
+                <input type="hidden" name="municipality" value="1">
+            </div>
+            
+            <!-- Date -->
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="id_start_date" class="form-label">Data Inizio</label>
+                    <input type="date" name="start_date" id="id_start_date" value="{{ form.instance.start_date|date:'Y-m-d' }}" class="form-control">
+                    {% if form.start_date.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.start_date.errors }}
+                    </div>
+                    {% endif %}
+                    <small class="form-text text-muted">Non può essere precedente alla data di inizio del progetto ({{ project.start_date|date:'d/m/Y' }})</small>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <label for="id_planned_completion_date" class="form-label">Data Completamento Prevista</label>
+                    <input type="date" name="planned_completion_date" id="id_planned_completion_date" value="{{ form.instance.planned_completion_date|date:'Y-m-d' }}" class="form-control" {% if form.instance.use_project_completion_date %}disabled{% endif %}>
+                    {% if form.planned_completion_date.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.planned_completion_date.errors }}
+                    </div>
+                    {% endif %}
+                    <small class="form-text text-muted">Non può essere successiva alla data di fine del progetto ({{ project.expected_completion_date|date:'d/m/Y' }})</small>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <div class="form-check mt-4">
+                        <input type="checkbox" name="use_project_completion_date" id="id_use_project_completion_date" class="form-check-input" {% if form.instance.use_project_completion_date %}checked{% endif %}>
+                        <label for="id_use_project_completion_date" class="form-check-label">Usa data completamento progetto</label>
+                    </div>
+                    <small class="form-text text-muted">Se selezionato, verrà usata la data di completamento del progetto principale</small>
+                </div>
+            </div>
+            
+            <!-- Stato e dati finanziari -->
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="id_status" class="form-label">Stato</label>
+                    <select name="status" id="id_status" class="form-control">
+                        {% for value, label in form.fields.status.choices %}
+                        <option value="{{ value }}" {% if form.instance.status == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if form.status.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.status.errors }}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label for="id_budget" class="form-label">Budget (€)</label>
+                    <input type="number" name="budget" id="id_budget" value="{{ form.instance.budget|default:'0' }}" class="form-control" step="0.01" min="0" readonly>
+                    {% if form.budget.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.budget.errors }}
+                    </div>
+                    {% endif %}
+                    <small class="form-text text-muted">Calcolato automaticamente come somma di tutti i costi</small>
+                </div>
+                
+                <!-- Aggiunto campo per ricavi attesi -->
+                <div class="col-md-6 mb-3">
+                    <label for="id_expected_revenue" class="form-label">Ricavi Attesi (€)</label>
+                    <input type="number" name="expected_revenue" id="id_expected_revenue" value="{{ form.instance.expected_revenue|default:'0' }}" class="form-control" step="0.01" min="0" readonly>
+                    {% if form.expected_revenue.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.expected_revenue.errors }}
+                    </div>
+                    {% endif %}
+                    <small class="form-text text-muted">Calcolato automaticamente in base al profilo di consumo</small>
+                </div>
+                
+                <!-- Aggiunto campo ROI -->
+                <div class="col-md-6 mb-3">
+                    <label for="id_roi" class="form-label">ROI (%)</label>
+                    <input type="number" name="roi" id="id_roi" value="{{ form.instance.roi|default:'0' }}" class="form-control" step="0.01" readonly>
+                    {% if form.roi.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.roi.errors }}
+                    </div>
+                    {% endif %}
+                    <small class="form-text text-muted">Calcolato automaticamente in base ai ricavi attesi e al budget</small>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">Posizione</h6>
+                </div>
+                <div class="card-body">
+                    <!-- Indirizzo e Dati Catastali -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_address" class="form-label">Indirizzo</label>
+                            <input type="text" name="address" id="id_address" value="{{ form.instance.address|default:'' }}" class="form-control">
+                            {% if form.address.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.address.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_cadastral_data" class="form-label">Dati Catastali</label>
+                            <input type="text" name="cadastral_data" id="id_cadastral_data" value="{{ form.instance.cadastral_data|default:'' }}" class="form-control" placeholder="Foglio, Particella, Subalterno">
+                            {% if form.cadastral_data.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.cadastral_data.errors }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Inserire i riferimenti catastali della stazione</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Coordinate Proposte -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_latitude_proposed" class="form-label">Latitudine Proposta</label>
+                            <input type="text" name="latitude_proposed" id="id_latitude_proposed" value="{{ form.instance.latitude_proposed|default:'' }}" class="form-control" placeholder="Es. 45.123456">
+                            {% if form.latitude_proposed.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.latitude_proposed.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_longitude_proposed" class="form-label">Longitudine Proposta</label>
+                            <input type="text" name="longitude_proposed" id="id_longitude_proposed" value="{{ form.instance.longitude_proposed|default:'' }}" class="form-control" placeholder="Es. 12.123456">
+                            {% if form.longitude_proposed.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.longitude_proposed.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Coordinate Approvate -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_latitude_approved" class="form-label">Latitudine Approvata</label>
+                            <input type="text" name="latitude_approved" id="id_latitude_approved" value="{{ form.instance.latitude_approved|default:'' }}" class="form-control" placeholder="Es. 45.123456">
+                            {% if form.latitude_approved.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.latitude_approved.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_longitude_approved" class="form-label">Longitudine Approvata</label>
+                            <input type="text" name="longitude_approved" id="id_longitude_approved" value="{{ form.instance.longitude_approved|default:'' }}" class="form-control" placeholder="Es. 12.123456">
+                            {% if form.longitude_approved.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.longitude_approved.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Specifiche Tecniche Colonnina -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">Specifiche Colonnina</h6>
+                </div>
+                <div class="card-body">
+                    {% if charging_templates %}
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="form-group">
+                                <label for="charging_template_select" class="form-label">Seleziona un template di colonnina</label>
+                                <select id="charging_template_select" class="form-control">
+                                    <option value="">-- Seleziona un template --</option>
+                                    {% for template in charging_templates %}
+                                    <option value="{{ template.id }}" 
+                                            data-brand="{{ template.brand }}"
+                                            data-model="{{ template.model }}"
+                                            data-power="{{ template.power_kw }}"
+                                            data-connectors="{{ template.num_connectors }}"
+                                            data-connector-type="{{ template.get_connector_type_display }}"
+                                            data-purchase="{{ template.purchase_cost }}"
+                                            data-installation="{{ template.installation_cost }}"
+                                            data-maintenance="{{ template.maintenance_cost }}"
+                                            data-modem="{{ template.modem_4g_cost }}"
+                                            data-sim="{{ template.sim_annual_cost }}"
+                                            data-ground-area="{{ template.ground_area|default:'0' }}"
+                                            data-has-4g="{{ template.has_4g }}">
+                                        {{ template.brand }} {{ template.model }} ({{ template.power_kw }} kW)
+                                        <!-- Debug: G.Area={{ template.ground_area|default:'N/A' }} -->
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <small class="form-text text-muted">Selezionando un template, i campi relativi alla colonnina verranno compilati automaticamente</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_charger_brand" class="form-label">Marca</label>
+                            <input type="text" name="charger_brand" id="id_charger_brand" value="{{ form.instance.charger_brand|default:'' }}" class="form-control">
+                            {% if form.charger_brand.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.charger_brand.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_charger_model" class="form-label">Modello</label>
+                            <input type="text" name="charger_model" id="id_charger_model" value="{{ form.instance.charger_model|default:'' }}" class="form-control">
+                            {% if form.charger_model.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.charger_model.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label for="id_power_kw" class="form-label">Potenza (kW)</label>
+                            <input type="number" name="power_kw" id="id_power_kw" value="{{ form.instance.power_kw|default:'' }}" class="form-control" step="0.1">
+                            {% if form.power_kw.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.power_kw.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="id_power_requested" class="form-label">Potenza Richiesta (kW)</label>
+                            <input type="number" name="power_requested" id="id_power_requested" value="{{ form.instance.power_requested|default:'' }}" class="form-control" step="0.1">
+                            {% if form.power_requested.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.power_requested.errors }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Potenza richiesta ad E-Distribuzione (80€/kW)</small>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="id_num_connectors" class="form-label">Numero Connettori</label>
+                            <input type="number" name="num_connectors" id="id_num_connectors" value="{{ form.instance.num_connectors|default:'1' }}" class="form-control" min="1">
+                            {% if form.num_connectors.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.num_connectors.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="id_num_chargers" class="form-label">Numero Colonnine</label>
+                            <input type="number" name="num_chargers" id="id_num_chargers" value="{{ form.instance.num_chargers|default:'1' }}" class="form-control" min="1">
+                            {% if form.num_chargers.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.num_chargers.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_usage_profile" class="form-label">Profilo di Consumo</label>
+                            <select name="usage_profile" id="id_usage_profile" class="form-control">
+                                <option value="">-- Seleziona un profilo --</option>
+                                {% for profile in form.fields.usage_profile.queryset %}
+                                <option value="{{ profile.id }}" {% if form.instance.usage_profile_id == profile.id %}selected{% endif %}>{{ profile.name }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.usage_profile.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.usage_profile.errors }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Utilizzato per il calcolo automatico dei ricavi</small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_ground_area_sqm" class="form-label">Area Occupata (m²)</label>
+                            <input type="number" name="ground_area_sqm" id="id_ground_area_sqm" value="{{ form.instance.ground_area_sqm|default:'' }}" class="form-control" step="0.01">
+                            {% if form.ground_area_sqm.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.ground_area_sqm.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <label for="id_connector_types" class="form-label">Tipi di Connettori</label>
+                            <input type="text" name="connector_types" id="id_connector_types" value="{{ form.instance.connector_types|default:'' }}" class="form-control" placeholder="Es. Type 2, CCS, CHAdeMO">
+                            {% if form.connector_types.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.connector_types.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Dettaglio Costi -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">Dettaglio Costi</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_equipment_cost" class="form-label">Costo Colonnina (€)</label>
+                            <input type="number" name="equipment_cost" id="id_equipment_cost" value="{{ form.instance.equipment_cost|default:'' }}" class="form-control" step="0.01" min="0">
+                            {% if form.equipment_cost.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.equipment_cost.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_installation_cost" class="form-label">Costo Installazione (€)</label>
+                            <input type="number" name="installation_cost" id="id_installation_cost" value="{{ form.instance.installation_cost|default:'' }}" class="form-control" step="0.01" min="0">
+                            {% if form.installation_cost.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.installation_cost.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_connection_cost" class="form-label">Costo Allaccio Rete (€)</label>
+                            <input type="number" name="connection_cost" id="id_connection_cost" value="{{ form.instance.connection_cost|default:'' }}" class="form-control" step="0.01" min="0">
+                            {% if form.connection_cost.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.connection_cost.errors }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Calcolato automaticamente se si compila il campo "Potenza Richiesta" (80€/kW)</small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_permit_cost" class="form-label">Costo Permessi (€)</label>
+                            <input type="number" name="permit_cost" id="id_permit_cost" value="{{ form.instance.permit_cost|default:'' }}" class="form-control" step="0.01" min="0">
+                            {% if form.permit_cost.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.permit_cost.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_civil_works_cost" class="form-label">Costo Opere Civili (€)</label>
+                            <input type="number" name="civil_works_cost" id="id_civil_works_cost" value="{{ form.instance.civil_works_cost|default:'' }}" class="form-control" step="0.01" min="0">
+                            {% if form.civil_works_cost.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.civil_works_cost.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_other_costs" class="form-label">Altri Costi (€)</label>
+                            <input type="number" name="other_costs" id="id_other_costs" value="{{ form.instance.other_costs|default:'' }}" class="form-control" step="0.01" min="0">
+                            {% if form.other_costs.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.other_costs.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <label class="form-label fw-bold">Budget Totale (Calcolato)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">€</span>
+                                <input type="text" id="calculated_budget" class="form-control" readonly>
+                                <button type="button" id="apply_calculated_budget" class="btn btn-success">
+                                    <i class="fas fa-calculator"></i> Calcola Budget Totale
+                                </button>
+                            </div>
+                            <small class="form-text text-muted">Somma calcolata di tutti i costi dettagliati inseriti</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Immagini della stazione -->
+                    <div class="row mt-4">
+                        <div class="col-12 mb-3">
+                            <h5 class="mb-3">Immagini della stazione</h5>
+                            <p class="text-muted small">Le immagini della stazione potranno essere aggiunte dopo la creazione nella pagina di dettaglio.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Descrizione -->
+            <div class="row">
+                <div class="col-12 mb-3">
+                    <label for="id_description" class="form-label">Descrizione</label>
+                    <textarea name="description" id="id_description" class="form-control" rows="4">{{ form.instance.description|default:'' }}</textarea>
+                    {% if form.description.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.description.errors }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Informazioni relative al progetto -->
+            <input type="hidden" name="project" value="{{ project.id }}">
+            
+            <div class="d-flex justify-content-between mt-4">
+                <a href="{% url 'projects:project_detail' project.id %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Torna al Progetto
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> {% if form.instance.pk %}Aggiorna{% else %}Salva{% endif %} Stazione di Ricarica
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Aggiungi Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Configura l'autocompletamento per i comuni
+    $('.municipality-autocomplete').select2({
+        placeholder: 'Inizia a digitare il nome di un comune...',
+        minimumInputLength: 2,
+        ajax: {
+            url: '{% url "infrastructure:municipality-autocomplete" %}',
+            dataType: 'json',
+            delay: 300,
+            data: function(params) {
+                return {
+                    q: params.term
+                };
+            },
+            processResults: function(data) {
+                return {
+                    results: data.results
+                };
+            },
+            cache: true
+        }
+    });
+    
+    // Quando viene selezionato un comune
+    $('.municipality-autocomplete').on('select2:select', function(e) {
+        var data = e.params.data;
+        // Imposta l'ID nel campo nascosto
+        $('#id_municipality').val(data.id);
+    });
+    
+    // Gestione del template di colonnina
+    $('#charging_template_select').change(function() {
+        try {
+            var selectedOption = $(this).find('option:selected');
+            if (selectedOption.val()) {
+                // Otteniamo e loggiamo tutti i dati prima di usarli
+                var templateData = {
+                    id: selectedOption.val(),
+                    brand: selectedOption.data('brand'),
+                    model: selectedOption.data('model'),
+                    power: selectedOption.data('power'),
+                    connectors: selectedOption.data('connectors'),
+                    connectorType: selectedOption.data('connector-type'),
+                    purchase: selectedOption.data('purchase'),
+                    installation: selectedOption.data('installation'),
+                    groundArea: selectedOption.data('ground-area'),
+                    has4g: selectedOption.data('has-4g'),
+                    maintenance: selectedOption.data('maintenance'),
+                    modem: selectedOption.data('modem'),
+                    sim: selectedOption.data('sim')
+                };
+                
+                console.log("Template data loaded:", templateData);
+                
+                // Verifica se tutti i campi esistono nel DOM
+                var fields = {
+                    brand: $('#id_charger_brand').length,
+                    model: $('#id_charger_model').length,
+                    power: $('#id_power_kw').length,
+                    connectors: $('#id_num_connectors').length,
+                    connectorType: $('#id_connector_types').length,
+                    purchase: $('#id_equipment_cost').length,
+                    installation: $('#id_installation_cost').length,
+                    groundArea: $('#id_ground_area_sqm').length,
+                    powerRequested: $('#id_power_requested').length,
+                    otherCosts: $('#id_other_costs').length
+                };
+                
+                console.log("Form fields present:", fields);
+                
+                // Utilizziamo la funzione formatNumber definita globalmente per convertire i valori numerici
+                
+                // Preleva i dati dal template e popola i campi
+                if (fields.brand) $('#id_charger_brand').val(templateData.brand);
+                if (fields.model) $('#id_charger_model').val(templateData.model);
+                if (fields.power) $('#id_power_kw').val(formatNumber(templateData.power));
+                if (fields.connectors) $('#id_num_connectors').val(templateData.connectors);
+                if (fields.connectorType) $('#id_connector_types').val(templateData.connectorType);
+                
+                // Compila i costi
+                if (fields.purchase) $('#id_equipment_cost').val(formatNumber(templateData.purchase));
+                if (fields.installation) $('#id_installation_cost').val(formatNumber(templateData.installation));
+                
+                // Imposta la potenza richiesta
+                if (fields.powerRequested) {
+                    // Utilizziamo la funzione centralizzata
+                    calculateRequestedPower();
+                }
+                
+                // Imposta area occupata - assicuriamoci di impostare il valore correttamente
+                if (fields.groundArea) {
+                    var groundArea = templateData.groundArea || 0;
+                    
+                    // Utilizza la stessa funzione di formattazione
+                    var formattedGroundArea = formatNumber(groundArea);
+                    
+                    // Forzare una stringa nel caso in cui il valore sia un numero
+                    $('#id_ground_area_sqm').val(formattedGroundArea);
+                    
+                    // Debug per verifica
+                    console.log("Original ground area value:", groundArea);
+                    console.log("Formatted ground area value:", formattedGroundArea);
+                    console.log("Ground area field value after set:", $('#id_ground_area_sqm').val());
+                    
+                    // Prova un approccio alternativo se il valore non viene impostato correttamente
+                    if ($('#id_ground_area_sqm').val() === '') {
+                        console.log("Trying alternative approach to set ground area");
+                        document.getElementById('id_ground_area_sqm').value = formattedGroundArea;
+                    }
+                }
+                
+                // Imposta altri costi basati sui dati del template
+                let otherCosts = 0;
+                
+                // Aggiungi costo del modem 4G se applicabile
+                if (templateData.has4g === 'True' || templateData.has4g === true) {
+                    otherCosts += parseFloat(templateData.modem) || 0;
+                }
+                
+                // Aggiungi costo manutenzione annuale
+                let maintenanceCost = parseFloat(templateData.maintenance) || 0;
+                if (maintenanceCost > 0) {
+                    otherCosts += maintenanceCost;
+                }
+                
+                // Imposta altri costi se ci sono valori aggiuntivi
+                if (otherCosts > 0 && fields.otherCosts) {
+                    $('#id_other_costs').val(otherCosts.toFixed(2));
+                }
+                
+                // Ricalcola il budget
+                calculateBudget();
+            }
+        } catch (error) {
+            console.error("Error handling template selection:", error);
+        }
+    });
+    
+    // Funzione globale per formattare correttamente i valori numerici (da formato italiano a formato internazionale)
+    function formatNumber(value) {
+        return String(value).replace(',', '.');
+    }
+    
+    // Funzione per calcolare il budget totale
+    function calculateBudget() {
+        let totalBudget = 0;
+        // Aggiungi tutti i campi di costo
+        ['equipment_cost', 'installation_cost', 'connection_cost', 
+         'permit_cost', 'civil_works_cost', 'other_costs'].forEach(function(field) {
+            // Converti eventuali valori in formato italiano prima di parsare
+            let rawValue = $('#id_' + field).val();
+            let formattedValue = formatNumber(rawValue);
+            let value = parseFloat(formattedValue) || 0;
+            totalBudget += value;
+        });
+        
+        // Aggiorna il campo calcolato
+        $('#calculated_budget').val(totalBudget.toFixed(2));
+        return totalBudget;
+    }
+    
+    // Calcola il budget ogni volta che un campo di costo cambia
+    $('input[id^="id_"][id$="_cost"]').on('input', calculateBudget);
+    
+    // Applica il budget calcolato al campo budget
+    $('#apply_calculated_budget').click(function() {
+        let budget = calculateBudget();
+        $('#id_budget').val(budget.toFixed(2));
+    });
+    
+    // Funzione per calcolare la potenza richiesta in base alla potenza e al numero di colonnine
+    function calculateRequestedPower() {
+        let power = parseFloat(formatNumber($('#id_power_kw').val())) || 0;
+        let numChargers = parseInt($('#id_num_chargers').val()) || 1;
+        
+        // Potenza richiesta = potenza × numero colonnine + 1
+        let powerRequested = (power * numChargers) + 1;
+        
+        // Arrotonda a 0.5 più alto (es: 22.1 → 22.5, 22.6 → 23.0)
+        powerRequested = Math.ceil(powerRequested * 2) / 2;
+        
+        // Imposta il valore nel campo
+        $('#id_power_requested').val(powerRequested.toFixed(1));
+        
+        // Calcola il costo di connessione (80€ per kW)
+        let connectionCost = powerRequested * 80;
+        $('#id_connection_cost').val(connectionCost.toFixed(2));
+        
+        return powerRequested;
+    }
+
+    // Ricalcola la potenza richiesta quando la potenza o il numero di colonnine cambia
+    $('#id_power_kw, #id_num_chargers').on('input', function() {
+        calculateRequestedPower();
+        calculateBudget();
+    });
+    
+    // Calcolo automatico costo allacciamento quando si modifica manualmente la potenza richiesta
+    $('#id_power_requested').on('input', function() {
+        let rawValue = $(this).val();
+        let formattedValue = formatNumber(rawValue);
+        let powerRequested = parseFloat(formattedValue) || 0;
+        // 80€ per kW
+        let connectionCost = powerRequested * 80;
+        $('#id_connection_cost').val(connectionCost.toFixed(2));
+        calculateBudget();
+    });
+    
+    // Gestisci il checkbox per usare la data di completamento del progetto
+    $('#id_use_project_completion_date').change(function() {
+        if($(this).is(':checked')) {
+            $('#id_planned_completion_date').prop('disabled', true);
+            // Imposta la data di completamento del progetto
+            $('#id_planned_completion_date').val('{{ project.expected_completion_date|date:"Y-m-d" }}');
+        } else {
+            $('#id_planned_completion_date').prop('disabled', false);
+        }
+    });
+    
+    // Calcola il budget iniziale
+    calculateBudget();
+});
+</script>
+{% endblock %}

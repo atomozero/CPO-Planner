@@ -1,0 +1,48 @@
+{% extends 'layouts/form_base.html' %}
+
+{% block title %}Conferma Eliminazione {{ municipality.name }} | CPO Planner{% endblock %}
+
+{% block page_title %}
+<h1 class="h3 mb-0 text-gray-800">Conferma Eliminazione</h1>
+{% endblock %}
+
+{% block form %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Eliminare il comune {{ municipality.name }}?</h6>
+    </div>
+    <div class="card-body">
+        <p class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle mr-2"></i>
+            Sei sicuro di voler eliminare il comune <strong>{{ municipality.name }}</strong>?
+            Questa azione non può essere annullata.
+        </p>
+        
+        <p>
+            <strong>Nome:</strong> {{ municipality.name }}<br>
+            <strong>Provincia:</strong> {{ municipality.province }}<br>
+            <strong>Regione:</strong> {{ municipality.region }}<br>
+        </p>
+        
+        {% if municipality.chargingproject_set.exists %}
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-circle mr-2"></i>
+            <strong>Attenzione!</strong> Questo comune ha dei progetti associati. 
+            Eliminando il comune, verranno eliminati anche tutti i progetti collegati.
+        </div>
+        {% endif %}
+        
+        <form method="post">
+            {% csrf_token %}
+            <div class="mt-4">
+                <a href="{% url 'infrastructure:municipality-detail' municipality.id %}" class="btn btn-secondary">
+                    <i class="fas fa-times mr-2"></i>Annulla
+                </a>
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-trash mr-2"></i>Conferma Eliminazione
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Impostazioni Globali" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">{% trans "Impostazioni Globali" %}</h1>
+    
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">{% trans "Parametri Generali del Sistema" %}</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-4">
+                        {% trans "Questa pagina permette di configurare i valori predefiniti utilizzati in tutta l'applicazione. Le modifiche a questi valori si rifletteranno su tutti i nuovi elementi creati." %}
+                    </p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+                                    {{ form.name }}
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    {{ form.is_active }}
+                                    <label for="{{ form.is_active.id_for_label }}" class="form-check-label">{{ form.is_active.label }}</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h4 class="text-primary mt-4 mb-3">{% trans "Costi Connettività" %}</h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.sim_data_cost_monthly.id_for_label }}">{{ form.sim_data_cost_monthly.label }}</label>
+                                    {{ form.sim_data_cost_monthly }}
+                                    <small class="form-text text-muted">{% trans "Costo mensile di ogni SIM dati utilizzata per la connettività 4G" %}</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.modem_4g_cost.id_for_label }}">{{ form.modem_4g_cost.label }}</label>
+                                    {{ form.modem_4g_cost }}
+                                    <small class="form-text text-muted">{% trans "Costo di acquisto di un modem 4G standard" %}</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h4 class="text-primary mt-4 mb-3">{% trans "Costi Energetici" %}</h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.default_energy_cost.id_for_label }}">{{ form.default_energy_cost.label }}</label>
+                                    {{ form.default_energy_cost }}
+                                    <small class="form-text text-muted">{% trans "Costo di acquisto energia elettrica predefinito" %}</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.default_energy_price.id_for_label }}">{{ form.default_energy_price.label }}</label>
+                                    {{ form.default_energy_price }}
+                                    <small class="form-text text-muted">{% trans "Prezzo di vendita energia predefinito per le ricariche" %}</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h4 class="text-primary mt-4 mb-3">{% trans "Costi Operativi" %}</h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.insurance_cost_per_station.id_for_label }}">{{ form.insurance_cost_per_station.label }}</label>
+                                    {{ form.insurance_cost_per_station }}
+                                    <small class="form-text text-muted">{% trans "Costo annuale per l'assicurazione di ogni stazione" %}</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.maintenance_cost_percentage.id_for_label }}">{{ form.maintenance_cost_percentage.label }}</label>
+                                    {{ form.maintenance_cost_percentage }}
+                                    <small class="form-text text-muted">{% trans "% del costo di acquisto per la manutenzione annuale" %}</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h4 class="text-primary mt-4 mb-3">{% trans "Tasse e Oneri" %}</h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.public_land_fee_per_sqm.id_for_label }}">{{ form.public_land_fee_per_sqm.label }}</label>
+                                    {{ form.public_land_fee_per_sqm }}
+                                    <small class="form-text text-muted">{% trans "Tassa per l'occupazione del suolo pubblico per metro quadro" %}</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.vat_percentage.id_for_label }}">{{ form.vat_percentage.label }}</label>
+                                    {{ form.vat_percentage }}
+                                    <small class="form-text text-muted">{% trans "Percentuale IVA applicata" %}</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h4 class="text-primary mt-4 mb-3">{% trans "Parametri Economici" %}</h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.inflation_rate.id_for_label }}">{{ form.inflation_rate.label }}</label>
+                                    {{ form.inflation_rate }}
+                                    <small class="form-text text-muted">{% trans "Tasso di inflazione annuale per le proiezioni finanziarie pluriennali" %}</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-end mt-4">
+                            <a href="{% url 'infrastructure:tech-config' %}" class="btn btn-secondary">
+                                {% trans "Annulla" %}
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                {% trans "Salva Impostazioni" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

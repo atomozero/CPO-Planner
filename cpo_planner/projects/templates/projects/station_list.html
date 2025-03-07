@@ -1,0 +1,136 @@
+{% extends 'layouts/list_base.html' %}
+
+{% block title %}Lista Stazioni di Ricarica{% endblock %}
+
+{% block page_title %}Stazioni di Ricarica{% endblock %}
+
+{% block actions %}
+<a href="{% url 'projects:project_list' %}" class="btn btn-secondary btn-sm">
+    <i class="fas fa-list"></i> Progetti
+</a>
+<a href="#" class="btn btn-primary btn-sm" id="create-station-btn">
+    <i class="fas fa-plus-circle"></i> Nuova Stazione
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Stazioni di Ricarica</h6>
+        <div class="dropdown no-arrow">
+            <div class="input-group" style="width: 300px;">
+                <input type="text" id="searchInput" class="form-control bg-light border-0 small" placeholder="Cerca stazione...">
+                <div class="input-group-append">
+                    <button class="btn btn-primary" type="button">
+                        <i class="fas fa-search fa-sm"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered" id="stationsTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Progetto</th>
+                        <th>Comune</th>
+                        <th>Potenza</th>
+                        <th>Connettori</th>
+                        <th>Stato</th>
+                        <th>Budget</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for station in stations %}
+                    <tr>
+                        <td>{{ station.name }}</td>
+                        <td><a href="{% url 'projects:project_detail' station.project.id %}">{{ station.project.name }}</a></td>
+                        <td>{{ station.municipality.name }}</td>
+                        <td>{{ station.power_kw|default:"22" }} kW</td>
+                        <td>{{ station.num_connectors|default:"2" }} ({{ station.connector_types|default:"Type 2, CCS" }})</td>
+                        <td>
+                            <span class="badge badge-{% if station.status == 'planning' %}info{% elif station.status == 'in_progress' %}primary{% elif station.status == 'completed' %}success{% else %}warning{% endif %}">
+                                {{ station.get_status_display }}
+                            </span>
+                        </td>
+                        <td>€ {{ station.budget|default:"25000"|floatformat:2 }}</td>
+                        <td>
+                            <a href="{% url 'projects:subproject_detail' station.id %}" class="btn btn-info btn-circle btn-sm">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{% url 'projects:subproject_update' station.id %}" class="btn btn-warning btn-circle btn-sm">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'projects:subproject_delete' station.id %}" class="btn btn-danger btn-circle btn-sm">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center">Nessuna stazione di ricarica trovata.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal per selezionare il progetto -->
+<div class="modal fade" id="selectProjectModal" tabindex="-1" role="dialog" aria-labelledby="selectProjectModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="selectProjectModalLabel">Seleziona Progetto</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Seleziona il progetto a cui aggiungere la nuova stazione:</p>
+                <div class="list-group">
+                    {% for project in projects %}
+                    <a href="{% url 'projects:subproject_create' project.id %}" class="list-group-item list-group-item-action">
+                        {{ project.name }} - {{ project.region }}
+                    </a>
+                    {% empty %}
+                    <div class="alert alert-warning">
+                        Nessun progetto disponibile. <a href="{% url 'projects:project_create' %}">Crea un nuovo progetto</a> prima di aggiungere stazioni.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Inizializza DataTable
+        var table = $('#stationsTable').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Italian.json"
+            }
+        });
+        
+        // Collegamento della barra di ricerca
+        $('#searchInput').on('keyup', function() {
+            table.search(this.value).draw();
+        });
+        
+        // Apri il modal quando si clicca sul pulsante di creazione
+        $('#create-station-btn').click(function() {
+            $('#selectProjectModal').modal('show');
+        });
+    });
+</script>
+{% endblock %}

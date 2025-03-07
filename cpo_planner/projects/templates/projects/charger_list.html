@@ -1,0 +1,321 @@
+{% extends 'layouts/list_base.html' %}
+{% load i18n %}
+
+{% block title %}
+    {% if charging_station %}
+        Colonnine - {{ charging_station.name }}
+    {% else %}
+        Colonnine - {{ subproject.name }}
+    {% endif %}
+{% endblock %}
+
+{% block page_title %}
+    {% if charging_station %}
+        Colonnine della stazione {{ charging_station.name }}
+    {% else %}
+        Colonnine della stazione {{ subproject.name }}
+    {% endif %}
+{% endblock %}
+
+{% block list_actions %}
+    {% if charging_station %}
+        <a href="{% url 'projects:station_charger_create' charging_station_id=charging_station.id %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Aggiungi colonnina
+        </a>
+        <a href="{% url 'projects:station_detail' pk=charging_station.id %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Torna alla stazione
+        </a>
+    {% else %}
+        <a href="{% url 'projects:charger_create' subproject_id=subproject.id %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Aggiungi colonnina
+        </a>
+        <a href="{% url 'projects:subproject_detail' pk=subproject.id %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Torna alla stazione
+        </a>
+    {% endif %}
+{% endblock %}
+
+{% block list_content %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">Colonnine installate</h6>
+    </div>
+    <div class="card-body">
+        {% if chargers %}
+        <div class="table-responsive">
+            <table class="table table-bordered" id="chargersTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Codice</th>
+                        <th>Marca/Modello</th>
+                        <th>Potenza</th>
+                        <th>Connettori</th>
+                        <th>Stato</th>
+                        <th class="text-center">Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for charger in chargers %}
+                    <tr>
+                        <td><a href="#" data-toggle="modal" data-target="#chargerModal{{ charger.id }}">{{ charger.code }}</a></td>
+                        <td>{{ charger.brand }} {{ charger.model }}</td>
+                        <td>{{ charger.power_kw }} kW</td>
+                        <td>{{ charger.num_connectors }} ({{ charger.connector_types|default:"N/A" }})</td>
+                        <td>
+                            <span class="badge badge-{% if charger.status == 'operational' %}success{% elif charger.status == 'maintenance' %}warning{% elif charger.status == 'offline' %}danger{% else %}secondary{% endif %}">
+                                {{ charger.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group" role="group">
+                                <a href="#" data-toggle="modal" data-target="#chargerModal{{ charger.id }}" class="btn btn-sm btn-info" title="Visualizza">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'projects:charger_update' pk=charger.id %}" class="btn btn-sm btn-warning" title="Modifica">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'projects:charger_delete' pk=charger.id %}" class="btn btn-sm btn-danger" title="Elimina">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4">
+            <p class="lead text-muted">Nessuna colonnina aggiunta a questa stazione</p>
+            {% if charging_station %}
+            <a href="{% url 'projects:station_charger_create' charging_station_id=charging_station.id %}" class="btn btn-primary">
+                <i class="fas fa-plus mr-2"></i> Aggiungi la prima colonnina
+            </a>
+            {% else %}
+            <a href="{% url 'projects:charger_create' subproject_id=subproject.id %}" class="btn btn-primary">
+                <i class="fas fa-plus mr-2"></i> Aggiungi la prima colonnina
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Dati della stazione</h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                {% if charging_station %}
+                    <p><strong>Nome:</strong> {{ charging_station.name }}</p>
+                    <p><strong>Indirizzo:</strong> {{ charging_station.address|default:"Non specificato" }}</p>
+                    <p><strong>Identificatore:</strong> {{ charging_station.identifier }}</p>
+                    <p><strong>Sotto-progetto:</strong> <a href="{% url 'projects:subproject_detail' pk=subproject.id %}">{{ subproject.name }}</a></p>
+                {% else %}
+                    <p><strong>Nome:</strong> {{ subproject.name }}</p>
+                    <p><strong>Indirizzo:</strong> {{ subproject.address|default:"Non specificato" }}</p>
+                {% endif %}
+                <p><strong>Progetto:</strong> <a href="{% url 'projects:project_detail' pk=project.id %}">{{ project.name }}</a></p>
+            </div>
+            <div class="col-md-6">
+                {% if charging_station %}
+                    <p><strong>Tipo stazione:</strong> {{ charging_station.get_station_type_display|default:"Non specificato" }}</p>
+                    <p><strong>Potenza:</strong> {{ charging_station.power_kw }} kW</p>
+                    <p><strong>Data installazione:</strong> {{ charging_station.installation_date|date:"d/m/Y"|default:"Non specificata" }}</p>
+                    <p><strong>Stato:</strong> {{ charging_station.get_status_display }}</p>
+                {% else %}
+                    <p><strong>Data inizio:</strong> {{ subproject.start_date|date:"d/m/Y" }}</p>
+                    <p><strong>Data fine prevista:</strong> {{ subproject.planned_completion_date|date:"d/m/Y" }}</p>
+                    <p><strong>Stato:</strong> {{ subproject.get_status_display }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('#chargersTable').DataTable({
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Italian.json"
+        },
+        "order": [[0, "asc"]]
+    });
+});
+</script>
+{% endblock %}
+
+<!-- Modals per i dettagli delle colonnine -->
+{% for charger in chargers %}
+<div class="modal fade" id="chargerModal{{ charger.id }}" tabindex="-1" role="dialog" aria-labelledby="chargerModalLabel{{ charger.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="chargerModalLabel{{ charger.id }}">Dettaglio Colonnina: {{ charger.code }}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="m-0 font-weight-bold text-primary">Informazioni Colonnina</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-bordered">
+                                    <tr>
+                                        <th width="40%">Codice</th>
+                                        <td>{{ charger.code }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Marca</th>
+                                        <td>{{ charger.brand|default:"Non specificata" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Modello</th>
+                                        <td>{{ charger.model|default:"Non specificato" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Potenza</th>
+                                        <td>{{ charger.power_kw|default:"0" }} kW</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Numero Seriale</th>
+                                        <td>{{ charger.serial_number|default:"Non specificato" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Stato</th>
+                                        <td>
+                                            <span class="badge badge-{% if charger.status == 'operational' %}success{% elif charger.status == 'maintenance' %}warning{% elif charger.status == 'offline' %}danger{% else %}secondary{% endif %}">
+                                                {{ charger.get_status_display }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="m-0 font-weight-bold text-primary">Funzionalità</h6>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Ricarica Rapida
+                                        <span class="badge badge-{% if charger.is_fast_charging %}success{% else %}secondary{% endif %} badge-pill">
+                                            {% if charger.is_fast_charging %}Sì{% else %}No{% endif %}
+                                        </span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Smart Charging
+                                        <span class="badge badge-{% if charger.is_smart_charging %}success{% else %}secondary{% endif %} badge-pill">
+                                            {% if charger.is_smart_charging %}Sì{% else %}No{% endif %}
+                                        </span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Display
+                                        <span class="badge badge-{% if charger.has_display %}success{% else %}secondary{% endif %} badge-pill">
+                                            {% if charger.has_display %}Sì{% else %}No{% endif %}
+                                        </span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Lettore RFID
+                                        <span class="badge badge-{% if charger.has_rfid %}success{% else %}secondary{% endif %} badge-pill">
+                                            {% if charger.has_rfid %}Sì{% else %}No{% endif %}
+                                        </span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Controllo da App
+                                        <span class="badge badge-{% if charger.has_app_control %}success{% else %}secondary{% endif %} badge-pill">
+                                            {% if charger.has_app_control %}Sì{% else %}No{% endif %}
+                                        </span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Load Balancing
+                                        <span class="badge badge-{% if charger.has_load_balancing %}success{% else %}secondary{% endif %} badge-pill">
+                                            {% if charger.has_load_balancing %}Sì{% else %}No{% endif %}
+                                        </span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="m-0 font-weight-bold text-primary">Connettori</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-bordered">
+                                    <tr>
+                                        <th width="40%">Numero Connettori</th>
+                                        <td>{{ charger.num_connectors }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Tipi Connettori</th>
+                                        <td>{{ charger.connector_types|default:"Non specificati" }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="m-0 font-weight-bold text-primary">Date</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-bordered">
+                                    <tr>
+                                        <th width="40%">Data Installazione</th>
+                                        <td>{{ charger.installation_date|date:"d/m/Y"|default:"Non specificata" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Data Attivazione</th>
+                                        <td>{{ charger.activation_date|date:"d/m/Y"|default:"Non specificata" }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="m-0 font-weight-bold text-primary">Costi</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-bordered">
+                                    <tr>
+                                        <th width="40%">Costo Acquisto</th>
+                                        <td>€ {{ charger.purchase_cost|default:"0"|floatformat:2 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Costo Installazione</th>
+                                        <td>€ {{ charger.installation_cost|default:"0"|floatformat:2 }}</td>
+                                    </tr>
+                                    <tr class="bg-light">
+                                        <th>Costo Totale</th>
+                                        <td class="font-weight-bold">€ {{ charger.purchase_cost|add:charger.installation_cost|default:"0"|floatformat:2 }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="{% url 'projects:charger_update' pk=charger.id %}" class="btn btn-warning">
+                    <i class="fas fa-edit"></i> Modifica
+                </a>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}

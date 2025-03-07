@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %}Crea Stazione da Template{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">
+        {% trans "Crea Stazione da Template" %}
+    </h1>
+    
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">{% trans "Template Selezionato" %}</h6>
+                </div>
+                <div class="card-body">
+                    <h5>{{ template.brand }} {{ template.model }}</h5>
+                    <p>{{ template.power_kw }} kW - {{ template.get_connection_type_display }}</p>
+                    <p>{{ template.num_connectors }} x {{ template.get_connector_type_display }}</p>
+                    
+                    <h6 class="mt-3 text-primary">{% trans "Costi" %}</h6>
+                    <ul class="list-group mb-3">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {% trans "Acquisto" %}
+                            <span class="badge bg-primary rounded-pill">€ {{ template.purchase_cost|floatformat:2 }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {% trans "Installazione" %}
+                            <span class="badge bg-primary rounded-pill">€ {{ template.installation_cost|floatformat:2 }}</span>
+                        </li>
+                    </ul>
+                    
+                    {% if template.description %}
+                    <div class="mt-3">
+                        <h6 class="text-primary">{% trans "Descrizione" %}</h6>
+                        <p>{{ template.description }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if template.image %}
+                    <img src="{{ template.image.url }}" class="img-fluid mt-3" alt="{{ template.name }}">
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">{% trans "Dettagli Stazione" %}</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-info">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        {% trans "I dati tecnici e i costi sono preimpostati in base al template selezionato. Modifica solo se necessario." %}
+                    </p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.code|as_crispy_field }}
+                                {{ form.location|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.latitude|as_crispy_field }}
+                                {{ form.longitude|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        {% if project_id %}
+                            <input type="hidden" name="project" value="{{ project_id }}">
+                        {% else %}
+                            {{ form.project|as_crispy_field }}
+                        {% endif %}
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="{{ form.connection_type.id_for_label }}">{{ form.connection_type.label }}</label>
+                                    {{ form.connection_type }}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="{{ form.max_power.id_for_label }}">{{ form.max_power.label }}</label>
+                                    {{ form.max_power }}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="{{ form.num_connectors.id_for_label }}">{{ form.num_connectors.label }}</label>
+                                    {{ form.num_connectors }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="{{ form.purchase_cost.id_for_label }}">{{ form.purchase_cost.label }}</label>
+                                    {{ form.purchase_cost }}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="{{ form.installation_cost.id_for_label }}">{{ form.installation_cost.label }}</label>
+                                    {{ form.installation_cost }}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="{{ form.connection_cost.id_for_label }}">{{ form.connection_cost.label }}</label>
+                                    {{ form.connection_cost }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.ground_area.id_for_label }}">{{ form.ground_area.label }}</label>
+                            {{ form.ground_area }}
+                            <small class="form-text text-muted">Area occupata sul terreno in mq, utile per il calcolo della tassa di occupazione</small>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+                                    {{ form.status }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.installation_date.id_for_label }}">{{ form.installation_date.label }}</label>
+                                    {{ form.installation_date }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check mb-3">
+                                    {{ form.has_pv_system }}
+                                    <label for="{{ form.has_pv_system.id_for_label }}" class="form-check-label">{{ form.has_pv_system.label }}</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.pv_power.id_for_label }}">{{ form.pv_power.label }}</label>
+                                    {{ form.pv_power }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-end mt-3">
+                            {% if project_id %}
+                                <a href="{% url 'infrastructure:project-detail' project_id %}" class="btn btn-secondary">
+                                    {% trans "Annulla" %}
+                                </a>
+                            {% else %}
+                                <a href="{% url 'infrastructure:template-list' %}" class="btn btn-secondary">
+                                    {% trans "Annulla" %}
+                                </a>
+                            {% endif %}
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-plus mr-1"></i> {% trans "Crea Stazione" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

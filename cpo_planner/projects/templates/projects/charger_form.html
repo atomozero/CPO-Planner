@@ -1,0 +1,249 @@
+{% extends 'layouts/form_base.html' %}
+{% load i18n %}
+
+{% block title %}
+    {% if charging_station %}
+        {{ form_title }} - {{ charging_station.name }}
+    {% else %}
+        {{ form_title }} - {{ subproject.name }}
+    {% endif %}
+{% endblock %}
+
+{% block page_title %}{{ form_title }}{% endblock %}
+
+{% block action_buttons %}
+    {% if charging_station %}
+        <a href="{% url 'projects:station_charger_list' charging_station_id=charging_station.id %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Torna all'elenco colonnine
+        </a>
+    {% else %}
+        <a href="{% url 'projects:charger_list' subproject_id=subproject.id %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Torna all'elenco colonnine
+        </a>
+    {% endif %}
+{% endblock %}
+
+{% block form_content %}
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    
+    <div class="row">
+        <div class="col-lg-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">Informazioni di base</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_code" class="form-label">Codice colonnina</label>
+                            <input type="text" name="code" id="id_code" class="form-control" value="{{ form.code.value|default:'' }}" required>
+                            {% if form.code.errors %}
+                            <div class="invalid-feedback d-block">{{ form.code.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_serial_number" class="form-label">Numero seriale</label>
+                            <input type="text" name="serial_number" id="id_serial_number" class="form-control" value="{{ form.serial_number.value|default:'' }}">
+                            {% if form.serial_number.errors %}
+                            <div class="invalid-feedback d-block">{{ form.serial_number.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_brand" class="form-label">Marca</label>
+                            <input type="text" name="brand" id="id_brand" class="form-control" value="{{ form.brand.value|default:'' }}">
+                            {% if form.brand.errors %}
+                            <div class="invalid-feedback d-block">{{ form.brand.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_model" class="form-label">Modello</label>
+                            <input type="text" name="model" id="id_model" class="form-control" value="{{ form.model.value|default:'' }}">
+                            {% if form.model.errors %}
+                            <div class="invalid-feedback d-block">{{ form.model.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">Specifiche tecniche</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_power_kw" class="form-label">Potenza (kW)</label>
+                            <input type="number" name="power_kw" id="id_power_kw" step="0.1" class="form-control" value="{{ form.power_kw.value|default:'' }}">
+                            {% if form.power_kw.errors %}
+                            <div class="invalid-feedback d-block">{{ form.power_kw.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_num_connectors" class="form-label">Numero connettori</label>
+                            <input type="number" name="num_connectors" id="id_num_connectors" class="form-control" value="{{ form.num_connectors.value|default:'1' }}" min="1">
+                            {% if form.num_connectors.errors %}
+                            <div class="invalid-feedback d-block">{{ form.num_connectors.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <label for="id_connector_types" class="form-label">Tipi di connettori</label>
+                            <input type="text" name="connector_types" id="id_connector_types" class="form-control" placeholder="Es. Type 2, CCS, CHAdeMO" value="{{ form.connector_types.value|default:'' }}">
+                            {% if form.connector_types.errors %}
+                            <div class="invalid-feedback d-block">{{ form.connector_types.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="is_fast_charging" id="id_is_fast_charging" {% if form.is_fast_charging.value %}checked{% endif %}>
+                                <label class="form-check-label" for="id_is_fast_charging">Ricarica rapida</label>
+                            </div>
+                            <small class="text-muted">{{ form.is_fast_charging.help_text }}</small>
+                            {% if form.is_fast_charging.errors %}
+                            <div class="invalid-feedback d-block">{{ form.is_fast_charging.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="is_smart_charging" id="id_is_smart_charging" {% if form.is_smart_charging.value %}checked{% endif %}>
+                                <label class="form-check-label" for="id_is_smart_charging">Smart charging</label>
+                            </div>
+                            <small class="text-muted">{{ form.is_smart_charging.help_text }}</small>
+                            {% if form.is_smart_charging.errors %}
+                            <div class="invalid-feedback d-block">{{ form.is_smart_charging.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="has_load_balancing" id="id_has_load_balancing" {% if form.has_load_balancing.value %}checked{% endif %}>
+                                <label class="form-check-label" for="id_has_load_balancing">Load balancing</label>
+                            </div>
+                            <small class="text-muted">{{ form.has_load_balancing.help_text }}</small>
+                            {% if form.has_load_balancing.errors %}
+                            <div class="invalid-feedback d-block">{{ form.has_load_balancing.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">Funzionalità</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="has_display" id="id_has_display" {% if form.has_display.value %}checked{% endif %}>
+                                <label class="form-check-label" for="id_has_display">Display</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="has_rfid" id="id_has_rfid" {% if form.has_rfid.value %}checked{% endif %}>
+                                <label class="form-check-label" for="id_has_rfid">Lettore RFID</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="has_app_control" id="id_has_app_control" {% if form.has_app_control.value %}checked{% endif %}>
+                                <label class="form-check-label" for="id_has_app_control">Controllo da app</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-12 mb-3">
+                            <label for="id_status" class="form-label">Stato</label>
+                            <select name="status" id="id_status" class="form-control">
+                                {% for value, label in form.fields.status.choices %}
+                                <option value="{{ value }}" {% if form.status.value == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.status.errors %}
+                            <div class="invalid-feedback d-block">{{ form.status.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_installation_date" class="form-label">Data installazione</label>
+                            <input type="date" name="installation_date" id="id_installation_date" class="form-control" value="{{ form.installation_date.value|date:'Y-m-d'|default:'' }}">
+                            {% if form.installation_date.errors %}
+                            <div class="invalid-feedback d-block">{{ form.installation_date.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_activation_date" class="form-label">Data attivazione</label>
+                            <input type="date" name="activation_date" id="id_activation_date" class="form-control" value="{{ form.activation_date.value|date:'Y-m-d'|default:'' }}">
+                            {% if form.activation_date.errors %}
+                            <div class="invalid-feedback d-block">{{ form.activation_date.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">Costi</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_purchase_cost" class="form-label">Costo d'acquisto (€)</label>
+                            <input type="number" name="purchase_cost" id="id_purchase_cost" step="0.01" class="form-control" value="{{ form.purchase_cost.value|default:'' }}">
+                            {% if form.purchase_cost.errors %}
+                            <div class="invalid-feedback d-block">{{ form.purchase_cost.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_installation_cost" class="form-label">Costo d'installazione (€)</label>
+                            <input type="number" name="installation_cost" id="id_installation_cost" step="0.01" class="form-control" value="{{ form.installation_cost.value|default:'' }}">
+                            {% if form.installation_cost.errors %}
+                            <div class="invalid-feedback d-block">{{ form.installation_cost.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="d-flex justify-content-between">
+        {% if charging_station %}
+            <a href="{% url 'projects:station_charger_list' charging_station_id=charging_station.id %}" class="btn btn-secondary">Annulla</a>
+        {% else %}
+            <a href="{% url 'projects:charger_list' subproject_id=subproject.id %}" class="btn btn-secondary">Annulla</a>
+        {% endif %}
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save mr-2"></i> {% if form.instance.pk %}Aggiorna{% else %}Salva{% endif %} Colonnina
+        </button>
+    </div>
+</form>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% comment %}
+Status badge component - Componente riutilizzabile per i badge di stato
+Parametri:
+- status: Stato (active, pending, completed, etc.)
+- custom_text: Testo personalizzato (opzionale)
+{% endcomment %}
+
+{% if status == 'active' %}
+<span class="badge badge-success">{{ custom_text|default:'Attivo' }}</span>
+{% elif status == 'pending' %}
+<span class="badge badge-warning">{{ custom_text|default:'In attesa' }}</span>
+{% elif status == 'completed' %}
+<span class="badge badge-info">{{ custom_text|default:'Completato' }}</span>
+{% elif status == 'cancelled' %}
+<span class="badge badge-danger">{{ custom_text|default:'Annullato' }}</span>
+{% elif status == 'draft' %}
+<span class="badge badge-secondary">{{ custom_text|default:'Bozza' }}</span>
+{% else %}
+<span class="badge badge-primary">{{ custom_text|default:status }}</span>
+{% endif %}

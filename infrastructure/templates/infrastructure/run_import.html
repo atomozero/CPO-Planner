@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+
+{% block title %}Importazione Comuni in Corso | CPO Planner{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Importazione in Corso</h1>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        {% if force %}
+                        Aggiornamento Comuni Italiani
+                        {% else %}
+                        Importazione Comuni Italiani
+                        {% endif %}
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-spinner fa-spin fa-4x text-primary mb-3" id="loader-icon"></i>
+                        <i class="fas fa-check-circle fa-4x text-success mb-3 d-none" id="success-icon"></i>
+                        <i class="fas fa-times-circle fa-4x text-danger mb-3 d-none" id="error-icon"></i>
+                        
+                        <h5 id="import-title">Importazione in corso...</h5>
+                        <p class="text-muted" id="import-message">
+                            L'importazione dei dati è iniziata. Per favore non chiudere questa finestra.
+                        </p>
+                    </div>
+                    
+                    <div class="progress mb-4" style="height: 25px;" id="import-container">
+                        <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                            0%
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        <span id="status-message">Preparazione importazione...</span>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <a href="{% url 'infrastructure:municipality-list' %}" class="btn btn-secondary" id="cancel-btn">
+                            Annulla
+                        </a>
+                        <a href="{% url 'infrastructure:municipality-list' %}" class="btn btn-success d-none" id="complete-btn">
+                            Vai alla Lista Comuni
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Visualizza progress bar indeterminata all'inizio
+        var importFinished = false;
+        var force = {% if force %}true{% else %}false{% endif %};
+        
+        // Funzione per aggiornare la progress bar
+        function updateProgressBar(progress, message) {
+            $('#progress-bar').css('width', progress + '%').attr('aria-valuenow', progress).text(progress + '%');
+            $('#status-message').text(message);
+        }
+        
+        // Funzione per completare l'importazione
+        function completeImport(success, message) {
+            importFinished = true;
+            
+            if (success) {
+                $('#loader-icon').addClass('d-none');
+                $('#success-icon').removeClass('d-none');
+                $('#import-title').text('Importazione completata!');
+                $('#complete-btn').removeClass('d-none');
+                $('#cancel-btn').addClass('d-none');
+                $('#progress-bar').removeClass('progress-bar-animated').addClass('bg-success');
+            } else {
+                $('#loader-icon').addClass('d-none');
+                $('#error-icon').removeClass('d-none');
+                $('#import-title').text('Errore nell\'importazione');
+                $('#progress-bar').removeClass('progress-bar-animated').addClass('bg-danger');
+            }
+            
+            $('#import-message').text(message);
+        }
+        
+        // Funzione per avviare l'importazione completa
+        function startImport() {
+            updateProgressBar(0, 'Importazione avviata... questo processo potrebbe richiedere alcuni minuti.');
+            
+            $.ajax({
+                url: '{% url "infrastructure:run_import" %}',
+                type: 'POST',
+                data: {
+                    'csrfmiddlewaretoken': '{{ csrf_token }}',
+                    'force': force
+                },
+                dataType: 'json',
+                success: function(data) {
+                    if (data.status === 'completed') {
+                        updateProgressBar(100, data.message);
+                        completeImport(true, data.message);
+                        
+                        // Redirezione automatica dopo 3 secondi
+                        setTimeout(function() {
+                            window.location.href = data.redirect_url;
+                        }, 3000);
+                    } else if (data.status === 'error') {
+                        updateProgressBar(100, data.message);
+                        completeImport(false, data.message);
+                    }
+                },
+                error: function() {
+                    completeImport(false, 'Si è verificato un errore durante l\'importazione. Riprova più tardi.');
+                }
+            });
+        }
+        
+        {% if auto_start %}
+        // Avvia l'importazione automaticamente
+        startImport();
+        {% else %}
+        // Aggiungi un pulsante per avviare l'importazione manualmente
+        $('#import-container').prepend('<div class="text-center mb-4"><button id="start-import-btn" class="btn btn-primary">Avvia Importazione</button></div>');
+        $('#start-import-btn').on('click', function() {
+            $(this).prop('disabled', true).text('Importazione in corso...');
+            startImport();
+        });
+        {% endif %}
+        
+        // Conferma prima di annullare
+        $('#cancel-btn').on('click', function(e) {
+            if (!confirm('Sei sicuro di voler annullare? L\'importazione potrebbe essere incompleta.')) {
+                e.preventDefault();
+            }
+        });
+    });
+</script>
+{% endblock %}

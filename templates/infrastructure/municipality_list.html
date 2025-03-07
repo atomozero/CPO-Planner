@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load math_filters %}
 
 {% block title %}Comuni | CPO Planner{% endblock %}
 
@@ -11,7 +12,7 @@
         <a href="{% url 'infrastructure:import_municipalities' %}" class="d-none d-sm-inline-block btn btn-sm btn-success shadow-sm mr-2">
             <i class="fas fa-download fa-sm text-white-50 mr-2"></i>Importa Comuni Italiani
         </a>
-        <a href="{% url 'municipality_create' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+        <a href="{% url 'infrastructure:municipality-create' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
             <i class="fas fa-plus fa-sm text-white-50 mr-2"></i>Nuovo Comune
         </a>
     </div>
@@ -28,6 +29,9 @@
                         <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                             Totale Comuni</div>
                         <div class="h5 mb-0 font-weight-bold text-gray-800">{{ municipality_list|length|default:"0" }}</div>
+                        <div class="text-xs text-muted mt-2">
+                            su 7903 comuni italiani
+                        </div>
                     </div>
                     <div class="col-auto">
                         <i class="fas fa-city fa-2x text-gray-300"></i>
@@ -96,12 +100,15 @@
 <div class="card shadow mb-4">
     <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
         <h6 class="m-0 font-weight-bold text-primary">Lista dei Comuni</h6>
-        <div class="input-group" style="width: 250px;">
-            <input type="text" id="searchMunicipality" class="form-control bg-light border-0 small" placeholder="Cerca...">
-            <div class="input-group-append">
-                <button class="btn btn-primary" type="button">
-                    <i class="fas fa-search fa-sm"></i>
-                </button>
+        <div class="d-flex align-items-center">
+            <small class="text-muted mr-3">Dati demografici: ISTAT, 2021</small>
+            <div class="input-group" style="width: 250px;">
+                <input type="text" id="searchMunicipality" class="form-control bg-light border-0 small" placeholder="Cerca...">
+                <div class="input-group-append">
+                    <button class="btn btn-primary" type="button">
+                        <i class="fas fa-search fa-sm"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -127,11 +134,11 @@
                         <td>{{ municipality.province }}</td>
                         <td>{{ municipality.region }}</td>
                         <td>{{ municipality.population|default:"N/D"|intcomma }}</td>
-                        <td>{{ municipality.chargingproject_set.count }}</td>
-                        <td>{{ municipality.total_stations|default:"0" }}</td>
+                        <td>{{ municipality_data|get_item:municipality.id|get_item:'projects_count' }}</td>
+                        <td>{{ municipality_data|get_item:municipality.id|get_item:'stations_count' }}</td>
                         <td>
                             <div class="btn-group" role="group">
-                                <a href="#" class="btn btn-info btn-sm" title="Dettaglio">
+                                <a href="{% url 'infrastructure:municipality-detail' municipality.id %}" class="btn btn-info btn-sm" title="Dettaglio">
                                     <i class="fas fa-eye"></i>
                                 </a>
                                 <a href="#" class="btn btn-warning btn-sm" title="Modifica">
@@ -149,7 +156,7 @@
         </div>
         {% else %}
         <div class="alert alert-info">
-            Nessun comune registrato. <a href="{% url 'municipality_create' %}">Aggiungi il primo comune</a>.
+            Nessun comune registrato. <a href="{% url 'infrastructure:municipality-create' %}">Aggiungi il primo comune</a>.
         </div>
         {% endif %}
     </div>

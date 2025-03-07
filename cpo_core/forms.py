@@ -4,6 +4,13 @@ from .models import (
     Organization, Project, Municipality, SubProject, ChargingStation, 
     FinancialProjection, YearlyProjection, SolarInstallation
 )
+# Importa modelli consolidati
+from .models.organization import Organization
+from .models.project import Project
+from .models.municipality import Municipality 
+from .models.subproject import SubProject
+from .models.charging_station import ChargingStation, SolarInstallation
+from .models.financial import FinancialProjection, YearlyProjection
 
 class FinancialProjectionForm(forms.ModelForm):
     """Form per la creazione e l'aggiornamento delle proiezioni finanziarie."""
@@ -57,8 +64,8 @@ class ProjectForm(forms.ModelForm):
     class Meta:
         model = Project
         fields = [
-            'name', 'description', 'organization', 'project_manager', 
-            'status', 'start_date', 'end_date', 'budget', 
+            'name', 'description', 'organization', 'project_manager', 'logo',
+            'status', 'start_date', 'expected_completion_date', 'total_budget', 
             'loan_amount', 'loan_interest_rate', 'loan_term_years', 'pre_amortization_years'
         ]
         widgets = {
@@ -66,10 +73,11 @@ class ProjectForm(forms.ModelForm):
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
             'organization': forms.Select(attrs={'class': 'form-control'}),
             'project_manager': forms.Select(attrs={'class': 'form-control'}),
+            'logo': forms.FileInput(attrs={'class': 'form-control'}),
             'status': forms.Select(attrs={'class': 'form-control'}),
             'start_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'end_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'budget': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'expected_completion_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'total_budget': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'loan_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'loan_interest_rate': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'loan_term_years': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 30}),
@@ -79,9 +87,9 @@ class ProjectForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         start_date = cleaned_data.get('start_date')
-        end_date = cleaned_data.get('end_date')
+        expected_completion_date = cleaned_data.get('expected_completion_date')
         
-        if start_date and end_date and end_date < start_date:
+        if start_date and expected_completion_date and expected_completion_date < start_date:
             raise forms.ValidationError(
                 "La data di fine progetto non può essere precedente alla data di inizio."
             )
@@ -156,15 +164,16 @@ class ChargingStationForm(forms.ModelForm):
     class Meta:
         model = ChargingStation
         fields = [
-            'subproject', 'name', 'station_type', 'status', 'address', 
+            'subproject', 'name', 'identifier', 'station_type', 'status', 'address', 
             'latitude', 'longitude', 'installation_date', 'activation_date',
-            'connection_cost', 'installation_cost', 'hardware_cost', 'design_cost',
+            'connection_cost', 'installation_cost', 'station_cost', 'design_cost',
             'permit_cost', 'other_costs', 'power_kw', 'connector_types', 
             'num_connectors', 'grid_connection_capacity', 'notes'
         ]
         widgets = {
             'subproject': forms.Select(attrs={'class': 'form-control'}),
             'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'identifier': forms.TextInput(attrs={'class': 'form-control'}),
             'station_type': forms.Select(attrs={'class': 'form-control'}),
             'status': forms.Select(attrs={'class': 'form-control'}),
             'address': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
@@ -174,7 +183,7 @@ class ChargingStationForm(forms.ModelForm):
             'activation_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'connection_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'installation_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'hardware_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'station_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'design_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'permit_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'other_costs': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),

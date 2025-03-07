@@ -1,0 +1,127 @@
+{% extends 'layouts/list_base.html' %}
+{% load humanize %}
+
+{% block title %}Configurazioni Tariffarie | CPO Planner{% endblock %}
+
+{% block heading %}
+    <h1 class="h3 mb-0 text-gray-800">Configurazioni Tariffarie</h1>
+    <a href="{% url 'infrastructure:fee-create' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+        <i class="fas fa-plus fa-sm text-white-50"></i> Nuova Configurazione
+    </a>
+{% endblock %}
+
+{% block breadcrumbs %}
+    {% include "components/breadcrumbs.html" with breadcrumbs="Home,Infrastructure,Configurazioni Tariffarie" urls="#,#," %}
+{% endblock %}
+
+{% block content %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Configurazioni Tariffarie</h6>
+        <div class="dropdown no-arrow">
+            <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+            </a>
+            <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in" aria-labelledby="dropdownMenuLink">
+                <div class="dropdown-header">Azioni:</div>
+                <a class="dropdown-item" href="{% url 'infrastructure:fee-create' %}">Nuova Configurazione</a>
+                <a class="dropdown-item" href="{% url 'infrastructure:tech-config' %}">Dashboard Tecnica</a>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if fees %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Stato</th>
+                            <th>Commissione sessione</th>
+                            <th>Commissione %</th>
+                            <th>Canone mensile</th>
+                            <th>Prezzo AC (≤22kW)</th>
+                            <th>Prezzo DC (≤50kW)</th>
+                            <th>Validità</th>
+                            <th>Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fee in fees %}
+                            <tr {% if fee.active %}class="table-success"{% endif %}>
+                                <td><a href="{% url 'infrastructure:fee-detail' fee.id %}">{{ fee.name }}</a></td>
+                                <td>
+                                    {% if fee.active %}
+                                        <span class="badge badge-success">Attiva</span>
+                                    {% else %}
+                                        <span class="badge badge-secondary">Inattiva</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ fee.session_fee|floatformat:2 }} €</td>
+                                <td>{{ fee.percentage_fee|floatformat:2 }}%</td>
+                                <td>{{ fee.monthly_fee|floatformat:2 }} €</td>
+                                <td>{{ fee.customer_price_tier2 }} €/kWh</td>
+                                <td>{{ fee.customer_price_tier3 }} €/kWh</td>
+                                <td>
+                                    {% if fee.valid_to %}
+                                        {{ fee.valid_from|date:"d/m/Y" }} - {{ fee.valid_to|date:"d/m/Y" }}
+                                    {% else %}
+                                        Dal {{ fee.valid_from|date:"d/m/Y" }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'infrastructure:fee-detail' fee.id %}" class="btn btn-info btn-sm">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'infrastructure:fee-update' fee.id %}" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Nessuna configurazione tariffaria trovata. 
+                <a href="{% url 'infrastructure:fee-create' %}" class="alert-link">Crea la tua prima configurazione</a>
+            </div>
+            
+            <div class="mt-4">
+                <h5 class="font-weight-bold">Perché configurare le tariffe?</h5>
+                <p>Le configurazioni tariffarie permettono di definire i prezzi per i clienti e le commissioni applicate sulla gestione delle stazioni di ricarica.</p>
+                
+                <div class="mt-3">
+                    <h6 class="font-weight-bold">Vantaggi:</h6>
+                    <ul>
+                        <li>Definizione flessibile dei prezzi in base alla potenza</li>
+                        <li>Gestione dei modelli di business (commissioni per sessione, percentuali o canoni fissi)</li>
+                        <li>Analisi dei margini operativi in tempo reale</li>
+                        <li>Monitoraggio della redditività delle stazioni</li>
+                    </ul>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="{% url 'infrastructure:fee-create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Crea Nuova Configurazione
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+    $(document).ready(function() {
+        $('#dataTable').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Italian.json"
+            },
+            "order": [[1, "desc"], [0, "asc"]] // Order by status (active first) then by name
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% comment %}
+Card component - Componente riutilizzabile per le card
+Parametri:
+- title: Titolo della card
+- card_class: Classi aggiuntive per la card (default: '')
+- header_class: Classi aggiuntive per l'header (default: 'bg-primary text-white')
+- body_class: Classi aggiuntive per il body (default: '')
+- with_footer: Se mostrare il footer (default: False)
+{% endcomment %}
+
+<div class="card mb-4 {{ card_class|default:'' }}">
+    {% if title %}
+    <div class="card-header {{ header_class|default:'bg-primary text-white' }}">
+        <h6 class="mb-0">{{ title }}</h6>
+    </div>
+    {% endif %}
+    <div class="card-body {{ body_class|default:'' }}">
+        {{ content|safe }}
+    </div>
+    {% if with_footer %}
+    <div class="card-footer">
+        {{ footer|safe }}
+    </div>
+    {% endif %}
+</div>

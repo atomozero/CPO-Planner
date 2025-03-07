@@ -1,0 +1,394 @@
+{% extends "layouts/detail_base.html" %}
+
+{% block title %}Stazione di Ricarica: {{ subproject.name }}{% endblock %}
+
+{% block page_title %}Stazione di Ricarica: {{ subproject.name }}{% endblock %}
+
+{% block action_buttons %}
+<a href="{% url 'projects:project_detail' subproject.project.id %}" class="btn btn-secondary mr-2">
+    <i class="fas fa-arrow-left"></i> Torna al Progetto
+</a>
+<a href="{% url 'projects:charger_list' subproject_id=subproject.id %}" class="btn btn-primary mr-2">
+    <i class="fas fa-charging-station"></i> Gestisci Colonnine
+</a>
+<a href="{% url 'reporting:charging_station_installation_report' subproject.id %}" class="btn btn-success mr-2">
+    <i class="fas fa-clipboard-list"></i> Scheda Installazione
+</a>
+<a href="{% url 'projects:subproject_update' subproject.id %}" class="btn btn-warning mr-2">
+    <i class="fas fa-edit"></i> Modifica
+</a>
+<a href="{% url 'projects:subproject_delete' subproject.id %}" class="btn btn-danger">
+    <i class="fas fa-trash"></i> Elimina
+</a>
+{% endblock %}
+
+{% block detail_content %}
+<div class="row">
+    <!-- Informazioni Generali -->
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Informazioni Generali</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <tbody>
+                            <tr>
+                                <th width="30%">Nome</th>
+                                <td>{{ subproject.name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Progetto</th>
+                                <td><a href="{% url 'projects:project_detail' subproject.project.id %}">{{ subproject.project.name }}</a></td>
+                            </tr>
+                            <tr>
+                                <th>Comune</th>
+                                <td>{{ subproject.municipality.name }} ({{ subproject.municipality.province }})</td>
+                            </tr>
+                            <tr>
+                                <th>Indirizzo</th>
+                                <td>{{ subproject.address|default:"Non specificato" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Data Inizio</th>
+                                <td>{{ subproject.start_date|date:"d/m/Y" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Data Fine Prevista</th>
+                                <td>{{ subproject.planned_completion_date|date:"d/m/Y" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Stato</th>
+                                <td>
+                                    <span class="badge badge-{% if subproject.status == 'planning' %}info{% elif subproject.status == 'in_progress' %}primary{% elif subproject.status == 'completed' %}success{% else %}warning{% endif %}">
+                                        {{ subproject.get_status_display }}
+                                    </span>
+                                    {% if subproject.status_changed_date %}
+                                    <small class="text-muted d-block mt-1">
+                                        Aggiornato il {{ subproject.status_changed_date|date:"d/m/Y H:i" }}
+                                        {% if subproject.status_changed_by %}
+                                        da {{ subproject.status_changed_by.first_name }} {{ subproject.status_changed_by.last_name }}
+                                        {% endif %}
+                                    </small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Descrizione</th>
+                                <td>{{ subproject.description|default:"Nessuna descrizione disponibile"|linebreaks }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Specifiche Tecniche della Colonnina -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Specifiche Colonnina</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <tbody>
+                            <tr>
+                                <th width="40%">Marca</th>
+                                <td>{{ subproject.charger_brand|default:"Non specificata" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Modello</th>
+                                <td>{{ subproject.charger_model|default:"Non specificato" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Potenza</th>
+                                <td>{{ subproject.power_kw|default:"0" }} kW</td>
+                            </tr>
+                            <tr>
+                                <th>Connettori</th>
+                                <td>{{ subproject.connector_types|default:"Non specificati" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Numero Connettori</th>
+                                <td>{{ subproject.num_connectors }}</td>
+                            </tr>
+                            <tr>
+                                <th>Area Occupata</th>
+                                <td>{{ subproject.ground_area_sqm|default:"Non specificata" }} m²</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Informazioni Finanziarie -->
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Dettaglio Costi</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <tbody>
+                            <tr>
+                                <th width="40%">Costo Colonnina</th>
+                                <td>€ {{ subproject.equipment_cost|default:"0"|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Costo Installazione</th>
+                                <td>€ {{ subproject.installation_cost|default:"0"|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Costo Allaccio Rete</th>
+                                <td>€ {{ subproject.connection_cost|default:"0"|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Costo Permessi</th>
+                                <td>€ {{ subproject.permit_cost|default:"0"|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Costo Opere Civili</th>
+                                <td>€ {{ subproject.civil_works_cost|default:"0"|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Altri Costi</th>
+                                <td>€ {{ subproject.other_costs|default:"0"|floatformat:2 }}</td>
+                            </tr>
+                            <tr class="bg-light">
+                                <th>Budget Totale</th>
+                                <td class="font-weight-bold">€ {{ subproject.budget|floatformat:2 }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Previsioni Finanziarie</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <tbody>
+                            <tr>
+                                <th width="40%">Ricavi Previsti</th>
+                                <td>€ {{ subproject.expected_revenue|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>ROI</th>
+                                <td>{{ subproject.roi|floatformat:2 }}%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Grafico finanziario di base -->
+                <div class="mt-4">
+                    <canvas id="financialChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Coordinate della Stazione -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Coordinate GPS</h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="m-0 font-weight-bold text-info">Coordinate Proposte</h6>
+                    </div>
+                    <div class="card-body">
+                        {% if subproject.latitude_proposed and subproject.longitude_proposed %}
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th width="40%">Latitudine</th>
+                                    <td>{{ subproject.latitude_proposed }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Longitudine</th>
+                                    <td>{{ subproject.longitude_proposed }}</td>
+                                </tr>
+                            </table>
+                        {% else %}
+                            <div class="alert alert-info mb-0">
+                                Nessuna coordinata proposta disponibile.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="m-0 font-weight-bold text-success">Coordinate Approvate</h6>
+                    </div>
+                    <div class="card-body">
+                        {% if subproject.latitude_approved and subproject.longitude_approved %}
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th width="40%">Latitudine</th>
+                                    <td>{{ subproject.latitude_approved }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Longitudine</th>
+                                    <td>{{ subproject.longitude_approved }}</td>
+                                </tr>
+                            </table>
+                        {% else %}
+                            <div class="alert alert-info mb-0">
+                                Nessuna coordinata approvata disponibile.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mappa della Stazione -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Mappa</h6>
+    </div>
+    <div class="card-body">
+        <div id="mapContainer">
+            <div id="stationMap" style="height: 400px; width: 100%; position: relative;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Grafico finanziario di base
+    var ctx = document.getElementById('financialChart').getContext('2d');
+    var myChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Budget', 'Ricavi Attesi'],
+            datasets: [{
+                label: 'Dati Finanziari (€)',
+                data: [{{ subproject.budget }}, {{ subproject.expected_revenue }}],
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.5)',
+                    'rgba(75, 192, 192, 0.5)'
+                ],
+                borderColor: [
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(75, 192, 192, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '€ ' + value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Prima caricamento mappa, ridimensiona il contenitore per assicurarsi che sia visibile
+    function initMap() {
+        try {
+            console.log("Inizializzazione mappa...");
+            
+            // Inizializza la mappa Leaflet
+            var mapElement = document.getElementById('stationMap');
+            console.log("Elemento mappa:", mapElement);
+            
+            if (!mapElement) {
+                console.error("Elemento mappa non trovato!");
+                return;
+            }
+            
+            // Imposta altezza e larghezza esplicita
+            mapElement.style.height = "400px";
+            mapElement.style.width = "100%";
+            
+            // Usa coordinate
+            {% if subproject.latitude_approved and subproject.longitude_approved %}
+                // Usa coordinate approvate
+                var lat = {{ subproject.latitude_approved }};
+                var lng = {{ subproject.longitude_approved }};
+                var statusText = 'Posizione Approvata';
+                console.log("Usando coordinate approvate:", lat, lng);
+            {% elif subproject.latitude_proposed and subproject.longitude_proposed %}
+                // Usa coordinate proposte
+                var lat = {{ subproject.latitude_proposed }};
+                var lng = {{ subproject.longitude_proposed }};
+                var statusText = 'Posizione Proposta';
+                console.log("Usando coordinate proposte:", lat, lng);
+            {% else %}
+                // Posizione di default (Mirano)
+                var lat = 45.494;
+                var lng = 12.111;
+                var statusText = 'Posizione Predefinita';
+                console.log("Usando coordinate predefinite:", lat, lng);
+            {% endif %}
+            
+            // Crea la mappa con le coordinate specificate
+            var map = L.map('stationMap').setView([lat, lng], 15);
+            
+            // Aggiungi il layer delle tile
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+        
+            // Aggiungi un marker semplice
+            var marker = L.marker([lat, lng]).addTo(map);
+            
+            // Aggiungi popup con informazioni
+            marker.bindPopup(
+                "<div>" +
+                "<h6><b>{{ subproject.name }}</b></h6>" +
+                "<div>" + statusText + "</div>" +
+                "<div>Indirizzo: {{ subproject.address|default:'Non specificato' }}</div>" +
+                "<div>Potenza: {{ subproject.power_kw|default:'0' }} kW</div>" +
+                "</div>"
+            ).openPopup();
+            
+            // Forza il refresh della mappa
+            setTimeout(function() {
+                map.invalidateSize();
+            }, 1000);
+            
+            console.log("Mappa inizializzata correttamente");
+        } catch (error) {
+            console.error("Errore durante l'inizializzazione della mappa:", error);
+        }
+    }
+    
+    // Esegui inizializzazione dopo il caricamento completo della pagina
+    window.onload = function() {
+        initMap();
+    };
+});
+</script>
+{% endblock %}

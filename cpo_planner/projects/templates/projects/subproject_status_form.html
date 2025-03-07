@@ -1,0 +1,36 @@
+{% extends "layouts/form_base.html" %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %}Aggiorna Stato Stazione{% endblock %}
+
+{% block page_title %}Aggiorna Stato Stazione{% endblock %}
+
+{% block actions %}
+<a href="javascript:history.back()" class="btn btn-sm btn-secondary">
+    <i class="fas fa-arrow-left"></i> Torna indietro
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Seleziona Nuovo Stato</h6>
+    </div>
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {{ form.status|as_crispy_field }}
+            
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Aggiorna Stato
+                </button>
+                <a href="javascript:history.back()" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Annulla
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

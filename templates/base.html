@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}CPO Planner{% endblock %}</title>
     
+    {% load static %}
+    
+    <!-- Favicon -->
+    <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+    
     <!-- Bootstrap 4 CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
     <!-- Font Awesome -->
@@ -12,6 +17,9 @@
     
     <!-- SB Admin 2 CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/startbootstrap-sb-admin-2/4.1.3/css/sb-admin-2.min.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link href="{% static 'css/style.css' %}" rel="stylesheet">
     
     {% block extra_css %}{% endblock %}
     
@@ -28,12 +36,13 @@
     </style>
 </head>
 <body id="page-top">
+{% if not request.path == '/login/' and not 'password-reset' in request.path %}
     <!-- Page Wrapper -->
     <div id="wrapper">
         <!-- Sidebar -->
         <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
             <!-- Sidebar - Brand -->
-            <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{% url 'dashboard' %}">
+            <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{% url 'cpo_core:dashboard' %}">
                 <div class="sidebar-brand-icon">
                     <i class="fas fa-charging-station"></i>
                 </div>
@@ -45,7 +54,7 @@
 
             <!-- Nav Item - Dashboard -->
             <li class="nav-item {% if request.path == '/' %}active{% endif %}">
-                <a class="nav-link" href="{% url 'dashboard' %}">
+                <a class="nav-link" href="{% url 'cpo_core:dashboard' %}">
                     <i class="fas fa-fw fa-tachometer-alt"></i>
                     <span>Dashboard</span>
                 </a>
@@ -59,24 +68,40 @@
                 Gestione
             </div>
 
-            <!-- Nav Item - Organizazioni -->
-            <li class="nav-item {% if 'organizations' in request.path %}active{% endif %}">
-                <a class="nav-link" href="{% url 'organization_list' %}">
-                    <i class="fas fa-fw fa-building"></i>
-                    <span>Organizzazioni</span>
+            <!-- Nav Item - Infrastructure Dashboard -->
+            <li class="nav-item {% if 'infrastructure' in request.path and 'municipality' not in request.path and 'tech-config' not in request.path %}active{% endif %}">
+                <a class="nav-link" href="{% url 'infrastructure:dashboard' %}">
+                    <i class="fas fa-fw fa-network-wired"></i>
+                    <span>Dashboard Infrastruttura</span>
+                </a>
+            </li>
+            
+            <!-- Nav Item - System Settings -->
+            <li class="nav-item {% if 'tech-config' in request.path %}active{% endif %}">
+                <a class="nav-link" href="{% url 'infrastructure:tech-config' %}">
+                    <i class="fas fa-fw fa-cogs"></i>
+                    <span>Impostazioni Generali</span>
                 </a>
             </li>
 
-<!-- Nav Item - Progetti -->
+<!-- Nav Item - Progetti (aggiornato) -->
 <li class="nav-item {% if 'projects' in request.path %}active{% endif %}">
-    <a class="nav-link" href="{% url 'infrastructure:project-list' %}">
+    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseProjects"
+        aria-expanded="true" aria-controls="collapseProjects">
         <i class="fas fa-fw fa-project-diagram"></i>
         <span>Progetti</span>
     </a>
+    <div id="collapseProjects" class="collapse" aria-labelledby="headingProjects" data-parent="#accordionSidebar">
+        <div class="bg-white py-2 collapse-inner rounded">
+            <h6 class="collapse-header">Gestione Progetti:</h6>
+            <a class="collapse-item" href="{% url 'projects:project_list' %}">Lista Progetti</a>
+            <a class="collapse-item" href="{% url 'projects:project_create' %}">Nuovo Progetto</a>
+        </div>
+    </div>
 </li>
 
 <!-- Nav Item - Comuni -->
-<li class="nav-item {% if 'municipalities' in request.path %}active{% endif %}">
+<li class="nav-item {% if 'municipality' in request.path %}active{% endif %}">
     <a class="nav-link" href="{% url 'infrastructure:municipality-list' %}">
         <i class="fas fa-fw fa-city"></i>
         <span>Comuni</span>
@@ -84,11 +109,19 @@
 </li>
 
 <!-- Nav Item - Stazioni di Ricarica -->
-<li class="nav-item {% if 'stations' in request.path %}active{% endif %}">
-    <a class="nav-link" href="{% url 'infrastructure:station-list' %}">
+<li class="nav-item {% if 'charging-stations' in request.path %}active{% endif %}">
+    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseStations"
+        aria-expanded="true" aria-controls="collapseStations">
         <i class="fas fa-fw fa-charging-station"></i>
         <span>Stazioni di Ricarica</span>
     </a>
+    <div id="collapseStations" class="collapse" aria-labelledby="headingStations" data-parent="#accordionSidebar">
+        <div class="bg-white py-2 collapse-inner rounded">
+            <h6 class="collapse-header">Gestione Stazioni:</h6>
+            <a class="collapse-item" href="{% url 'cpo_core:station_list' %}">Lista Stazioni</a>
+            <a class="collapse-item" href="{% url 'infrastructure:template-list' %}">Template Stazioni</a>
+        </div>
+    </div>
 </li>
 
             <!-- Divider -->
@@ -101,17 +134,25 @@
             
             <!-- Nav Item - Analisi Finanziaria -->
             <li class="nav-item {% if 'financial' in request.path %}active{% endif %}">
-                <a class="nav-link" href="{% url 'financial_overview' %}">
+                <a class="nav-link" href="{% url 'cpo_core:financial_overview' %}">
                     <i class="fas fa-fw fa-chart-line"></i>
                     <span>Analisi Finanziaria</span>
                 </a>
             </li>
             
-            <!-- Nav Item - Calcolatore ROI -->
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'roi_calculator' %}">
-                    <i class="fas fa-fw fa-calculator"></i>
-                    <span>Calcolatore ROI</span>
+            <!-- Nav Item - Dashboard Ambientale -->
+            <li class="nav-item {% if 'environmental' in request.path %}active{% endif %}">
+                <a class="nav-link" href="{% url 'environmental:dashboard' %}">
+                    <i class="fas fa-fw fa-leaf"></i>
+                    <span>Dashboard Ambientale</span>
+                </a>
+            </li>
+            
+            <!-- Nav Item - Mappatura -->
+            <li class="nav-item {% if 'mappa' in request.path %}active{% endif %}">
+                <a class="nav-link" href="{% url 'mapping:map_view' %}">
+                    <i class="fas fa-fw fa-map-marked-alt"></i>
+                    <span>Mappatura</span>
                 </a>
             </li>
 
@@ -233,6 +274,11 @@
             </div>
         </div>
     </div>
+{% else %}
+    <div class="auth-content">
+        {% block auth_content %}{% endblock %}
+    </div>
+{% endif %}
 
     <!-- Bootstrap core JavaScript-->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

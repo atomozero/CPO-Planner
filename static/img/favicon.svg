@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="32" height="32">
+  <!-- Background circle -->
+  <circle cx="50" cy="50" r="45" fill="#4CAF50" />
+  
+  <!-- Charging station body -->
+  <rect x="35" y="25" width="30" height="50" rx="3" fill="white" />
+  
+  <!-- Charging plug/cable -->
+  <path d="M50 60 L65 75 L70 70 L55 55 Z" fill="#333" />
+  
+  <!-- Charging symbol (lightning bolt) -->
+  <path d="M45 40 L55 40 L50 55 L58 55 L42 75 L45 58 L38 58 Z" fill="#FFD700" />
+</svg>

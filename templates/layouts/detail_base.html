@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title|default:"Dettaglio" }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    {% if page_title %}
+    <h1 class="h3 mb-4 text-gray-800">{{ page_title }}</h1>
+    {% endif %}
+    
+    {% if show_breadcrumbs|default:True %}
+        {% include "components/breadcrumbs.html" with breadcrumbs=breadcrumbs %}
+    {% endif %}
+    
+    {# Pulsanti azioni #}
+    {% if show_actions|default:True %}
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex">
+                {% block action_buttons %}
+                <a href="javascript:history.back()" class="btn btn-secondary mr-2">
+                    <i class="fas fa-arrow-left"></i> Indietro
+                </a>
+                {% endblock %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {# Contenuto principale #}
+    <div class="row">
+        <div class="col-12">
+            {% block detail_content %}
+            {# Contenuto inserito da template figlio #}
+            {% endblock %}
+        </div>
+    </div>
+    
+    {# Sezione tab opzionale #}
+    {% if use_tabs|default:False %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <ul class="nav nav-tabs" id="detailTabs" role="tablist">
+                {% block tab_headers %}
+                {# Tab headers inseriti da template figlio #}
+                {% endblock %}
+            </ul>
+            <div class="tab-content p-3 border border-top-0 rounded-bottom" id="detailTabsContent">
+                {% block tab_content %}
+                {# Tab content inserito da template figlio #}
+                {% endblock %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {# Contenuto addizionale #}
+    {% block additional_content %}
+    {# Contenuto inserito da template figlio #}
+    {% endblock %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% block detail_js %}{% endblock %}
+{% endblock %}

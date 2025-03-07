@@ -13,7 +13,7 @@
         <h6 class="m-0 font-weight-bold text-primary">{{ action }} Comune</h6>
     </div>
     <div class="card-body">
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             
             <div class="form-group">
@@ -57,8 +57,32 @@
                 <small class="form-text text-muted">Inserire il numero di abitanti</small>
             </div>
             
+            <div class="form-group">
+                <label>Logo del Comune</label>
+                {% if form.instance.logo %}
+                <div class="mb-2">
+                    <img src="/media/{{ form.instance.logo }}" alt="Logo attuale" class="img-thumbnail" style="max-height: 100px;">
+                    <p class="small text-muted mt-1">Logo attuale</p>
+                </div>
+                {% endif %}
+                
+                <div class="mt-3 mb-3">
+                    <a href="{% url 'infrastructure:municipality-test-upload' form.instance.id %}" class="btn btn-primary">
+                        <i class="fas fa-upload mr-1"></i> Carica Logo
+                    </a>
+                </div>
+                
+                {% if form.logo.errors %}
+                <div class="invalid-feedback d-block">
+                    {{ form.logo.errors }}
+                </div>
+                {% endif %}
+                <!-- Campo nascosto per mantenere il modello Django valido -->
+                <input type="hidden" name="{{ form.logo.name }}" id="{{ form.logo.id_for_label }}" value="">
+            </div>
+            
             <div class="d-flex justify-content-between">
-                <a href="{% url 'municipality_list' %}" class="btn btn-secondary">Annulla</a>
+                <a href="{% url 'infrastructure:municipality-list' %}" class="btn btn-secondary">Annulla</a>
                 <button type="submit" class="btn btn-primary">{{ action }}</button>
             </div>
         </form>

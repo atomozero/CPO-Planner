@@ -1,5 +1,9 @@
 from django.contrib import admin
-from .models import Organization, Project, Municipality, SubProject, ChargingStation, SolarInstallation
+from .models.organization import Organization
+from .models.project import Project
+from .models.municipality import Municipality
+from .models.subproject import SubProject
+from .models.charging_station import ChargingStation, SolarInstallation
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
@@ -8,7 +12,7 @@ class OrganizationAdmin(admin.ModelAdmin):
 
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
-    list_display = ('name', 'organization', 'status', 'start_date', 'end_date', 'budget')
+    list_display = ('name', 'organization', 'status', 'start_date', 'expected_completion_date', 'total_budget')
     list_filter = ('status', 'organization')
     search_fields = ('name', 'description')
 
@@ -26,10 +30,10 @@ class SubProjectAdmin(admin.ModelAdmin):
 
 @admin.register(ChargingStation)
 class ChargingStationAdmin(admin.ModelAdmin):
-    list_display = ('name', 'subproject', 'station_type', 'status', 'power_kw', 'total_cost')
+    list_display = ('name', 'subproject', 'station_type', 'status', 'power_kw')
     list_filter = ('status', 'station_type', 'subproject__municipality')
     search_fields = ('name', 'address')
-    readonly_fields = ('total_cost',)
+    readonly_fields = ('calculate_total_cost',)
 
 @admin.register(SolarInstallation)
 class SolarInstallationAdmin(admin.ModelAdmin):

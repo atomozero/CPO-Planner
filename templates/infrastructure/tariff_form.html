@@ -1,0 +1,165 @@
+{% extends 'layouts/form_base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+    {% if form.instance.pk %}
+        Modifica Tariffa Elettrica | CPO Planner
+    {% else %}
+        Nuova Tariffa Elettrica | CPO Planner
+    {% endif %}
+{% endblock %}
+
+{% block heading %}
+    {% if form.instance.pk %}
+        <h1 class="h3 mb-0 text-gray-800">Modifica Tariffa Elettrica</h1>
+    {% else %}
+        <h1 class="h3 mb-0 text-gray-800">Nuova Tariffa Elettrica</h1>
+    {% endif %}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {% if form.instance.pk %}
+        {% include "components/breadcrumbs.html" with breadcrumbs="Home,Infrastructure,Tariffe,Modifica" urls="#,#,#," %}
+    {% else %}
+        {% include "components/breadcrumbs.html" with breadcrumbs="Home,Infrastructure,Tariffe,Nuova" urls="#,#,#," %}
+    {% endif %}
+{% endblock %}
+
+{% block form_content %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+            {% if form.instance.pk %}
+                Modifica Tariffa "{{ form.instance.name }}"
+            {% else %}
+                Configura Nuova Tariffa
+            {% endif %}
+        </h6>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            Informazioni Generali
+                        </div>
+                        <div class="card-body">
+                            {{ form.name|as_crispy_field }}
+                            {{ form.provider|as_crispy_field }}
+                            {{ form.active|as_crispy_field }}
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    {{ form.valid_from|as_crispy_field }}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ form.valid_to|as_crispy_field }}
+                                </div>
+                            </div>
+                            
+                            {{ form.notes|as_crispy_field }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            Costi Energia per Fascia di Potenza
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i> Configura i costi dell'energia (€/kWh) in base alle diverse fasce di potenza.
+                            </div>
+                            
+                            <div class="tier-1 price-tier">
+                                {{ form.cost_tier1|as_crispy_field }}
+                            </div>
+                            
+                            <div class="tier-2 price-tier">
+                                {{ form.cost_tier2|as_crispy_field }}
+                            </div>
+                            
+                            <div class="tier-3 price-tier">
+                                {{ form.cost_tier3|as_crispy_field }}
+                            </div>
+                            
+                            <div class="tier-4 price-tier">
+                                {{ form.cost_tier4|as_crispy_field }}
+                            </div>
+                            
+                            <div class="tier-5 price-tier">
+                                {{ form.cost_tier5|as_crispy_field }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    Costi Fissi
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.connection_fee|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.power_fee|as_crispy_field }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-4">
+                <button type="submit" class="btn btn-primary">
+                    {% if form.instance.pk %}
+                        <i class="fas fa-save"></i> Salva Modifiche
+                    {% else %}
+                        <i class="fas fa-plus"></i> Crea Tariffa
+                    {% endif %}
+                </button>
+                <a href="{% url 'infrastructure:tariff-list' %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Annulla
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .price-tier {
+        padding: 15px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+    }
+    .tier-1 { background-color: #e3f2fd; }
+    .tier-2 { background-color: #e8f5e9; }
+    .tier-3 { background-color: #fff3e0; }
+    .tier-4 { background-color: #ffebee; }
+    .tier-5 { background-color: #ede7f6; }
+</style>
+{% endblock %}
+
+{% block page_js %}
+<script>
+    $(document).ready(function() {
+        // Add validation for dates
+        $('#id_valid_to').change(function() {
+            var startDate = new Date($('#id_valid_from').val());
+            var endDate = new Date($(this).val());
+            
+            if (endDate < startDate) {
+                alert('La data di fine validità non può essere precedente alla data di inizio.');
+                $(this).val('');
+            }
+        });
+    });
+</script>
+{% endblock %}

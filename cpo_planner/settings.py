@@ -20,12 +20,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-d#w3!eq+fb*1h7r@ym(k+m!!yzrm01oce6cmc7f8l#bkmhmk0*'
+SECRET_KEY = 'cx+6x#gkk9(h$%#yskz0wik=aea2def=^xkz32*50y89^mm+tx'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '0.0.0.0', '192.168.1.0/24', '172.28.44.12']
 
 # Application definition
 INSTALLED_APPS = [
@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     
     # App di terze parti
     'crispy_forms',
+    'crispy_bootstrap5',
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -80,6 +81,11 @@ TEMPLATES = [
         },
     },
 ]
+
+# Template per le pagine di errore
+HANDLER404 = 'cpo_planner.views.handler404'
+HANDLER500 = 'cpo_planner.views.handler500'
+HANDLER403 = 'cpo_planner.views.handler403'
 
 WSGI_APPLICATION = 'cpo_planner.wsgi.application'
 
@@ -124,9 +130,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'it'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Rome'
 
 USE_I18N = True
 
@@ -144,7 +150,8 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Configurazione Crispy Forms
-CRISPY_TEMPLATE_PACK = 'bootstrap4' 
+CRISPY_TEMPLATE_PACK = 'bootstrap5'
+CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
 
 # Configurazione media e static files 
 MEDIA_URL = '/media/' 
@@ -153,3 +160,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 STATICFILES_DIRS = [ 
     os.path.join(BASE_DIR, 'static'), 
 ]
+
+# Auth URLs
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/login/'

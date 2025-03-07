@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Pagina non trovata" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="text-center">
+        <div class="error mx-auto" data-text="404">404</div>
+        <p class="lead text-gray-800 mb-5">{% translate "Pagina non trovata" %}</p>
+        <p class="text-gray-500 mb-0">{% translate "Sembra che tu stia cercando di accedere a una pagina che non esiste..." %}</p>
+        <a href="{% url 'cpo_core:dashboard' %}">&larr; {% translate "Torna alla Dashboard" %}</a>
+    </div>
+</div>
+{% endblock %}

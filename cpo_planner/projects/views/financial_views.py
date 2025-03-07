@@ -10,7 +10,7 @@ from django.utils.translation import gettext_lazy as _
 from ..models.project import Project
 from ..models.charging_station import ChargingStation
 from ..models.financial import FinancialParameters, FinancialAnalysis
-from ..forms.financial_forms import FinancialParametersForm
+from ..forms.financial import FinancialParametersForm
 
 class FinancialParametersUpdateView(LoginRequiredMixin, UpdateView):
     model = FinancialParameters

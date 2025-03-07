@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{{ template.brand }} {{ template.model }} | Template Stazione{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">
+        {{ template.brand }} {{ template.model }} - {{ template.power_kw }}kW
+    </h1>
+    
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">{% trans "Dettagli Template" %}</h6>
+                    <div>
+                        <a href="{% url 'infrastructure:template-update' template.id %}" class="btn btn-warning btn-sm">
+                            <i class="fas fa-edit mr-1"></i> {% trans "Modifica" %}
+                        </a>
+                        <a href="{% url 'infrastructure:station-from-template' template.id %}" class="btn btn-success btn-sm">
+                            <i class="fas fa-plus mr-1"></i> {% trans "Crea Stazione" %}
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="text-primary">{% trans "Informazioni Generali" %}</h5>
+                            <table class="table">
+                                <tr>
+                                    <th>{% trans "Nome Template" %}</th>
+                                    <td>{{ template.name }}</td>
+                                </tr>
+                                <tr>
+                                    <th>{% trans "Marca" %}</th>
+                                    <td>{{ template.brand }}</td>
+                                </tr>
+                                <tr>
+                                    <th>{% trans "Modello" %}</th>
+                                    <td>{{ template.model }}</td>
+                                </tr>
+                                <tr>
+                                    <th>{% trans "Tipo di Connessione" %}</th>
+                                    <td>{{ template.get_connection_type_display }}</td>
+                                </tr>
+                                <tr>
+                                    <th>{% trans "Potenza" %}</th>
+                                    <td>{{ template.power_kw }} kW</td>
+                                </tr>
+                                <tr>
+                                    <th>{% trans "Connettori" %}</th>
+                                    <td>{{ template.num_connectors }} x {{ template.get_connector_type_display }}</td>
+                                </tr>
+                            </table>
+                            
+                            {% if template.description %}
+                            <div class="mt-3">
+                                <h6 class="text-primary">{% trans "Descrizione" %}</h6>
+                                <p>{{ template.description }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h5 class="text-primary">{% trans "Specifiche Tecniche" %}</h5>
+                            <table class="table">
+                                {% if template.dimensions %}
+                                <tr>
+                                    <th>{% trans "Dimensioni" %}</th>
+                                    <td>{{ template.dimensions }}</td>
+                                </tr>
+                                {% endif %}
+                                
+                                {% if template.weight %}
+                                <tr>
+                                    <th>{% trans "Peso" %}</th>
+                                    <td>{{ template.weight }} kg</td>
+                                </tr>
+                                {% endif %}
+                                
+                                {% if template.ground_area %}
+                                <tr>
+                                    <th>{% trans "Superficie occupata" %}</th>
+                                    <td>{{ template.ground_area }} m²</td>
+                                </tr>
+                                {% endif %}
+                                
+                                {% if template.protection_rating %}
+                                <tr>
+                                    <th>{% trans "Grado di protezione IP" %}</th>
+                                    <td>{{ template.protection_rating }}</td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                            
+                            <h6 class="text-primary mt-3">{% trans "Funzionalità" %}</h6>
+                            <div class="row">
+                                <div class="col-6">
+                                    <ul class="list-group">
+                                        <li class="list-group-item {% if template.has_display %}list-group-item-success{% endif %}">
+                                            <i class="fas {% if template.has_display %}fa-check text-success{% else %}fa-times text-danger{% endif %} mr-2"></i>
+                                            {% trans "Display" %}
+                                        </li>
+                                        <li class="list-group-item {% if template.has_rfid %}list-group-item-success{% endif %}">
+                                            <i class="fas {% if template.has_rfid %}fa-check text-success{% else %}fa-times text-danger{% endif %} mr-2"></i>
+                                            {% trans "Lettore RFID" %}
+                                        </li>
+                                        <li class="list-group-item {% if template.has_app_control %}list-group-item-success{% endif %}">
+                                            <i class="fas {% if template.has_app_control %}fa-check text-success{% else %}fa-times text-danger{% endif %} mr-2"></i>
+                                            {% trans "Controllo da App" %}
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="col-6">
+                                    <ul class="list-group">
+                                        <li class="list-group-item {% if template.has_lan %}list-group-item-success{% endif %}">
+                                            <i class="fas {% if template.has_lan %}fa-check text-success{% else %}fa-times text-danger{% endif %} mr-2"></i>
+                                            {% trans "Connessione LAN" %}
+                                        </li>
+                                        <li class="list-group-item {% if template.has_wifi %}list-group-item-success{% endif %}">
+                                            <i class="fas {% if template.has_wifi %}fa-check text-success{% else %}fa-times text-danger{% endif %} mr-2"></i>
+                                            {% trans "WiFi" %}
+                                        </li>
+                                        <li class="list-group-item {% if template.has_4g %}list-group-item-success{% endif %}">
+                                            <i class="fas {% if template.has_4g %}fa-check text-success{% else %}fa-times text-danger{% endif %} mr-2"></i>
+                                            {% trans "Connessione 4G" %}
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            {% if template.technical_specs %}
+                            <div class="mt-3">
+                                <h6 class="text-primary">{% trans "Specifiche Tecniche Aggiuntive" %}</h6>
+                                <p>{{ template.technical_specs|linebreaks }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">{% trans "Costi" %}</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>{% trans "Costo d'acquisto" %}</th>
+                                <td class="text-right">€ {{ template.purchase_cost|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>{% trans "Costo d'installazione" %}</th>
+                                <td class="text-right">€ {{ template.installation_cost|floatformat:2 }}</td>
+                            </tr>
+                            {% if template.has_4g %}
+                            <tr>
+                                <th>{% trans "Costo modem 4G" %}</th>
+                                <td class="text-right">€ {{ template.modem_4g_cost|floatformat:2 }}</td>
+                            </tr>
+                            {% endif %}
+                            <tr class="table-primary">
+                                <th>{% trans "Costo totale" %}</th>
+                                <td class="text-right font-weight-bold">€ {{ total_cost|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>{% trans "Manutenzione annuale" %}</th>
+                                <td class="text-right">€ {{ template.maintenance_cost|floatformat:2 }}</td>
+                            </tr>
+                            {% if template.has_4g %}
+                            <tr>
+                                <th>{% trans "Costo annuale SIM dati" %}</th>
+                                <td class="text-right">€ {{ template.sim_annual_cost|floatformat:2 }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                    
+                    {% if active_tariff and usage_profile %}
+                    <h6 class="text-primary mt-4">{% trans "Costi Operativi Stimati" %}</h6>
+                    <div class="alert alert-info">
+                        <small>{% trans "Basati su" %} {{ usage_profile.name }} e {{ active_tariff.name }}</small>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>{% trans "Costo energia mensile" %}</th>
+                                <td class="text-right">€ {{ monthly_energy_cost|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>{% trans "Costi fissi mensili" %}</th>
+                                <td class="text-right">€ {{ monthly_fixed_cost|floatformat:2 }}</td>
+                            </tr>
+                            <tr class="table-warning">
+                                <th>{% trans "Totale mensile" %}</th>
+                                <td class="text-right font-weight-bold">€ {{ monthly_total_cost|floatformat:2 }}</td>
+                            </tr>
+                            <tr class="table-danger">
+                                <th>{% trans "Totale annuale" %}</th>
+                                <td class="text-right font-weight-bold">€ {{ annual_operating_cost|floatformat:2 }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if template.image %}
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">{% trans "Immagine" %}</h6>
+                </div>
+                <div class="card-body text-center">
+                    <img src="{{ template.image.url }}" class="img-fluid" alt="{{ template.name }}">
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

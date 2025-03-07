@@ -12,16 +12,16 @@ class Project(models.Model):
     description = models.TextField(_('Descrizione'), blank=True, null=True)
     
     # Informazioni geografiche
-    region = models.CharField(_('Regione'), max_length=100)
+    region = models.CharField(_('Comune/Regione'), max_length=100)
     
     # Date di progetto
     start_date = models.DateField(_('Data Inizio Progetto'))
     expected_completion_date = models.DateField(_('Data Prevista Completamento'))
     
     # Informazioni Finanziarie Complessive
-    total_budget = models.DecimalField(_('Budget Totale'), max_digits=15, decimal_places=2)
-    total_expected_revenue = models.DecimalField(_('Ricavi Attesi Totali'), max_digits=15, decimal_places=2)
-    total_roi = models.DecimalField(_('ROI Totale'), max_digits=10, decimal_places=2, validators=[
+    total_budget = models.DecimalField(_('Budget Totale'), max_digits=15, decimal_places=2, default=0)
+    total_expected_revenue = models.DecimalField(_('Ricavi Attesi Totali'), max_digits=15, decimal_places=2, default=0)
+    total_roi = models.DecimalField(_('ROI Totale'), max_digits=10, decimal_places=2, blank=True, null=True, default=0, validators=[
         MinValueValidator(Decimal('-99.99')), 
         MaxValueValidator(Decimal('9999.99'))
     ])

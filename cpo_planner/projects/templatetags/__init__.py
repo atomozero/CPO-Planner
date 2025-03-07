@@ -1,0 +1,1 @@
+# Initialize template tags for projects app

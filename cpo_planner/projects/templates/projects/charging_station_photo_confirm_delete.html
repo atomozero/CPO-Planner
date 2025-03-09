@@ -1,0 +1,63 @@
+{% extends 'layouts/form_base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Conferma Eliminazione Foto" %} | CPO Planner{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'cpo_core:dashboard' %}">{% trans "Dashboard" %}</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'projects:project_detail' project.id %}">{{ project.name }}</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'projects:subproject_detail' subproject.id %}">{{ subproject.name }}</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'projects:station_detail' station.id %}">{{ station.name }}</a></li>
+    <li class="breadcrumb-item active">{% trans "Elimina Foto" %}</li>
+</ol>
+{% endblock %}
+
+{% block form_title %}
+<h1 class="h3 mb-0 text-gray-800">{% trans "Conferma Eliminazione Foto" %}</h1>
+{% endblock %}
+
+{% block form_content %}
+<div class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle mr-2"></i>
+    {% trans "Stai per eliminare definitivamente questa foto. Questa azione non può essere annullata." %}
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4 text-center mb-3">
+        <img src="{{ photo.photo.url }}" alt="{{ photo.title }}" class="img-fluid rounded">
+    </div>
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{ photo.title }}</h5>
+                <p class="card-text">
+                    <strong>{% trans "Fase" %}:</strong> {{ photo.get_phase_display }}<br>
+                    <strong>{% trans "Data Scatto" %}:</strong> {{ photo.date_taken|date:"d/m/Y" }}<br>
+                    <strong>{% trans "Aggiunta da" %}:</strong> {{ photo.uploaded_by.get_full_name|default:photo.uploaded_by.username }}<br>
+                    <strong>{% trans "Data Caricamento" %}:</strong> {{ photo.created_at|date:"d/m/Y H:i" }}
+                </p>
+                
+                {% if photo.description %}
+                <p class="card-text">
+                    <strong>{% trans "Descrizione" %}:</strong><br>
+                    {{ photo.description }}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+        <button type="submit" class="btn btn-danger">
+            <i class="fas fa-trash mr-1"></i> {% trans "Elimina Foto" %}
+        </button>
+        <a href="{% url 'projects:station_detail' station.id %}#photos" class="btn btn-secondary">
+            <i class="fas fa-times mr-1"></i> {% trans "Annulla" %}
+        </a>
+    </div>
+</form>
+{% endblock %}

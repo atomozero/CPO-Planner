@@ -20,8 +20,43 @@ class SubProjectDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['project'] = self.object.project
-        # Rimuoviamo la riga che causa l'errore - il SubProject non ha stazioni collegate direttamente
-        # ma è lui stesso una stazione di ricarica nel contesto dell'applicazione
+        
+        # Ottieni le foto della stazione
+        from cpo_core.models.charging_station import ChargingStationPhoto
+        from cpo_core.models.charging_station import ChargingStation
+        
+        # Cerca una stazione di ricarica associata a questo subproject
+        charging_station = None
+        try:
+            # Prova a cercare una stazione di ricarica con lo stesso ID
+            charging_station = ChargingStation.objects.filter(subproject_id=self.object.id).first()
+        except:
+            pass
+        
+        # Cerca foto associate al subproject o alla stazione di ricarica
+        # Creiamo una query combinata per entrambe le relazioni
+        photos_from_subproject = ChargingStationPhoto.objects.filter(subproject=self.object)
+        
+        if charging_station:
+            # Se abbiamo trovato una stazione di ricarica, aggiungi anche le sue foto
+            photos_from_charging_station = ChargingStationPhoto.objects.filter(charging_station=charging_station)
+            # Combina i due queryset
+            station_photos = photos_from_subproject.union(photos_from_charging_station).order_by('-date_taken', '-created_at')
+        else:
+            # Altrimenti, usa solo le foto legate direttamente al subproject
+            station_photos = photos_from_subproject.order_by('-date_taken', '-created_at')
+            
+        # Debug: stampa il numero di foto trovate
+        print(f"DEBUG: Trovate {station_photos.count()} foto per il subproject {self.object.id}")
+        
+        context['station_photos'] = station_photos
+        context['pre_installation_photos'] = ChargingStationPhoto.objects.filter(
+            subproject=self.object, phase='pre_installation').order_by('-date_taken', '-created_at')
+        context['during_installation_photos'] = ChargingStationPhoto.objects.filter(
+            subproject=self.object, phase='during_installation').order_by('-date_taken', '-created_at')
+        context['post_installation_photos'] = ChargingStationPhoto.objects.filter(
+            subproject=self.object, phase='post_installation').order_by('-date_taken', '-created_at')
+        
         return context
 
 class SubProjectCreateView(LoginRequiredMixin, CreateView):
@@ -95,6 +130,17 @@ class SubProjectUpdateView(LoginRequiredMixin, UpdateView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['project_id'] = self.object.project_id
+        
+        # Debug dei dati che arrivano al form
+        print("DEBUG - get_form_kwargs SubProjectUpdateView - instance:", self.object)
+        print("DEBUG - get_form_kwargs SubProjectUpdateView - instance values:", {
+            'power_kw': self.object.power_kw,
+            'ground_area_sqm': self.object.ground_area_sqm,
+            'equipment_cost': self.object.equipment_cost,
+            'installation_cost': self.object.installation_cost,
+            'connection_cost': self.object.connection_cost
+        })
+        
         return kwargs
         
     def form_valid(self, form):
@@ -106,6 +152,30 @@ class SubProjectUpdateView(LoginRequiredMixin, UpdateView):
             municipality = Municipality.objects.filter(name=project.region).first()
             if municipality:
                 form.instance.municipality = municipality
+        
+        # Debug: mostra i valori dei campi economici prima del salvataggio
+        print("DEBUG - SubProjectUpdateView form_valid - Valori del form:", {
+            'equipment_cost': form.cleaned_data.get('equipment_cost'),
+            'installation_cost': form.cleaned_data.get('installation_cost'),
+            'connection_cost': form.cleaned_data.get('connection_cost'),
+            'permit_cost': form.cleaned_data.get('permit_cost'),
+            'civil_works_cost': form.cleaned_data.get('civil_works_cost'),
+            'other_costs': form.cleaned_data.get('other_costs'),
+            'budget': form.cleaned_data.get('budget')
+        })
+        
+        # Assicura che il modello utilizzi i valori esatti del form per i campi economici
+        form.instance.equipment_cost = form.cleaned_data.get('equipment_cost')
+        form.instance.installation_cost = form.cleaned_data.get('installation_cost')
+        form.instance.connection_cost = form.cleaned_data.get('connection_cost')
+        form.instance.permit_cost = form.cleaned_data.get('permit_cost')
+        form.instance.civil_works_cost = form.cleaned_data.get('civil_works_cost')
+        form.instance.other_costs = form.cleaned_data.get('other_costs')
+        
+        # Se il budget è stato calcolato manualmente nel form, usalo
+        if form.cleaned_data.get('budget'):
+            form.instance.budget = form.cleaned_data.get('budget')
+            print(f"DEBUG - Usando budget dal form: {form.cleaned_data.get('budget')}")
         
         messages.success(self.request, _('Stazione di ricarica aggiornata con successo!'))
         return super().form_valid(form)
@@ -150,6 +220,24 @@ class SubProjectUpdateView(LoginRequiredMixin, UpdateView):
         context = super().get_context_data(**kwargs)
         context['project'] = self.object.project
         context['title'] = _('Modifica Sotto-Progetto')
+        
+        # Debug: stampa i valori del form per identificare problemi
+        debug_info = {
+            'power_kw': self.object.power_kw,
+            'ground_area_sqm': self.object.ground_area_sqm,
+            'equipment_cost': self.object.equipment_cost,
+            'installation_cost': self.object.installation_cost,
+            'connection_cost': self.object.connection_cost,
+            'permit_cost': self.object.permit_cost,
+            'civil_works_cost': self.object.civil_works_cost,
+            'other_costs': self.object.other_costs,
+        }
+        print("DEBUG - Valori del subproject:", debug_info)
+        
+        # Aggiungi i template di stazioni disponibili
+        from infrastructure.models import ChargingStationTemplate
+        templates = ChargingStationTemplate.objects.all().order_by('brand', 'model')
+        context['charging_templates'] = templates
         
         # Se siamo in modalità aggiornamento rapido dello stato
         if 'status' in self.request.GET or (hasattr(self, 'fields') and self.fields == ['status']):

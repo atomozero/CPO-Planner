@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block title %}{% translate "Elimina Documento" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 mb-0 text-gray-800">
+                {% translate "Elimina Documento" %}
+            </h1>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">{% translate "Conferma Eliminazione" %}</h6>
+        </div>
+        <div class="card-body">
+            <p class="mb-4">
+                {% blocktranslate with title=document.title %}
+                    Sei sicuro di voler eliminare il documento "{{ title }}"?
+                {% endblocktranslate %}
+            </p>
+            <p class="text-danger">
+                {% translate "Questa azione non può essere annullata." %}
+            </p>
+            
+            <form method="post">
+                {% csrf_token %}
+                <div class="d-flex justify-content-end mt-4">
+                    <a href="{% url 'documents:document_detail' pk=document.pk %}" class="btn btn-secondary mr-2">
+                        {% translate "Annulla" %}
+                    </a>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> {% translate "Elimina" %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

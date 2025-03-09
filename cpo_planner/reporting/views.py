@@ -475,19 +475,33 @@ def report_status_api(request, pk):
     except Report.DoesNotExist:
         return JsonResponse({'error': 'Report not found'}, status=404)
 
-
 @login_required
 def generate_charging_station_installation_report(request, pk):
-    """Genera un report di installazione per la stazione di ricarica"""
+    """Genera un report di installazione per la stazione di ricarica con un design completamente rinnovato"""
     from reportlab.lib.pagesizes import A4
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, Flowable
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib import colors
-    from reportlab.lib.units import cm
+    from reportlab.lib.units import cm, mm
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    from reportlab.graphics.shapes import Drawing, Line
     
     # Importa entrambi i modelli SubProject da diversi moduli
     from cpo_planner.projects.models import SubProject as ProjectsSubProject
     from cpo_core.models.subproject import SubProject as CoreSubProject
+    
+    # Classe personalizzata per i separatori con stile moderno
+    class HorizontalLine(Flowable):
+        def __init__(self, width, height=0.5, color=colors.grey):
+            Flowable.__init__(self)
+            self.width = width
+            self.height = height
+            self.color = color
+        
+        def draw(self):
+            self.canv.setStrokeColor(self.color)
+            self.canv.setLineWidth(self.height)
+            self.canv.line(0, 0, self.width, 0)
     
     # Crea il buffer per il PDF
     buffer = BytesIO()
@@ -598,38 +612,96 @@ def generate_charging_station_installation_report(request, pk):
             # Riferimenti
             project = station.subproject.project if hasattr(station, 'subproject') and hasattr(station.subproject, 'project') else None
             municipality = station.subproject.municipality if hasattr(station, 'subproject') and hasattr(station.subproject, 'municipality') else None
-                
-        # Crea il documento PDF
+        
+        # Definizione colori moderni
+        brand_color = colors.HexColor("#0066CC")      # Blu primario
+        accent_color = colors.HexColor("#FF6600")     # Arancione accent
+        bg_light = colors.HexColor("#F5F7FA")         # Grigio chiaro
+        text_dark = colors.HexColor("#333333")        # Grigio scuro per il testo
+        text_light = colors.HexColor("#777777")       # Grigio chiaro per dettagli
+        success_color = colors.HexColor("#4CAF50")    # Verde
+        
+        # Crea il documento PDF con margini ottimizzati
         doc = SimpleDocTemplate(
             buffer,
             pagesize=A4,
-            rightMargin=72,
-            leftMargin=72,
-            topMargin=72,
-            bottomMargin=72,
+            rightMargin=15*mm,
+            leftMargin=15*mm,
+            topMargin=15*mm,
+            bottomMargin=15*mm,
             title=f"Scheda Installazione - {station_name}"
         )
         
-        # Stili
+        # Stili moderni
         styles = getSampleStyleSheet()
         
-        # Crea stili con nomi unici per evitare conflitti
+        # Stile per il titolo principale
         title_style = ParagraphStyle(
-            name='ReportTitle',
-            parent=styles['Heading1'],
-            fontSize=18,
-            spaceAfter=12,
+            name='TitleModern',
+            fontName='Helvetica-Bold',
+            fontSize=24,  # Dimensione maggiore per dare più importanza
+            leading=30,
+            textColor=brand_color,
+            alignment=TA_LEFT,
+            spaceAfter=1*mm,
         )
         
+        # Stile per il sottotitolo
         subtitle_style = ParagraphStyle(
-            name='ReportSubtitle',
-            parent=styles['Heading2'],
-            fontSize=14,
-            spaceAfter=10,
+            name='SubtitleModern',
+            fontName='Helvetica',
+            fontSize=16,  # Dimensione maggiore per il sottotitolo
+            leading=20,
+            textColor=text_dark,  # Colore più scuro per migliorare il contrasto
+            alignment=TA_LEFT,
         )
         
-        # Contenuto del report
-        elements = []
+        # Stile per le intestazioni di sezione
+        section_title_style = ParagraphStyle(
+            name='SectionModern',
+            fontName='Helvetica-Bold',
+            fontSize=14,
+            leading=18,
+            textColor=brand_color,
+            spaceBefore=2*mm,  # Ridotto da 10*mm a 2*mm
+            spaceAfter=5*mm,
+        )
+        
+        # Stile per il testo normale
+        normal_style = ParagraphStyle(
+            name='NormalModern',
+            fontName='Helvetica',
+            fontSize=10,
+            leading=14,
+            textColor=text_dark,
+        )
+        
+        # Stile per le etichette
+        label_style = ParagraphStyle(
+            name='LabelModern',
+            fontName='Helvetica-Bold',
+            fontSize=10,
+            leading=14,
+            textColor=text_dark,
+        )
+        
+        # Stile per i valori
+        value_style = ParagraphStyle(
+            name='ValueModern',
+            fontName='Helvetica',
+            fontSize=10,
+            leading=14,
+            textColor=text_dark,
+        )
+        
+        # Stile per il footer
+        footer_style = ParagraphStyle(
+            name='FooterModern',
+            fontName='Helvetica',
+            fontSize=8,
+            leading=10,
+            textColor=text_light,
+        )
         
         # Prepara le immagini
         project_logo = None
@@ -639,294 +711,417 @@ def generate_charging_station_installation_report(request, pk):
         # Logo del progetto (se disponibile)
         if project and hasattr(project, 'logo') and project.logo:
             try:
+                from PIL import Image as PILImage
                 project_logo_path = project.logo.path
-                project_logo = Image(project_logo_path, width=3*cm, height=2*cm)
+                
+                # Apri l'immagine con PIL per ottenere le dimensioni originali
+                pil_img = PILImage.open(project_logo_path)
+                img_width, img_height = pil_img.size
+                
+                # Calcola il rapporto di aspetto
+                aspect_ratio = img_height / float(img_width)
+                
+                # Imposta la larghezza desiderata
+                desired_width = 6*cm
+                
+                # Calcola l'altezza in base al rapporto di aspetto
+                calculated_height = desired_width * aspect_ratio
+                
+                # Crea l'immagine mantenendo il rapporto di aspetto
+                project_logo = Image(project_logo_path, width=desired_width, height=calculated_height)
             except Exception as e:
                 print(f"Errore caricamento logo progetto: {e}")
                 
         # Logo del comune (se disponibile)
         if municipality and hasattr(municipality, 'logo') and municipality.logo:
             try:
+                from PIL import Image as PILImage
                 municipality_logo_path = municipality.logo.path
-                municipality_logo = Image(municipality_logo_path, width=3*cm, height=2*cm)
+                
+                # Apri l'immagine con PIL per ottenere le dimensioni originali
+                pil_img = PILImage.open(municipality_logo_path)
+                img_width, img_height = pil_img.size
+                
+                # Calcola il rapporto di aspetto
+                aspect_ratio = img_height / float(img_width)
+                
+                # Imposta la larghezza desiderata
+                desired_width = 3*cm
+                
+                # Calcola l'altezza in base al rapporto di aspetto
+                calculated_height = desired_width * aspect_ratio
+                
+                # Crea l'immagine mantenendo il rapporto di aspetto
+                municipality_logo = Image(municipality_logo_path, width=desired_width, height=calculated_height)
             except Exception as e:
                 print(f"Errore caricamento logo comune: {e}")
-                
-        # Immagine della colonnina (se disponibile)
-        # Per SubProject: verifica se ci sono immagini collegate
-        if is_subproject and hasattr(station, 'images') and station.images.exists():
-            try:
-                charger_image_obj = station.images.first()  # Prendi la prima immagine
-                charger_image_path = charger_image_obj.image.path
-                charger_image = Image(charger_image_path, width=5*cm, height=5*cm)
-            except Exception as e:
-                print(f"Errore caricamento immagine colonnina: {e}")
-        # Per ChargingStation: verifica se c'è un'immagine collegata
-        elif not is_subproject and hasattr(station, 'image') and station.image:
-            try:
-                charger_image_path = station.image.path
-                charger_image = Image(charger_image_path, width=5*cm, height=5*cm)
-            except Exception as e:
-                print(f"Errore caricamento immagine colonnina: {e}")
         
-        # Tabella di intestazione con loghi
-        title_text = Paragraph(f"Scheda Installazione - {station_name}", title_style)
-        header_data = [[project_logo or '', title_text, municipality_logo or '']]
-        header_table = Table(header_data, colWidths=[3*cm, doc.width-6*cm, 3*cm])
-        header_table.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-            ('ALIGN', (1, 0), (1, 0), 'CENTER'),
-            ('ALIGN', (2, 0), (2, 0), 'RIGHT'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ]))
+        # Elementi del documento
+        elements = []
         
-        elements.append(header_table)
-        elements.append(Spacer(1, 12))
+        # INTESTAZIONE MODERNA RIVISITATA
+        # Prima il logo del progetto, poi il titolo con il logo del comune a destra
         
-        # Non abbiamo più bisogno di aggiungere il titolo qui poiché è già nell'intestazione
+        # Aggiungiamo il logo del progetto sopra a tutto
+        if project_logo:
+            logo_project_table = Table([[project_logo]], colWidths=[doc.width])
+            logo_project_table.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                ('VALIGN', (0, 0), (0, 0), 'MIDDLE'),
+                ('TOPPADDING', (0, 0), (0, 0), 0),
+                ('BOTTOMPADDING', (0, 0), (0, 0), 10),
+            ]))
+            elements.append(logo_project_table)
+            elements.append(Spacer(1, 5*mm))
         
-        # Informazioni sulla stazione
-        elements.append(Paragraph("Informazioni Generali", subtitle_style))
-        elements.append(Spacer(1, 6))
+        # Titolo principale e sottotitolo in una tabella, con logo del comune a destra
+        title_text = Paragraph(f"Scheda Installazione", title_style)
+        subtitle_text = Paragraph(f"{station_name}", subtitle_style)
         
-        # Prepara i dati per la tabella
-        data = []
-        
-        # Indirizzo
-        if address:
-            data.append(["Indirizzo", address])
+        # Struttura per il titolo e sottotitolo
+        if municipality_logo:
+            # Creiamo una tabella con titolo e sottotitolo insieme a sinistra
+            title_column_data = [
+                [title_text],
+                [subtitle_text]
+            ]
             
-        # Coordinate GPS
-        if latitude and longitude:
-            data.append(["Coordinate GPS", f"Lat: {latitude}, Long: {longitude}"])
+            # Riduzione dello spazio tra titolo e sottotitolo
+            title_column = Table(title_column_data, colWidths=[doc.width-(4*cm)])
+            title_column.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (0, -1), 'MIDDLE'),
+                ('BOTTOMPADDING', (0, 0), (0, 0), 0),  # Ridotto il padding sotto il titolo
+                ('TOPPADDING', (0, 1), (0, 1), 0),     # Ridotto il padding sopra il sottotitolo
+            ]))
             
-        # Marca della colonnina
-        if brand:
-            data.append(["Marca Colonnina", brand])
+            # Tabella principale con la colonna del titolo a sinistra e logo comune a destra
+            main_row = [[title_column, municipality_logo]]
+            main_widths = [doc.width-(4*cm), 4*cm]
+            main_table = Table(main_row, colWidths=main_widths)
+            main_table.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+                ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+                ('VALIGN', (0, 0), (1, 0), 'MIDDLE'),
+            ]))
             
-        # Modello della colonnina
-        if model:
-            data.append(["Modello Colonnina", model])
-            
-        # Modem 4G
-        data.append(["Modem 4G", "Sì" if has_4g else "No"])
-        
-        # Potenza
-        if power:
-            data.append(["Potenza", f"{power} kW"])
-            
-        # Potenza richiesta
-        if is_subproject:
-            power_requested = station.power_kw  # Usa power_kw come potenza richiesta per i SubProject
-            if power_requested:
-                data.append(["Potenza Richiesta", f"{power_requested} kW"])
+            elements.append(main_table)
         else:
-            # Per ChargingStation, usa grid_connection_capacity come già fatto
-            power_requested = None
-            if hasattr(station, 'grid_connection_capacity') and station.grid_connection_capacity:
-                power_requested = station.grid_connection_capacity
-            elif hasattr(station, 'subproject') and hasattr(station.subproject, 'power_requested') and station.subproject.power_requested:
-                power_requested = station.subproject.power_requested
-                
-            if power_requested:
-                data.append(["Potenza Richiesta", f"{power_requested} kW"])
+            # Se non c'è il logo del comune, tabella semplice con titolo e sottotitolo ravvicinati
+            title_subtable_data = [
+                [title_text],
+                [subtitle_text],
+            ]
             
+            title_subtable = Table(title_subtable_data, colWidths=[doc.width])
+            title_subtable.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (0, -1), 'MIDDLE'),
+                ('BOTTOMPADDING', (0, 0), (0, 0), 0),  # Ridotto il padding sotto il titolo
+                ('TOPPADDING', (0, 1), (0, 1), 0),     # Ridotto il padding sopra il sottotitolo
+            ]))
+            
+            elements.append(title_subtable)
+        elements.append(Spacer(1, 3*mm))
+        
+        # Linea separatrice dopo titolo e logo comune
+        elements.append(HorizontalLine(width=doc.width, color=accent_color))
+        elements.append(Spacer(1, 8*mm))
+        
+        # Spazio dopo l'intestazione
+        elements.append(Spacer(1, 8*mm))
+        
+        # Sezione INFO GENERALI
+        # Riduciamo lo spazio aggiuntivo prima del titolo della sezione
+        elements.append(Paragraph("Informazioni Generali", section_title_style))
+        elements.append(HorizontalLine(width=doc.width, color=brand_color))
+        elements.append(Spacer(1, 3*mm))
+        
+        # Layout a 2 colonne con immagine a destra
+        
+        # Colonna sinistra: informazioni generali
+        info_data = []
+        
+        # Funzione helper per creare righe con stile
+        def styled_row(label, value, is_bold=False):
+            if value is None or value == '':
+                value = '-'
+            
+            if is_bold:
+                return [
+                    Paragraph(f'<b>{label}</b>', label_style),
+                    Paragraph(f'<b>{value}</b>', value_style)
+                ]
+            return [
+                Paragraph(f'{label}', label_style),
+                Paragraph(f'{value}', value_style)
+            ]
+        
+        # Aggiunge righe alla tabella info
+        if address:
+            info_data.append(styled_row("Indirizzo:", address))
+            
+        if latitude and longitude:
+            info_data.append(styled_row("Coordinate GPS:", f"Lat: {latitude}, Long: {longitude}"))
+            
+        if brand:
+            info_data.append(styled_row("Marca Colonnina:", brand))
+            
+        if model:
+            info_data.append(styled_row("Modello Colonnina:", model))
+            
+        info_data.append(styled_row("Modem 4G:", "Sì" if has_4g else "No"))
+        
+        if power:
+            info_data.append(styled_row("Potenza:", f"{power} kW", True))
+        
+        # Potenza richiesta
+        power_requested_value = None
+        if is_subproject:
+            power_requested = station.power_kw
+            if power_requested:
+                power_requested_value = f"{power_requested} kW"
+        else:
+            if hasattr(station, 'grid_connection_capacity') and station.grid_connection_capacity:
+                power_requested_value = f"{station.grid_connection_capacity} kW"
+            elif hasattr(station, 'subproject') and hasattr(station.subproject, 'power_requested') and station.subproject.power_requested:
+                power_requested_value = f"{station.subproject.power_requested} kW"
+        
+        if power_requested_value:
+            info_data.append(styled_row("Potenza Richiesta:", power_requested_value))
+        
         # Descrizione
         if description:
-            data.append(["Descrizione", description])
+            info_data.append(styled_row("Descrizione:", description))
             
         # Date
-        # Data inizio lavori
         if start_date:
-            data.append(["Data Inizio Lavori", start_date.strftime('%d/%m/%Y')])
+            info_data.append(styled_row("Data Inizio Lavori:", start_date.strftime('%d/%m/%Y')))
             
-        # Data fine lavori
         if end_date:
-            data.append(["Data Prevista Fine Lavori", end_date.strftime('%d/%m/%Y')])
-            
-        # Crea sempre la tabella affiancata, indipendentemente dalla presenza dell'immagine
-        # Specifica le larghezze delle colonne
-        info_table = Table(data, colWidths=[150, 200])
+            info_data.append(styled_row("Data Prevista Fine Lavori:", end_date.strftime('%d/%m/%Y')))
+        
+        # Stile moderno per la tabella info
+        info_table = Table(info_data, colWidths=[150, 400])
         info_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('PADDING', (0, 0), (-1, -1), 6),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+            ('TEXTCOLOR', (0, 0), (-1, -1), text_dark),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('GRID', (0, 0), (-1, -1), 0.15, colors.lightgrey),
+            ('BACKGROUND', (0, 0), (0, -1), bg_light),
         ]))
         
-        # Immagine segnaposto se non c'è l'immagine della colonnina
-        placeholder_image = None
-        if not charger_image:
-            placeholder_image = Paragraph("", ParagraphStyle(name='Placeholder', spaceAfter=0))
+        # Aggiungiamo la tabella info a tutta larghezza
+        elements.append(info_table)
         
-        # Crea la tabella completa con info e immagine affiancate
-        complete_data = [[info_table, charger_image or placeholder_image]]
-        complete_table = Table(complete_data, colWidths=[350, 180])
-        complete_table.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-            ('ALIGN', (1, 0), (1, 0), 'CENTER'),
-            ('VALIGN', (0, 0), (1, 0), 'MIDDLE'),
-            ('LEFTPADDING', (1, 0), (1, 0), 10),
-        ]))
-        
-        elements.append(complete_table)
-            
-        # Specifiche tecniche (se disponibili)
-        elements.append(Spacer(1, 24))
-        elements.append(Paragraph("Specifiche Tecniche", subtitle_style))
-        elements.append(Spacer(1, 6))
+        # SPECIFICHE TECNICHE
+        elements.append(Spacer(1, 10*mm))
+        elements.append(Paragraph("Specifiche Tecniche", section_title_style))
+        elements.append(HorizontalLine(width=doc.width, color=brand_color))
+        elements.append(Spacer(1, 3*mm))
         
         tech_data = []
         
         # Tipo di connessione
         if not is_subproject and hasattr(station, 'connection_type') and station.connection_type:
-            tech_data.append(["Tipo di Connessione", station.get_connection_type_display()])
+            tech_data.append(styled_row("Tipo di Connessione:", station.get_connection_type_display()))
         elif not is_subproject and hasattr(station, 'power_type') and station.power_type:
-            tech_data.append(["Tipo di Alimentazione", station.get_power_type_display()])
+            tech_data.append(styled_row("Tipo di Alimentazione:", station.get_power_type_display()))
             
         # Potenza massima
         if power:
-            tech_data.append(["Potenza Massima", f"{power} kW"])
+            tech_data.append(styled_row("Potenza Massima:", f"{power} kW", True))
             
         # Numero di connettori
         if num_connectors:
-            tech_data.append(["Numero di Connettori", str(num_connectors)])
+            tech_data.append(styled_row("Numero di Connettori:", str(num_connectors)))
             
         # Tipi di connettori
         if connector_types:
-            tech_data.append(["Tipi di Connettori", connector_types])
+            tech_data.append(styled_row("Tipi di Connettori:", connector_types))
             
         # Dati aggiuntivi sulla stazione
         if is_subproject:
             # Dati catastali se disponibili
             if hasattr(station, 'cadastral_data') and station.cadastral_data:
-                tech_data.append(["Dati Catastali", station.cadastral_data])
+                tech_data.append(styled_row("Dati Catastali:", station.cadastral_data))
                 
             # Profilo di utilizzo
             if hasattr(station, 'usage_profile') and station.usage_profile:
-                tech_data.append(["Profilo di Utilizzo", station.usage_profile.name if hasattr(station.usage_profile, 'name') else str(station.usage_profile)])
+                tech_data.append(styled_row("Profilo di Utilizzo:", station.usage_profile.name if hasattr(station.usage_profile, 'name') else str(station.usage_profile)))
         
         # Informazioni sull'alimentazione e connessione elettrica
         if not is_subproject and hasattr(station, 'grid_connection_capacity'):
-            tech_data.append(["Capacità Connessione Rete", f"{station.grid_connection_capacity} kW"])
+            tech_data.append(styled_row("Capacità Connessione Rete:", f"{station.grid_connection_capacity} kW"))
             
         # Area occupata dalla stazione
         if (is_subproject and hasattr(station, 'ground_area_sqm') and station.ground_area_sqm) or \
            (not is_subproject and hasattr(station, 'ground_area') and station.ground_area):
             area = station.ground_area_sqm if is_subproject else station.ground_area
-            tech_data.append(["Area Occupata", f"{area} m²"])
+            tech_data.append(styled_row("Area Occupata:", f"{area} m²"))
             
         # Caratteristiche di connettività e comunicazione
         if not is_subproject:
             if hasattr(station, 'has_lan') and station.has_lan:
-                tech_data.append(["Connessione LAN", "Sì"])
+                tech_data.append(styled_row("Connessione LAN:", "Sì"))
                 
             if hasattr(station, 'has_wifi') and station.has_wifi:
-                tech_data.append(["Connessione WiFi", "Sì"])
+                tech_data.append(styled_row("Connessione WiFi:", "Sì"))
                 
         # Caratteristiche della colonnina (da Charger)
         if is_subproject and hasattr(station, 'chargers') and station.chargers.exists():
             charger = station.chargers.first()
             
             if hasattr(charger, 'is_fast_charging') and charger.is_fast_charging:
-                tech_data.append(["Ricarica Rapida", "Sì"])
+                tech_data.append(styled_row("Ricarica Rapida:", "Sì"))
                 
             if hasattr(charger, 'is_smart_charging') and charger.is_smart_charging:
-                tech_data.append(["Smart Charging", "Sì"])
+                tech_data.append(styled_row("Smart Charging:", "Sì"))
                 
             if hasattr(charger, 'has_display') and charger.has_display:
-                tech_data.append(["Display", "Sì"])
+                tech_data.append(styled_row("Display:", "Sì"))
                 
             if hasattr(charger, 'has_rfid') and charger.has_rfid:
-                tech_data.append(["Lettore RFID", "Sì"])
+                tech_data.append(styled_row("Lettore RFID:", "Sì"))
                 
             if hasattr(charger, 'has_app_control') and charger.has_app_control:
-                tech_data.append(["Controllo App", "Sì"])
+                tech_data.append(styled_row("Controllo App:", "Sì"))
         
         if tech_data:
-            tech_table = Table(tech_data, colWidths=[200, 250])
+            # Tabella specifiche tecniche con stile moderno
+            tech_table = Table(tech_data, colWidths=[200, 340])
             tech_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('PADDING', (0, 0), (-1, -1), 6),
+                ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+                ('TEXTCOLOR', (0, 0), (-1, -1), text_dark),
+                ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+                ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                ('TOPPADDING', (0, 0), (-1, -1), 6),
+                ('GRID', (0, 0), (-1, -1), 0.15, colors.lightgrey),
+                ('BACKGROUND', (0, 0), (0, -1), bg_light),
             ]))
             elements.append(tech_table)
-            
-        # Rimuoviamo la sezione dei dettagli economici come richiesto
-            
-        # Date importanti
-        elements.append(Spacer(1, 24))
-        elements.append(Paragraph("Date Importanti", subtitle_style))
-        elements.append(Spacer(1, 6))
         
+        # DATE IMPORTANTI
         dates_data = []
         
         # Date di installazione e attivazione (per ChargingStation)
         if not is_subproject:
             if hasattr(station, 'installation_date') and station.installation_date:
-                dates_data.append(["Data di Installazione", station.installation_date.strftime('%d/%m/%Y')])
+                dates_data.append(styled_row("Data di Installazione:", station.installation_date.strftime('%d/%m/%Y')))
                 
             if hasattr(station, 'activation_date') and station.activation_date:
-                dates_data.append(["Data di Attivazione", station.activation_date.strftime('%d/%m/%Y')])
+                dates_data.append(styled_row("Data di Attivazione:", station.activation_date.strftime('%d/%m/%Y')))
         
         # Date dal SubProject (alcune già incluse nella tabella generale)
         if is_subproject:
             if hasattr(station, 'start_date') and station.start_date:
-                dates_data.append(["Data Inizio Lavori", station.start_date.strftime('%d/%m/%Y')])
+                dates_data.append(styled_row("Data Inizio Lavori:", station.start_date.strftime('%d/%m/%Y')))
                 
             if hasattr(station, 'planned_completion_date') and station.planned_completion_date:
-                dates_data.append(["Data Prevista Completamento", station.planned_completion_date.strftime('%d/%m/%Y')])
+                dates_data.append(styled_row("Data Prevista Completamento:", station.planned_completion_date.strftime('%d/%m/%Y')))
                 
             if hasattr(station, 'actual_completion_date') and station.actual_completion_date:
-                dates_data.append(["Data Effettiva Completamento", station.actual_completion_date.strftime('%d/%m/%Y')])
+                dates_data.append(styled_row("Data Effettiva Completamento:", station.actual_completion_date.strftime('%d/%m/%Y'), True))
             
             # Date cambio stato
             if hasattr(station, 'status_changed_date') and station.status_changed_date:
-                dates_data.append(["Data Cambio Stato", station.status_changed_date.strftime('%d/%m/%Y')])
+                dates_data.append(styled_row("Data Cambio Stato:", station.status_changed_date.strftime('%d/%m/%Y')))
         
         # Date per i Charger
         if is_subproject and hasattr(station, 'chargers') and station.chargers.exists():
             charger = station.chargers.first()
             
             if hasattr(charger, 'installation_date') and charger.installation_date:
-                dates_data.append(["Data Installazione Colonnina", charger.installation_date.strftime('%d/%m/%Y')])
+                dates_data.append(styled_row("Data Installazione Colonnina:", charger.installation_date.strftime('%d/%m/%Y')))
                 
             if hasattr(charger, 'activation_date') and charger.activation_date:
-                dates_data.append(["Data Attivazione Colonnina", charger.activation_date.strftime('%d/%m/%Y')])
+                dates_data.append(styled_row("Data Attivazione Colonnina:", charger.activation_date.strftime('%d/%m/%Y')))
         
         if dates_data:
-            dates_table = Table(dates_data, colWidths=[200, 250])
+            elements.append(Spacer(1, 10*mm))
+            elements.append(Paragraph("Date Importanti", section_title_style))
+            elements.append(HorizontalLine(width=doc.width, color=brand_color))
+            elements.append(Spacer(1, 3*mm))
+            
+            # Tabella date con stile moderno
+            dates_table = Table(dates_data, colWidths=[240, 300])
             dates_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('PADDING', (0, 0), (-1, -1), 6),
+                ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+                ('TEXTCOLOR', (0, 0), (-1, -1), text_dark),
+                ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+                ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                ('TOPPADDING', (0, 0), (-1, -1), 6),
+                ('GRID', (0, 0), (-1, -1), 0.15, colors.lightgrey),
+                ('BACKGROUND', (0, 0), (0, -1), bg_light),
             ]))
             elements.append(dates_table)
-            
-        # Informazioni responsabilità e contatti
+        
+        # RESPONSABILI E CONTATTI
+        contacts_data = []
+        
         if is_subproject and hasattr(station, 'responsible_person') and station.responsible_person:
-            elements.append(Spacer(1, 24))
-            elements.append(Paragraph("Responsabili e Contatti", subtitle_style))
-            elements.append(Spacer(1, 6))
-            
-            contacts_data = [
-                ["Responsabile", f"{station.responsible_person.first_name} {station.responsible_person.last_name}"]
-            ]
+            contacts_data.append(styled_row("Responsabile:", f"{station.responsible_person.first_name} {station.responsible_person.last_name}"))
             
             if hasattr(station, 'status_changed_by') and station.status_changed_by:
-                contacts_data.append(["Ultimo Aggiornamento Stato", f"{station.status_changed_by.first_name} {station.status_changed_by.last_name}"])
+                contacts_data.append(styled_row("Ultimo Aggiornamento Stato:", f"{station.status_changed_by.first_name} {station.status_changed_by.last_name}"))
+        
+        if contacts_data:
+            elements.append(Spacer(1, 10*mm))
+            elements.append(Paragraph("Responsabili e Contatti", section_title_style))
+            elements.append(HorizontalLine(width=doc.width, color=brand_color))
+            elements.append(Spacer(1, 3*mm))
             
-            contacts_table = Table(contacts_data, colWidths=[200, 250])
+            # Tabella contatti con stile moderno
+            contacts_table = Table(contacts_data, colWidths=[240, 300])
             contacts_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('PADDING', (0, 0), (-1, -1), 6),
+                ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+                ('TEXTCOLOR', (0, 0), (-1, -1), text_dark),
+                ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+                ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                ('TOPPADDING', (0, 0), (-1, -1), 6),
+                ('GRID', (0, 0), (-1, -1), 0.15, colors.lightgrey),
+                ('BACKGROUND', (0, 0), (0, -1), bg_light),
             ]))
             elements.append(contacts_table)
         
-        # Footer
-        elements.append(Spacer(1, 36))
-        elements.append(Paragraph(f"Report generato il: {timezone.now().strftime('%d/%m/%Y')}", styles['Normal']))
-        elements.append(Paragraph(f"Generato da: {request.user.get_full_name() or request.user.username}", styles['Normal']))
+        # FOOTER MODERNO
+        elements.append(Spacer(1, 15*mm))
+        
+        # Linea separatrice
+        elements.append(HorizontalLine(width=doc.width, color=text_light))
+        elements.append(Spacer(1, 5*mm))
+        
+        # Informazioni del footer in stile moderno
+        footer_data = [
+            [
+                Paragraph(f"Report generato il: {timezone.now().strftime('%d/%m/%Y')}", footer_style),
+                Paragraph(f"Generato da: {request.user.get_full_name() or request.user.username}", footer_style),
+            ]
+        ]
+        
+        footer_table = Table(footer_data, colWidths=[doc.width/2, doc.width/2])
+        footer_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+            ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TEXTCOLOR', (0, 0), (1, 0), text_light),
+        ]))
+        
+        elements.append(footer_table)
         
         # Genera il PDF
         doc.build(elements)

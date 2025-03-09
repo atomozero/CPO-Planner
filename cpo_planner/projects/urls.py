@@ -9,7 +9,8 @@ from .views.subproject_views import (
 )
 from .views.charging_station_views import (
     ChargingStationDetailView, ChargingStationCreateView, ChargingStationUpdateView, ChargingStationDeleteView,
-    ChargerListView, ChargerDetailView, ChargerCreateView, ChargerUpdateView, ChargerDeleteView
+    ChargerListView, ChargerDetailView, ChargerCreateView, ChargerUpdateView, ChargerDeleteView,
+    ChargingStationPhotoCreateView, ChargingStationPhotoUpdateView, ChargingStationPhotoDetailView, ChargingStationPhotoDeleteView
 )
 from .views.financial_views import (
     FinancialParametersUpdateView, RunFinancialAnalysisView,
@@ -168,4 +169,21 @@ urlpatterns = [
     path('charger/<int:pk>/delete/', 
         ChargerDeleteView.as_view(), 
         name='charger_delete'),
+        
+    # Charging Station Photo views
+    path('station/<station_id>/photo/add/', 
+        ChargingStationPhotoCreateView.as_view(), 
+        name='charging_station_add_photo'),
+        
+    path('station/photo/<pk>/', 
+        ChargingStationPhotoDetailView.as_view(), 
+        name='charging_station_photo_detail'),
+        
+    path('station/photo/<pk>/edit/', 
+        ChargingStationPhotoUpdateView.as_view(), 
+        name='charging_station_photo_edit'),
+        
+    path('station/photo/<pk>/delete/', 
+        ChargingStationPhotoDeleteView.as_view(), 
+        name='charging_station_photo_delete'),
 ]

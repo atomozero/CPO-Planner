@@ -91,6 +91,21 @@ class SubProject(models.Model):
     latitude_approved = models.DecimalField(_("Latitudine Approvata"), max_digits=9, decimal_places=6, null=True, blank=True)
     longitude_approved = models.DecimalField(_("Longitudine Approvata"), max_digits=9, decimal_places=6, null=True, blank=True)
     
+    # Giorni di indisponibilità
+    WEEKDAY_CHOICES = [
+        (0, _('Lunedì')),
+        (1, _('Martedì')),
+        (2, _('Mercoledì')),
+        (3, _('Giovedì')),
+        (4, _('Venerdì')),
+        (5, _('Sabato')),
+        (6, _('Domenica')),
+    ]
+    weekly_market_day = models.IntegerField(_("Giorno del mercato settimanale"), choices=WEEKDAY_CHOICES, null=True, blank=True,
+                                          help_text=_("Giorno della settimana in cui si tiene il mercato e la stazione non è disponibile"))
+    local_festival_days = models.IntegerField(_("Giorni festa paesana all'anno"), null=True, blank=True, default=0,
+                                           help_text=_("Numero di giorni all'anno in cui la stazione non è disponibile per feste locali"))
+    
     # Dettagli colonnine
     charger_brand = models.CharField(_("Marca Colonnina"), max_length=100, blank=True, null=True)
     charger_model = models.CharField(_("Modello Colonnina"), max_length=100, blank=True, null=True)
@@ -148,6 +163,16 @@ class SubProject(models.Model):
                                        related_name='status_changes', verbose_name=_('Cambio Stato Da'))
     
     def save(self, *args, **kwargs):
+        # Debug: mostra i valori dei costi prima del salvataggio
+        print("DEBUG - SubProject save - Prima del calcolo budget:", {
+            'equipment_cost': self.equipment_cost,
+            'installation_cost': self.installation_cost, 
+            'connection_cost': self.connection_cost,
+            'permit_cost': self.permit_cost,
+            'civil_works_cost': self.civil_works_cost,
+            'other_costs': self.other_costs
+        })
+    
         # Gestione delle date in base al progetto
         if not self.pk:  # Solo per nuovi oggetti
             if self.start_date < self.project.start_date:
@@ -158,9 +183,14 @@ class SubProject(models.Model):
             elif self.planned_completion_date > self.project.expected_completion_date:
                 self.planned_completion_date = self.project.expected_completion_date
         
-        # Calcola il costo di connessione se non specificato ma è stata specificata la potenza richiesta
-        if self.power_requested and (self.connection_cost is None or self.connection_cost == 0):
+        # Calcola il costo di connessione SOLO se specificato nel form che deve essere calcolato automaticamente
+        # Ma non sovrascrivere il valore se è stato impostato manualmente
+        # Usiamo un attributo temporaneo per controllare se il calcolo automatico è richiesto
+        auto_calculate_connection = getattr(self, '_auto_calculate_connection', False)
+        
+        if auto_calculate_connection and self.power_requested and (self.connection_cost is None or self.connection_cost == 0):
             self.connection_cost = self.power_requested * 80  # 80€ per kW
+            print(f"DEBUG - Calcolato automaticamente connection_cost: {self.connection_cost}")
         
         # Calcola il budget totale sommando i costi
         total_cost = sum(filter(None, [
@@ -171,6 +201,17 @@ class SubProject(models.Model):
             self.civil_works_cost or 0,
             self.other_costs or 0
         ]))
+        
+        # Debug: mostra i valori dei costi dopo i calcoli
+        print("DEBUG - SubProject save - Dopo il calcolo budget:", {
+            'total_cost': total_cost,
+            'equipment_cost': self.equipment_cost,
+            'installation_cost': self.installation_cost, 
+            'connection_cost': self.connection_cost,
+            'permit_cost': self.permit_cost,
+            'civil_works_cost': self.civil_works_cost,
+            'other_costs': self.other_costs
+        })
         if total_cost > 0:
             self.budget = total_cost
             
@@ -178,10 +219,34 @@ class SubProject(models.Model):
         if self.usage_profile and self.power_kw:
             # Ricavi mensili stimati in base al profilo di utilizzo
             monthly_usage = self.usage_profile.calculate_monthly_usage(float(self.power_kw))
+            
+            # Calcolo dei giorni di indisponibilità all'anno
+            unavailable_days = 0
+            
+            # Se c'è un giorno di mercato settimanale, sono 52 giorni all'anno
+            if self.weekly_market_day is not None:
+                unavailable_days += 52  # 52 settimane
+            
+            # Aggiungi i giorni di festa paesana
+            if self.local_festival_days:
+                unavailable_days += self.local_festival_days
+            
+            # Calcolo del fattore di disponibilità (giorni disponibili / giorni totali)
+            total_days = 365
+            available_days = total_days - unavailable_days
+            availability_factor = available_days / total_days if total_days > 0 else 1.0
+            
             # Assumiamo un prezzo medio di vendita di 0.45€/kWh
             monthly_revenue = monthly_usage * 0.45
-            annual_revenue = monthly_revenue * 12
+            
+            # Il ricavo annuale tiene conto dei giorni di indisponibilità
+            annual_revenue = monthly_revenue * 12 * availability_factor
             self.expected_revenue = annual_revenue
+            
+            # Debug info
+            print(f"DEBUG - Calcolo ricavi con giorni indisponibili: mercato={self.weekly_market_day}, "
+                  f"feste={self.local_festival_days}, giorni indisponibili={unavailable_days}, "
+                  f"fattore disponibilità={availability_factor:.4f}, ricavi={annual_revenue:.2f}")
             
             # Calcolo ROI
             if self.budget and self.budget > 0:

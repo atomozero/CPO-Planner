@@ -647,6 +647,235 @@ class MunicipalityListView(LoginRequiredMixin, ListView):
     context_object_name = 'municipalities'
     template_name = 'core/municipality_list.html'
 
+class ChargingStationDetailView(LoginRequiredMixin, DetailView):
+    model = ChargingStation
+    context_object_name = 'station'
+    template_name = 'cpo_core/chargingstation_detail.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Foto della stazione
+        station_photos = ChargingStationPhoto.objects.filter(charging_station=self.object).order_by('-date_taken', '-created_at')
+        context['station_photos'] = station_photos
+        
+        # Foto divise per fase
+        context['pre_installation_photos'] = station_photos.filter(phase='pre_installation')
+        context['during_installation_photos'] = station_photos.filter(phase='during_installation')
+        context['post_installation_photos'] = station_photos.filter(phase='post_installation')
+        
+        # Calcoli finanziari dettagliati
+        context['annual_metrics'] = self.object.calculate_annual_metrics()
+        
+        # Calcoli giornalieri
+        daily_revenue = self.object.charging_price_kwh * self.object.avg_kwh_session * self.object.estimated_sessions_day
+        daily_energy_cost = self.object.energy_cost_kwh * self.object.avg_kwh_session * self.object.estimated_sessions_day
+        
+        context['detailed_calculations'] = {
+            'daily_revenue': daily_revenue,
+            'annual_revenue': daily_revenue * 365,
+            'daily_energy_cost': daily_energy_cost,
+            'annual_energy_cost': daily_energy_cost * 365,
+            'annual_maintenance_cost': self.object.station_cost * Decimal('0.05'),
+            'total_annual_cost': (daily_energy_cost * 365) + (self.object.station_cost * Decimal('0.05')),
+            'annual_profit': (daily_revenue * 365) - ((daily_energy_cost * 365) + (self.object.station_cost * Decimal('0.05'))),
+        }
+        
+        return context
+
+@login_required
+def charging_station_calculations(request, pk):
+    """Vista dettagliata dei calcoli per una stazione di ricarica"""
+    station = get_object_or_404(ChargingStation, pk=pk)
+    
+    # Calcoli finanziari dettagliati
+    annual_metrics = station.calculate_annual_metrics()
+    
+    # Calcoli giornalieri
+    daily_revenue = station.charging_price_kwh * station.avg_kwh_session * station.estimated_sessions_day
+    daily_energy_cost = station.energy_cost_kwh * station.avg_kwh_session * station.estimated_sessions_day
+    
+    # Metriche annuali
+    annual_revenue = daily_revenue * 365
+    annual_energy_cost = daily_energy_cost * 365
+    annual_maintenance_cost = station.station_cost * Decimal('0.05')
+    total_annual_cost = annual_energy_cost + annual_maintenance_cost
+    annual_profit = annual_revenue - total_annual_cost
+    
+    # Calcolo del margine
+    margin_per_kwh = station.charging_price_kwh - station.energy_cost_kwh
+    margin_percentage = (margin_per_kwh / station.energy_cost_kwh) * Decimal('100') if station.energy_cost_kwh > 0 else Decimal('0')
+    
+    # Calcolo del ROI
+    total_investment = station.calculate_total_cost()
+    annual_roi = (annual_profit / total_investment) * Decimal('100') if total_investment > 0 else Decimal('0')
+    payback_years = total_investment / annual_profit if annual_profit > 0 else Decimal('0')
+    
+    # Calcoli per ogni mese (considerando utilizzo stagionale)
+    monthly_calculations = []
+    for month in range(1, 13):
+        # Fattore stagionale: estate (giugno-settembre) ha più utilizzo
+        seasonal_factor = Decimal('1.2') if month in [6, 7, 8, 9] else (Decimal('0.8') if month in [12, 1, 2] else Decimal('1.0'))
+        
+        # Calcoli con fattore stagionale
+        monthly_sessions = station.estimated_sessions_day * Decimal('30') * seasonal_factor
+        monthly_kwh = monthly_sessions * station.avg_kwh_session
+        monthly_revenue = monthly_kwh * station.charging_price_kwh
+        monthly_energy_cost = monthly_kwh * station.energy_cost_kwh
+        monthly_maintenance_cost = annual_maintenance_cost / Decimal('12')
+        monthly_profit = monthly_revenue - (monthly_energy_cost + monthly_maintenance_cost)
+        
+        month_name = {
+            1: 'Gennaio', 2: 'Febbraio', 3: 'Marzo', 4: 'Aprile', 
+            5: 'Maggio', 6: 'Giugno', 7: 'Luglio', 8: 'Agosto',
+            9: 'Settembre', 10: 'Ottobre', 11: 'Novembre', 12: 'Dicembre'
+        }[month]
+        
+        monthly_calculations.append({
+            'month': month,
+            'name': month_name,
+            'seasonal_factor': seasonal_factor,
+            'sessions': monthly_sessions,
+            'kwh': monthly_kwh,
+            'revenue': monthly_revenue,
+            'energy_cost': monthly_energy_cost,
+            'maintenance_cost': monthly_maintenance_cost,
+            'profit': monthly_profit,
+        })
+    
+    context = {
+        'station': station,
+        'annual_metrics': annual_metrics,
+        'daily_revenue': daily_revenue,
+        'daily_energy_cost': daily_energy_cost,
+        'annual_revenue': annual_revenue,
+        'annual_energy_cost': annual_energy_cost,
+        'annual_maintenance_cost': annual_maintenance_cost,
+        'total_annual_cost': total_annual_cost,
+        'annual_profit': annual_profit,
+        'margin_per_kwh': margin_per_kwh,
+        'margin_percentage': margin_percentage,
+        'total_investment': total_investment,
+        'annual_roi': annual_roi,
+        'payback_years': payback_years,
+        'monthly_calculations': monthly_calculations,
+    }
+    
+    return render(request, 'cpo_core/charging_station_calculations.html', context)
+
+@login_required
+def charging_station_calculations_subproject(request, subproject_id):
+    """Vista dettagliata dei calcoli per un sottoprogetto (che funge da stazione di ricarica)"""
+    # Importa il modello SubProject
+    from cpo_core.models.subproject import SubProject
+    
+    # Ottieni il sottoprogetto
+    subproject = get_object_or_404(SubProject, pk=subproject_id)
+    
+    # Cerca se esiste una stazione di ricarica associata a questo subproject
+    try:
+        station = ChargingStation.objects.get(subproject=subproject)
+        # Se esiste, usa la vista esistente
+        return charging_station_calculations(request, station.pk)
+    except ChargingStation.DoesNotExist:
+        # Altrimenti, crea una stazione temporanea in memoria con i dati del subproject
+        station = ChargingStation(
+            name=subproject.name,
+            identifier=f"SUB-{subproject.id}",
+            station_type="ac_fast",  # valore predefinito
+            power_type="ac",  # valore predefinito
+            power_kw=subproject.power_kw or Decimal("22.0"),
+            station_cost=subproject.equipment_cost or Decimal("0"),
+            installation_cost=subproject.installation_cost or Decimal("0"),
+            connection_cost=subproject.connection_cost or Decimal("0"),
+            energy_cost_kwh=Decimal("0.25"),  # valore predefinito
+            charging_price_kwh=Decimal("0.45"),  # valore predefinito
+            estimated_sessions_day=Decimal("5.0"),  # valore predefinito 
+            avg_kwh_session=Decimal("15.0")  # valore predefinito
+        )
+        
+        # Calcoli finanziari dettagliati
+        # Utilizzare i metodi della classe ChargingStation
+        daily_revenue = station.charging_price_kwh * station.avg_kwh_session * station.estimated_sessions_day
+        daily_energy_cost = station.energy_cost_kwh * station.avg_kwh_session * station.estimated_sessions_day
+        
+        # Metriche annuali
+        annual_revenue = daily_revenue * 365
+        annual_energy_cost = daily_energy_cost * 365
+        annual_maintenance_cost = station.station_cost * Decimal('0.05')
+        total_annual_cost = annual_energy_cost + annual_maintenance_cost
+        annual_profit = annual_revenue - total_annual_cost
+        
+        # Calcolo del margine
+        margin_per_kwh = station.charging_price_kwh - station.energy_cost_kwh
+        margin_percentage = (margin_per_kwh / station.energy_cost_kwh) * Decimal('100') if station.energy_cost_kwh > 0 else Decimal('0')
+        
+        # Calcolo del ROI
+        # Utilizziamo direttamente la somma dei costi per la stazione temporanea
+        total_investment = station.station_cost + station.installation_cost + station.connection_cost
+        annual_roi = (annual_profit / total_investment) * Decimal('100') if total_investment > 0 else Decimal('0')
+        payback_years = total_investment / annual_profit if annual_profit > 0 else Decimal('0')
+        
+        # Calcoli per ogni mese (considerando utilizzo stagionale)
+        monthly_calculations = []
+        for month in range(1, 13):
+            # Fattore stagionale: estate (giugno-settembre) ha più utilizzo
+            seasonal_factor = Decimal('1.2') if month in [6, 7, 8, 9] else (Decimal('0.8') if month in [12, 1, 2] else Decimal('1.0'))
+            
+            # Calcoli con fattore stagionale
+            monthly_sessions = station.estimated_sessions_day * Decimal('30') * seasonal_factor
+            monthly_kwh = monthly_sessions * station.avg_kwh_session
+            monthly_revenue = monthly_kwh * station.charging_price_kwh
+            monthly_energy_cost = monthly_kwh * station.energy_cost_kwh
+            monthly_maintenance_cost = annual_maintenance_cost / Decimal('12')
+            monthly_profit = monthly_revenue - (monthly_energy_cost + monthly_maintenance_cost)
+            
+            month_name = {
+                1: 'Gennaio', 2: 'Febbraio', 3: 'Marzo', 4: 'Aprile', 
+                5: 'Maggio', 6: 'Giugno', 7: 'Luglio', 8: 'Agosto',
+                9: 'Settembre', 10: 'Ottobre', 11: 'Novembre', 12: 'Dicembre'
+            }[month]
+            
+            monthly_calculations.append({
+                'month': month,
+                'name': month_name,
+                'seasonal_factor': seasonal_factor,
+                'sessions': monthly_sessions,
+                'kwh': monthly_kwh,
+                'revenue': monthly_revenue,
+                'energy_cost': monthly_energy_cost,
+                'maintenance_cost': monthly_maintenance_cost,
+                'profit': monthly_profit,
+            })
+            
+        # Utilizziamo annual_metrics calcolati separatamente per il subproject
+        annual_metrics = {
+            'annual_revenue': annual_revenue,
+            'annual_costs': total_annual_cost,
+            'annual_profit': annual_profit
+        }
+            
+        context = {
+            'station': station,
+            'subproject': subproject,  # Passiamo anche il subproject per riferimento
+            'annual_metrics': annual_metrics,
+            'daily_revenue': daily_revenue,
+            'daily_energy_cost': daily_energy_cost,
+            'annual_revenue': annual_revenue,
+            'annual_energy_cost': annual_energy_cost,
+            'annual_maintenance_cost': annual_maintenance_cost,
+            'total_annual_cost': total_annual_cost,
+            'annual_profit': annual_profit,
+            'margin_per_kwh': margin_per_kwh,
+            'margin_percentage': margin_percentage,
+            'total_investment': total_investment,
+            'annual_roi': annual_roi,
+            'payback_years': payback_years,
+            'monthly_calculations': monthly_calculations,
+        }
+        
+        return render(request, 'cpo_core/charging_station_calculations.html', context)
+
 class ChargingStationListView(LoginRequiredMixin, ListView):
     model = ChargingStation
     context_object_name = 'stations'

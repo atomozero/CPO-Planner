@@ -148,22 +148,24 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="id_latitude_proposed" class="form-label">Latitudine Proposta</label>
-                            <input type="text" name="latitude_proposed" id="id_latitude_proposed" value="{{ form.instance.latitude_proposed|default:'' }}" class="form-control" placeholder="Es. 45.123456">
+                            {{ form.latitude_proposed }}
                             {% if form.latitude_proposed.errors %}
                             <div class="invalid-feedback d-block">
                                 {{ form.latitude_proposed.errors }}
                             </div>
                             {% endif %}
+                            <small class="form-text text-muted">Usando formato con punto decimale (es. 45.420930)</small>
                         </div>
                         
                         <div class="col-md-6 mb-3">
                             <label for="id_longitude_proposed" class="form-label">Longitudine Proposta</label>
-                            <input type="text" name="longitude_proposed" id="id_longitude_proposed" value="{{ form.instance.longitude_proposed|default:'' }}" class="form-control" placeholder="Es. 12.123456">
+                            {{ form.longitude_proposed }}
                             {% if form.longitude_proposed.errors %}
                             <div class="invalid-feedback d-block">
                                 {{ form.longitude_proposed.errors }}
                             </div>
                             {% endif %}
+                            <small class="form-text text-muted">Usando formato con punto decimale (es. 12.123456)</small>
                         </div>
                     </div>
                     
@@ -171,22 +173,24 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="id_latitude_approved" class="form-label">Latitudine Approvata</label>
-                            <input type="text" name="latitude_approved" id="id_latitude_approved" value="{{ form.instance.latitude_approved|default:'' }}" class="form-control" placeholder="Es. 45.123456">
+                            {{ form.latitude_approved }}
                             {% if form.latitude_approved.errors %}
                             <div class="invalid-feedback d-block">
                                 {{ form.latitude_approved.errors }}
                             </div>
                             {% endif %}
+                            <small class="form-text text-muted">Usando formato con punto decimale (es. 45.420930)</small>
                         </div>
                         
                         <div class="col-md-6 mb-3">
                             <label for="id_longitude_approved" class="form-label">Longitudine Approvata</label>
-                            <input type="text" name="longitude_approved" id="id_longitude_approved" value="{{ form.instance.longitude_approved|default:'' }}" class="form-control" placeholder="Es. 12.123456">
+                            {{ form.longitude_approved }}
                             {% if form.longitude_approved.errors %}
                             <div class="invalid-feedback d-block">
                                 {{ form.longitude_approved.errors }}
                             </div>
                             {% endif %}
+                            <small class="form-text text-muted">Usando formato con punto decimale (es. 12.123456)</small>
                         </div>
                     </div>
                 </div>
@@ -255,7 +259,7 @@
                     <div class="row">
                         <div class="col-md-3 mb-3">
                             <label for="id_power_kw" class="form-label">Potenza (kW)</label>
-                            <input type="number" name="power_kw" id="id_power_kw" value="{{ form.instance.power_kw|default:'' }}" class="form-control" step="0.1">
+                            {{ form.power_kw }}
                             {% if form.power_kw.errors %}
                             <div class="invalid-feedback d-block">
                                 {{ form.power_kw.errors }}
@@ -265,7 +269,7 @@
                         
                         <div class="col-md-3 mb-3">
                             <label for="id_power_requested" class="form-label">Potenza Richiesta (kW)</label>
-                            <input type="number" name="power_requested" id="id_power_requested" value="{{ form.instance.power_requested|default:'' }}" class="form-control" step="0.1">
+                            {{ form.power_requested }}
                             {% if form.power_requested.errors %}
                             <div class="invalid-feedback d-block">
                                 {{ form.power_requested.errors }}
@@ -276,7 +280,7 @@
                         
                         <div class="col-md-3 mb-3">
                             <label for="id_num_connectors" class="form-label">Numero Connettori</label>
-                            <input type="number" name="num_connectors" id="id_num_connectors" value="{{ form.instance.num_connectors|default:'1' }}" class="form-control" min="1">
+                            {{ form.num_connectors }}
                             {% if form.num_connectors.errors %}
                             <div class="invalid-feedback d-block">
                                 {{ form.num_connectors.errors }}
@@ -286,7 +290,7 @@
                         
                         <div class="col-md-3 mb-3">
                             <label for="id_num_chargers" class="form-label">Numero Colonnine</label>
-                            <input type="number" name="num_chargers" id="id_num_chargers" value="{{ form.instance.num_chargers|default:'1' }}" class="form-control" min="1">
+                            {{ form.num_chargers }}
                             {% if form.num_chargers.errors %}
                             <div class="invalid-feedback d-block">
                                 {{ form.num_chargers.errors }}
@@ -314,7 +318,7 @@
                         
                         <div class="col-md-6 mb-3">
                             <label for="id_ground_area_sqm" class="form-label">Area Occupata (m²)</label>
-                            <input type="number" name="ground_area_sqm" id="id_ground_area_sqm" value="{{ form.instance.ground_area_sqm|default:'' }}" class="form-control" step="0.01">
+                            {{ form.ground_area_sqm }}
                             {% if form.ground_area_sqm.errors %}
                             <div class="invalid-feedback d-block">
                                 {{ form.ground_area_sqm.errors }}
@@ -326,7 +330,7 @@
                     <div class="row">
                         <div class="col-12 mb-3">
                             <label for="id_connector_types" class="form-label">Tipi di Connettori</label>
-                            <input type="text" name="connector_types" id="id_connector_types" value="{{ form.instance.connector_types|default:'' }}" class="form-control" placeholder="Es. Type 2, CCS, CHAdeMO">
+                            {{ form.connector_types }}
                             {% if form.connector_types.errors %}
                             <div class="invalid-feedback d-block">
                                 {{ form.connector_types.errors }}
@@ -346,7 +350,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="id_equipment_cost" class="form-label">Costo Colonnina (€)</label>
-                            <input type="number" name="equipment_cost" id="id_equipment_cost" value="{{ form.instance.equipment_cost|default:'' }}" class="form-control" step="0.01" min="0">
+                            {{ form.equipment_cost }}
                             {% if form.equipment_cost.errors %}
                             <div class="invalid-feedback d-block">
                                 {{ form.equipment_cost.errors }}
@@ -356,7 +360,7 @@
                         
                         <div class="col-md-6 mb-3">
                             <label for="id_installation_cost" class="form-label">Costo Installazione (€)</label>
-                            <input type="number" name="installation_cost" id="id_installation_cost" value="{{ form.instance.installation_cost|default:'' }}" class="form-control" step="0.01" min="0">
+                            {{ form.installation_cost }}
                             {% if form.installation_cost.errors %}
                             <div class="invalid-feedback d-block">
                                 {{ form.installation_cost.errors }}
@@ -368,7 +372,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="id_connection_cost" class="form-label">Costo Allaccio Rete (€)</label>
-                            <input type="number" name="connection_cost" id="id_connection_cost" value="{{ form.instance.connection_cost|default:'' }}" class="form-control" step="0.01" min="0">
+                            {{ form.connection_cost }}
                             {% if form.connection_cost.errors %}
                             <div class="invalid-feedback d-block">
                                 {{ form.connection_cost.errors }}
@@ -379,7 +383,7 @@
                         
                         <div class="col-md-6 mb-3">
                             <label for="id_permit_cost" class="form-label">Costo Permessi (€)</label>
-                            <input type="number" name="permit_cost" id="id_permit_cost" value="{{ form.instance.permit_cost|default:'' }}" class="form-control" step="0.01" min="0">
+                            {{ form.permit_cost }}
                             {% if form.permit_cost.errors %}
                             <div class="invalid-feedback d-block">
                                 {{ form.permit_cost.errors }}
@@ -391,7 +395,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="id_civil_works_cost" class="form-label">Costo Opere Civili (€)</label>
-                            <input type="number" name="civil_works_cost" id="id_civil_works_cost" value="{{ form.instance.civil_works_cost|default:'' }}" class="form-control" step="0.01" min="0">
+                            {{ form.civil_works_cost }}
                             {% if form.civil_works_cost.errors %}
                             <div class="invalid-feedback d-block">
                                 {{ form.civil_works_cost.errors }}
@@ -401,7 +405,7 @@
                         
                         <div class="col-md-6 mb-3">
                             <label for="id_other_costs" class="form-label">Altri Costi (€)</label>
-                            <input type="number" name="other_costs" id="id_other_costs" value="{{ form.instance.other_costs|default:'' }}" class="form-control" step="0.01" min="0">
+                            {{ form.other_costs }}
                             {% if form.other_costs.errors %}
                             <div class="invalid-feedback d-block">
                                 {{ form.other_costs.errors }}
@@ -420,7 +424,7 @@
                                     <i class="fas fa-calculator"></i> Calcola Budget Totale
                                 </button>
                             </div>
-                            <small class="form-text text-muted">Somma calcolata di tutti i costi dettagliati inseriti</small>
+                            <small class="form-text text-muted">Somma calcolata di tutti i costi dettagliati inseriti. Clicca il pulsante "Calcola Budget Totale" prima di salvare.</small>
                         </div>
                     </div>
                     
@@ -438,7 +442,7 @@
             <div class="row">
                 <div class="col-12 mb-3">
                     <label for="id_description" class="form-label">Descrizione</label>
-                    <textarea name="description" id="id_description" class="form-control" rows="4">{{ form.instance.description|default:'' }}</textarea>
+                    {{ form.description }}
                     {% if form.description.errors %}
                     <div class="invalid-feedback d-block">
                         {{ form.description.errors }}
@@ -613,6 +617,8 @@ $(document).ready(function() {
     // Funzione per calcolare il budget totale
     function calculateBudget() {
         let totalBudget = 0;
+        let costDetails = {};
+
         // Aggiungi tutti i campi di costo
         ['equipment_cost', 'installation_cost', 'connection_cost', 
          'permit_cost', 'civil_works_cost', 'other_costs'].forEach(function(field) {
@@ -621,7 +627,12 @@ $(document).ready(function() {
             let formattedValue = formatNumber(rawValue);
             let value = parseFloat(formattedValue) || 0;
             totalBudget += value;
+            costDetails[field] = value;
         });
+        
+        // Debug: mostra i dettagli dei costi
+        console.log("Dettaglio costi calcolati:", costDetails);
+        console.log("Budget totale calcolato:", totalBudget);
         
         // Aggiorna il campo calcolato
         $('#calculated_budget').val(totalBudget.toFixed(2));
@@ -635,6 +646,9 @@ $(document).ready(function() {
     $('#apply_calculated_budget').click(function() {
         let budget = calculateBudget();
         $('#id_budget').val(budget.toFixed(2));
+        
+        // Debug: mostra che il budget è stato applicato
+        console.log("Budget applicato al campo:", budget.toFixed(2));
     });
     
     // Funzione per calcolare la potenza richiesta in base alla potenza e al numero di colonnine

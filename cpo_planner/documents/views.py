@@ -14,7 +14,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse, Http404, FileResponse
 from django.urls import reverse, reverse_lazy
 from django.views.generic import (
-    ListView, DetailView, CreateView, UpdateView, DeleteView, FormView
+    ListView, DetailView, CreateView, UpdateView, DeleteView, FormView, View
 )
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.contenttypes.models import ContentType
@@ -25,7 +25,11 @@ from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import PermissionDenied
 from django.conf import settings
 
-from cpo_planner.projects.models import Project, SubProject, ChargingStation, Municipality
+# Importa dai modelli corretti
+from cpo_core.models.project import Project
+from cpo_core.models.subproject import SubProject
+from cpo_core.models.municipality import Municipality
+from cpo_planner.projects.models import ChargingStation
 from .models import (
     ProjectDocument, 
     DocumentTemplate,
@@ -733,73 +737,168 @@ class DocumentUpdateView(LoginRequiredMixin, UpdateView):
         messages.success(self.request, _('Documento aggiornato con successo.'))
         return reverse('documents:document_detail', kwargs={'pk': self.object.pk})
     
-class DocumentDeleteView(LoginRequiredMixin, DeleteView):
-    """Vista per eliminare un documento"""
-    model = ProjectDocument
+class DocumentDeleteView(LoginRequiredMixin, View):
+    """Vista per eliminare un documento, supporta sia Document che ProjectDocument"""
     template_name = 'documents/document_confirm_delete.html'
-    context_object_name = 'document'
-    
-    def get_success_url(self):
-        messages.success(self.request, _('Documento eliminato con successo.'))
-        
-        # Se il documento era associato a un'entità, torna alla lista documenti dell'entità
-        if hasattr(self.object, 'project') and self.object.project:
-            return reverse('documents:document_list_entity', 
-                          kwargs={'entity_type': 'project', 'entity_id': self.object.project.id})
-        
-        # Altrimenti torna alla lista generale dei documenti
-        return reverse('documents:document_list')
-
-class DocumentDownloadView(LoginRequiredMixin, DetailView):
-    """Vista per scaricare un documento"""
-    model = ProjectDocument
     
     def get(self, request, *args, **kwargs):
-        document = self.get_object()
+        pk = kwargs.get('pk')
+        document = self.get_document(pk)
+        
+        if not document:
+            messages.error(request, _('Documento non trovato.'))
+            return redirect('documents:document_list')
+        
+        return render(request, self.template_name, {'document': document})
+    
+    def post(self, request, *args, **kwargs):
+        pk = kwargs.get('pk')
+        document = self.get_document(pk)
+        
+        if not document:
+            messages.error(request, _('Documento non trovato.'))
+            return redirect('documents:document_list')
+        
+        project = None
+        if hasattr(document, 'project') and document.project:
+            project = document.project
+        
+        # Elimina il documento
+        try:
+            document.delete()
+            messages.success(request, _('Documento eliminato con successo.'))
+            
+            # Reindirizza in base all'esistenza di un progetto associato
+            if project:
+                return redirect('documents:document_list_entity', 
+                                entity_type='project', 
+                                entity_id=project.id)
+            else:
+                return redirect('documents:document_list')
+                
+        except Exception as e:
+            messages.error(request, _('Errore durante l\'eliminazione: {}').format(str(e)))
+            return redirect('documents:document_list')
+    
+    def get_document(self, pk):
+        """Trova il documento usando diversi modelli"""
+        # Prima prova con il modello ProjectDocument da projects
+        try:
+            from cpo_planner.projects.models.document import ProjectDocument as ProjectsProjectDocument
+            return ProjectsProjectDocument.objects.get(pk=pk)
+        except:
+            try:
+                # Prova con il modello ProjectDocument da documents
+                return ProjectDocument.objects.get(pk=pk)
+            except:
+                try:
+                    # Prova con Document generico
+                    return Document.objects.get(pk=pk)
+                except:
+                    return None
+
+class DocumentDownloadView(LoginRequiredMixin, View):
+    """Vista per scaricare un documento, supporta sia Document che ProjectDocument"""
+    
+    def get(self, request, *args, **kwargs):
+        pk = kwargs.get('pk')
+        
+        # Prima prova con il modello ProjectDocument
+        try:
+            from cpo_planner.projects.models.document import ProjectDocument as ProjectsProjectDocument
+            document = ProjectsProjectDocument.objects.get(pk=pk)
+        except:
+            try:
+                # Prova con il modello ProjectDocument da documents
+                document = ProjectDocument.objects.get(pk=pk)
+            except:
+                try:
+                    # Prova con Document generico
+                    document = Document.objects.get(pk=pk)
+                except:
+                    messages.error(request, _('Documento non trovato.'))
+                    return redirect('documents:document_list')
         
         # Controlla l'esistenza del file
         if not document.file:
             messages.error(request, _('Il file non esiste.'))
-            return redirect('documents:document_detail', pk=document.pk)
+            if hasattr(document, 'project'):
+                return redirect('projects:project_detail', pk=document.project.pk)
+            else:
+                return redirect('documents:document_list')
         
         # Scarica il file
         try:
-            response = HttpResponse(document.file.read(), content_type='application/octet-stream')
-            response['Content-Disposition'] = f'attachment; filename={document.file.name}'
+            file_path = document.file.path
+            file_name = os.path.basename(document.file.name)
+            
+            # Usa FileResponse per gestire correttamente il file
+            response = FileResponse(
+                open(file_path, 'rb'),
+                content_type='application/octet-stream',
+                as_attachment=True,
+                filename=file_name
+            )
             return response
         except Exception as e:
             messages.error(request, _('Errore durante il download: {}').format(str(e)))
-            return redirect('documents:document_detail', pk=document.pk)
+            if hasattr(document, 'project'):
+                return redirect('projects:project_detail', pk=document.project.pk)
+            else:
+                return redirect('documents:document_list')
         
-class DocumentPreviewView(LoginRequiredMixin, DetailView):
-    """Vista per visualizzare l'anteprima di un documento"""
-    model = ProjectDocument
+class DocumentPreviewView(LoginRequiredMixin, View):
+    """Vista per visualizzare l'anteprima di un documento, supporta sia Document che ProjectDocument"""
     template_name = 'documents/document_preview.html'
-    context_object_name = 'document'
     
     def get(self, request, *args, **kwargs):
-        document = self.get_object()
+        pk = kwargs.get('pk')
+        
+        # Prima prova con il modello ProjectDocument da projects
+        try:
+            from cpo_planner.projects.models.document import ProjectDocument as ProjectsProjectDocument
+            document = ProjectsProjectDocument.objects.get(pk=pk)
+        except:
+            try:
+                # Prova con il modello ProjectDocument da documents
+                document = ProjectDocument.objects.get(pk=pk)
+            except:
+                try:
+                    # Prova con Document generico
+                    document = Document.objects.get(pk=pk)
+                except:
+                    messages.error(request, _('Documento non trovato.'))
+                    return redirect('documents:document_list')
         
         # Controlla l'esistenza del file
         if not document.file:
             messages.error(request, _('Il file non esiste.'))
-            return redirect('documents:document_detail', pk=document.pk)
+            if hasattr(document, 'project'):
+                return redirect('projects:project_detail', pk=document.project.pk)
+            else:
+                return redirect('documents:document_list')
         
         # Per i documenti PDF e immagini, restituisci il file per la visualizzazione in-browser
-        if document.file_extension() in ['.pdf', '.jpg', '.jpeg', '.png', '.gif']:
+        file_ext = os.path.splitext(document.file.name)[1].lower()
+        if file_ext in ['.pdf', '.jpg', '.jpeg', '.png', '.gif']:
             try:
-                response = FileResponse(document.file.open(), content_type=self.get_content_type(document))
+                response = FileResponse(
+                    open(document.file.path, 'rb'),
+                    content_type=self.get_content_type(file_ext)
+                )
                 return response
             except Exception as e:
                 messages.error(request, _('Errore durante l\'anteprima: {}').format(str(e)))
-                return redirect('documents:document_detail', pk=document.pk)
+                if hasattr(document, 'project'):
+                    return redirect('projects:project_detail', pk=document.project.pk)
+                else:
+                    return redirect('documents:document_list')
         
         # Per altri tipi di file, reindirizza al download
         return redirect('documents:document_download', pk=document.pk)
     
-    def get_content_type(self, document):
+    def get_content_type(self, ext):
         """Determina il content type in base all'estensione del file"""
-        ext = document.file_extension()
         if ext == '.pdf':
             return 'application/pdf'
         elif ext in ['.jpg', '.jpeg']:
@@ -922,18 +1021,6 @@ class DocumentCategoryListView(LoginRequiredMixin, ListView):
         for category in context['categories']:
             category.document_count = Document.objects.filter(category=category).count()
         return context
-
-class DocumentCategoryCreateView(LoginRequiredMixin, CreateView):
-    """Vista per creare una nuova categoria di documenti"""
-    model = DocumentCategory
-    template_name = 'documents/document_category_form.html'
-    form_class = DocumentCategoryForm
-    success_url = reverse_lazy('documents:category_list')
-    
-    def form_valid(self, form):
-        response = super().form_valid(form)
-        messages.success(self.request, _('Categoria creata con successo.'))
-        return response
 
 class DocumentCategoryCreateView(LoginRequiredMixin, CreateView):
     """Vista per creare una nuova categoria di documenti"""

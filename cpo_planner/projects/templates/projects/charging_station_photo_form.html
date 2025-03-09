@@ -1,0 +1,77 @@
+{% extends 'layouts/form_base.html' %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }} | CPO Planner{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'cpo_core:dashboard' %}">{% trans "Dashboard" %}</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'projects:project_detail' project.id %}">{{ project.name }}</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'projects:subproject_detail' subproject.id %}">{{ subproject.name }}</a></li>
+    <li class="breadcrumb-item active">{{ title }}</li>
+</ol>
+{% endblock %}
+
+{% block form_title %}
+<h1 class="h3 mb-0 text-gray-800">{{ title }}</h1>
+<p class="small text-muted">{% trans "Stazione" %}: {{ station.name }}</p>
+{% endblock %}
+
+{% block form_content %}
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">{% trans "Informazioni Foto" %}</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-8">
+                    {{ form.title|as_crispy_field }}
+                    {{ form.description|as_crispy_field }}
+                </div>
+                <div class="col-md-4">
+                    {{ form.phase|as_crispy_field }}
+                    {{ form.date_taken|as_crispy_field }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">{% trans "Carica Foto" %}</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-12">
+                    {{ form.photo|as_crispy_field }}
+                </div>
+            </div>
+            {% if form.instance.photo %}
+            <div class="row mt-3">
+                <div class="col-md-6 mx-auto text-center">
+                    <p class="text-muted">{% trans "Foto attuale" %}:</p>
+                    <img src="{{ form.instance.photo.url }}" alt="{{ form.instance.title }}" class="img-fluid img-thumbnail">
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="form-group">
+        <button type="submit" class="btn btn-primary">
+            {% if form.instance.pk %}
+                {% trans "Aggiorna Foto" %}
+            {% else %}
+                {% trans "Carica Foto" %}
+            {% endif %}
+        </button>
+        <a href="{% url 'projects:subproject_detail' subproject.id %}#photos" class="btn btn-secondary">
+            {% trans "Annulla" %}
+        </a>
+    </div>
+</form>
+{% endblock %}

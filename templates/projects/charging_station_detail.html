@@ -102,6 +102,11 @@
             <i class="fas fa-tasks mr-1"></i> {% trans "Cronoprogramma" %}
         </a>
     </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link" id="photos-tab" data-toggle="tab" href="#photos" role="tab" aria-controls="photos" aria-selected="false">
+            <i class="fas fa-images mr-1"></i> {% trans "Foto" %}
+        </a>
+    </li>
 </ul>
 
 <div class="tab-content" id="stationTabContent">
@@ -295,7 +300,12 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="card bg-light mb-3">
-                                    <div class="card-header">{% trans "Metriche Operazionali Giornaliere" %}</div>
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        {% trans "Metriche Operazionali Giornaliere" %}
+                                        <a href="{% url 'cpo_core:charging_station_calculations' station.id %}" class="btn btn-sm btn-success">
+                                            <i class="fas fa-calculator"></i> {% trans "Calcoli Dettagliati" %}
+                                        </a>
+                                    </div>
                                     <div class="card-body">
                                         <p><strong>{% trans "Sessioni al Giorno" %}:</strong> {{ station.estimated_sessions_day }}</p>
                                         <p><strong>{% trans "kWh per Sessione" %}:</strong> {{ station.avg_kwh_session }} kWh</p>
@@ -304,6 +314,10 @@
                                         <p><strong>{% trans "Costo Giornaliero" %}:</strong> € {{ daily_cost|floatformat:2 }}</p>
                                         <hr>
                                         <p><strong>{% trans "Margine Giornaliero" %}:</strong> € {{ daily_margin|floatformat:2 }}</p>
+                                        
+                                        <div class="alert alert-info mt-3">
+                                            <i class="fas fa-info-circle"></i> {% trans "Per vedere tutti i calcoli dettagliati e le formule, clicca su 'Calcoli Dettagliati'." %}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -484,6 +498,205 @@
             </a>
         </div>
         {% endif %}
+    </div>
+
+    <!-- Tab Foto -->
+    <div class="tab-pane fade" id="photos" role="tabpanel" aria-labelledby="photos-tab">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">{% trans "Foto della Stazione di Ricarica" %}</h6>
+                <a href="{% url 'projects:charging_station_add_photo' station.id %}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-plus mr-1"></i> {% trans "Aggiungi Foto" %}
+                </a>
+            </div>
+            <div class="card-body">
+                {% if station_photos %}
+                    <ul class="nav nav-pills mb-3" id="photoTypeTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link active" id="all-photos-tab" data-toggle="pill" href="#all-photos" role="tab" aria-controls="all-photos" aria-selected="true">
+                                {% trans "Tutte le foto" %} <span class="badge badge-secondary">{{ station_photos|length }}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="pre-installation-tab" data-toggle="pill" href="#pre-installation" role="tab" aria-controls="pre-installation" aria-selected="false">
+                                {% trans "Prima dell'installazione" %} <span class="badge badge-secondary">{{ pre_installation_photos|length }}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="during-installation-tab" data-toggle="pill" href="#during-installation" role="tab" aria-controls="during-installation" aria-selected="false">
+                                {% trans "Durante l'installazione" %} <span class="badge badge-secondary">{{ during_installation_photos|length }}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="post-installation-tab" data-toggle="pill" href="#post-installation" role="tab" aria-controls="post-installation" aria-selected="false">
+                                {% trans "Dopo l'installazione" %} <span class="badge badge-secondary">{{ post_installation_photos|length }}</span>
+                            </a>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="photoTypeTabsContent">
+                        <!-- Tutte le foto -->
+                        <div class="tab-pane fade show active" id="all-photos" role="tabpanel" aria-labelledby="all-photos-tab">
+                            <div class="row">
+                                {% for photo in station_photos %}
+                                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                                    <div class="card h-100">
+                                        <a href="{{ photo.photo.url }}" target="_blank">
+                                            <img src="{{ photo.photo.url }}" class="card-img-top" alt="{{ photo.title }}">
+                                        </a>
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ photo.title }}</h6>
+                                            <p class="card-text small text-muted">
+                                                {{ photo.get_phase_display }}
+                                                {% if photo.date_taken %}
+                                                    <br>{{ photo.date_taken|date:"d/m/Y" }}
+                                                {% endif %}
+                                            </p>
+                                            {% if photo.description %}
+                                                <p class="card-text small">{{ photo.description|truncatechars:80 }}</p>
+                                            {% endif %}
+                                        </div>
+                                        <div class="card-footer bg-transparent d-flex justify-content-between">
+                                            <a href="{% url 'projects:charging_station_photo_detail' photo.id %}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'projects:charging_station_photo_edit' photo.id %}" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'projects:charging_station_photo_delete' photo.id %}" class="btn btn-sm btn-danger">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- Prima dell'installazione -->
+                        <div class="tab-pane fade" id="pre-installation" role="tabpanel" aria-labelledby="pre-installation-tab">
+                            <div class="row">
+                                {% for photo in pre_installation_photos %}
+                                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                                    <div class="card h-100">
+                                        <a href="{{ photo.photo.url }}" target="_blank">
+                                            <img src="{{ photo.photo.url }}" class="card-img-top" alt="{{ photo.title }}">
+                                        </a>
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ photo.title }}</h6>
+                                            <p class="card-text small text-muted">
+                                                {% if photo.date_taken %}
+                                                    {{ photo.date_taken|date:"d/m/Y" }}
+                                                {% endif %}
+                                            </p>
+                                            {% if photo.description %}
+                                                <p class="card-text small">{{ photo.description|truncatechars:80 }}</p>
+                                            {% endif %}
+                                        </div>
+                                        <div class="card-footer bg-transparent d-flex justify-content-between">
+                                            <a href="{% url 'projects:charging_station_photo_detail' photo.id %}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'projects:charging_station_photo_edit' photo.id %}" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'projects:charging_station_photo_delete' photo.id %}" class="btn btn-sm btn-danger">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- Durante l'installazione -->
+                        <div class="tab-pane fade" id="during-installation" role="tabpanel" aria-labelledby="during-installation-tab">
+                            <div class="row">
+                                {% for photo in during_installation_photos %}
+                                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                                    <div class="card h-100">
+                                        <a href="{{ photo.photo.url }}" target="_blank">
+                                            <img src="{{ photo.photo.url }}" class="card-img-top" alt="{{ photo.title }}">
+                                        </a>
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ photo.title }}</h6>
+                                            <p class="card-text small text-muted">
+                                                {% if photo.date_taken %}
+                                                    {{ photo.date_taken|date:"d/m/Y" }}
+                                                {% endif %}
+                                            </p>
+                                            {% if photo.description %}
+                                                <p class="card-text small">{{ photo.description|truncatechars:80 }}</p>
+                                            {% endif %}
+                                        </div>
+                                        <div class="card-footer bg-transparent d-flex justify-content-between">
+                                            <a href="{% url 'projects:charging_station_photo_detail' photo.id %}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'projects:charging_station_photo_edit' photo.id %}" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'projects:charging_station_photo_delete' photo.id %}" class="btn btn-sm btn-danger">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- Dopo l'installazione -->
+                        <div class="tab-pane fade" id="post-installation" role="tabpanel" aria-labelledby="post-installation-tab">
+                            <div class="row">
+                                {% for photo in post_installation_photos %}
+                                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                                    <div class="card h-100">
+                                        <a href="{{ photo.photo.url }}" target="_blank">
+                                            <img src="{{ photo.photo.url }}" class="card-img-top" alt="{{ photo.title }}">
+                                        </a>
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ photo.title }}</h6>
+                                            <p class="card-text small text-muted">
+                                                {% if photo.date_taken %}
+                                                    {{ photo.date_taken|date:"d/m/Y" }}
+                                                {% endif %}
+                                            </p>
+                                            {% if photo.description %}
+                                                <p class="card-text small">{{ photo.description|truncatechars:80 }}</p>
+                                            {% endif %}
+                                        </div>
+                                        <div class="card-footer bg-transparent d-flex justify-content-between">
+                                            <a href="{% url 'projects:charging_station_photo_detail' photo.id %}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'projects:charging_station_photo_edit' photo.id %}" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'projects:charging_station_photo_delete' photo.id %}" class="btn btn-sm btn-danger">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        {% trans "Non ci sono ancora foto per questa stazione di ricarica." %}
+                    </div>
+                    <div class="text-center mt-4">
+                        <a href="{% url 'projects:charging_station_add_photo' station.id %}" class="btn btn-primary">
+                            <i class="fas fa-camera mr-1"></i> {% trans "Aggiungi la prima foto" %}
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

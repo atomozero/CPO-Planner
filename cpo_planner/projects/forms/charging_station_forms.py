@@ -2,6 +2,7 @@
 from django import forms
 from django.utils.translation import gettext_lazy as _
 from ..models.charging_station import ChargingStation
+from cpo_core.models.charging_station import ChargingStationPhoto
 
 class ChargingStationForm(forms.ModelForm):
     """Form per le stazioni di ricarica"""
@@ -111,3 +112,28 @@ class ChargerForm(forms.ModelForm):
         self.fields['is_fast_charging'].help_text = _("Indica se questa colonnina supporta la ricarica rapida")
         self.fields['is_smart_charging'].help_text = _("Indica se questa colonnina supporta la ricarica intelligente (con gestione dinamica della potenza)")
         self.fields['has_load_balancing'].help_text = _("Indica se questa colonnina supporta il bilanciamento del carico tra i vari connettori")
+
+
+class ChargingStationPhotoForm(forms.ModelForm):
+    """Form per le foto delle stazioni di ricarica"""
+    
+    class Meta:
+        model = ChargingStationPhoto
+        fields = [
+            'photo', 'phase', 'title', 'description', 'date_taken'
+        ]
+        widgets = {
+            'photo': forms.FileInput(attrs={'class': 'form-control'}),
+            'phase': forms.Select(attrs={'class': 'form-control'}),
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'date_taken': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        }
+        
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Aggiungi note informative sui campi
+        self.fields['phase'].help_text = _("Seleziona la fase in cui è stata scattata la foto")
+        self.fields['date_taken'].help_text = _("Data in cui è stata scattata la foto. Se lasciato vuoto, verrà usata la data odierna.")
+        self.fields['photo'].help_text = _("Formati supportati: JPG, JPEG, PNG, GIF. Dimensione massima: 5MB.")

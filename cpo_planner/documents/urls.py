@@ -1,6 +1,7 @@
 # documents/urls.py
 from django.urls import path
 from . import views
+from . import views_documents
 
 app_name = 'documents'
 
@@ -24,15 +25,18 @@ urlpatterns = [
     path('modifica/<int:pk>/', 
          views.DocumentUpdateView.as_view(), 
          name='document_update'),
+    
+    # Nuove viste ottimizzate per download, anteprima ed eliminazione
     path('elimina/<int:pk>/', 
-         views.DocumentDeleteView.as_view(), 
+         views_documents.DocumentDeleteView.as_view(), 
          name='document_delete'),
     path('download/<int:pk>/', 
-         views.DocumentDownloadView.as_view(), 
+         views_documents.DocumentDownloadView.as_view(), 
          name='document_download'),
     path('anteprima/<int:pk>/', 
-         views.DocumentPreviewView.as_view(), 
+         views_documents.DocumentPreviewView.as_view(), 
          name='document_preview'),
+         
     path('stato/<int:pk>/', 
          views.update_document_status, 
          name='update_document_status'),
@@ -53,7 +57,7 @@ urlpatterns = [
          views.DocumentCategoryListView.as_view(), 
          name='category_list'),
     path('categorie/nuova/', 
-         views.DocumentCategoryListView.as_view(), 
+         views.DocumentCategoryCreateView.as_view(), 
          name='category_create'),
     path('categorie/modifica/<int:pk>/', 
          views.DocumentCategoryUpdateView.as_view(), 

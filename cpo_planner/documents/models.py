@@ -7,8 +7,11 @@ from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
-# Commenta temporaneamente l'importazione problematica
-# from cpo_planner.projects.models import Project, SubProject, ChargingStation
+# Ottieni i modelli
+try:
+    from cpo_core.models import Project
+except ImportError:
+    Project = None
 
 def document_upload_path(instance, filename):
     """Determina il percorso di upload basato sul tipo di documento e l'entità correlata"""
@@ -59,6 +62,7 @@ class Document(models.Model):
     # Campi generici per collegare il documento a diversi tipi di entità
     content_type = models.ForeignKey('contenttypes.ContentType', on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
     
     # Metadati
     version = models.CharField(_('Versione'), max_length=50, blank=True)
@@ -210,12 +214,20 @@ class DocumentTask(models.Model):
 
 class ProjectDocument(models.Model):
     """Documento specifico per i progetti"""
-    # Commenta temporaneamente il ForeignKey problematico
-    # project = models.ForeignKey('cpo_planner.projects.Project', on_delete=models.CASCADE, related_name='documents')
+    # Usiamo il nome della app e del modello
+    project = models.ForeignKey('cpo_core.Project', on_delete=models.CASCADE, related_name='documents')
     title = models.CharField(_('Titolo'), max_length=255)
     file = models.FileField(_('File'), upload_to='project_documents/')
     created_at = models.DateTimeField(_('Data Creazione'), auto_now_add=True)
     updated_at = models.DateTimeField(_('Ultimo Aggiornamento'), auto_now=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='created_project_documents',
+        verbose_name=_('Creato da'),
+        null=True,
+        blank=True
+    )
     
     def __str__(self):
         return self.title

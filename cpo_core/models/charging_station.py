@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 import uuid
+from django.conf import settings
+from decimal import Decimal
 
 class ChargingStation(models.Model):
     """Stazione di ricarica per veicoli elettrici"""
@@ -109,7 +111,7 @@ class ChargingStation(models.Model):
         annual_energy_cost = daily_energy_cost * 365
         
         # Costo manutenzione (stimato al 5% del costo della stazione)
-        annual_maintenance_cost = self.station_cost * 0.05
+        annual_maintenance_cost = self.station_cost * Decimal('0.05')
         
         # Costi operativi totali
         return annual_energy_cost + annual_maintenance_cost
@@ -120,6 +122,44 @@ class ChargingStation(models.Model):
     class Meta:
         verbose_name = _("Stazione di Ricarica")
         verbose_name_plural = _("Stazioni di Ricarica")
+
+
+class ChargingStationPhoto(models.Model):
+    """Foto associate alla stazione di ricarica"""
+    PHASE_CHOICES = [
+        ('pre_installation', _('Prima dell\'installazione')),
+        ('during_installation', _('Durante l\'installazione')),
+        ('post_installation', _('Dopo l\'installazione')),
+    ]
+    
+    charging_station = models.ForeignKey(ChargingStation, on_delete=models.CASCADE, related_name='photos', null=True, blank=True)
+    subproject = models.ForeignKey('SubProject', on_delete=models.CASCADE, related_name='photos', null=True, blank=True)
+    photo = models.ImageField(_("Foto"), upload_to='charging_stations/photos/')
+    phase = models.CharField(_("Fase"), max_length=20, choices=PHASE_CHOICES)
+    title = models.CharField(_("Titolo"), max_length=100)
+    description = models.TextField(_("Descrizione"), blank=True)
+    date_taken = models.DateField(_("Data Scatto"), null=True, blank=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='uploaded_station_photos',
+        verbose_name=_('Caricata da')
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        if self.charging_station:
+            return f"{self.get_phase_display()} - {self.charging_station.name}"
+        elif self.subproject:
+            return f"{self.get_phase_display()} - {self.subproject.name}"
+        else:
+            return f"{self.get_phase_display()} - {self.title}"
+    
+    class Meta:
+        verbose_name = _("Foto Stazione di Ricarica")
+        verbose_name_plural = _("Foto Stazioni di Ricarica")
+        ordering = ['-date_taken', '-created_at']
 
 
 class SolarInstallation(models.Model):

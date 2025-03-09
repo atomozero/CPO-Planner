@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block title %}{{ document.title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'documents/css/documents.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 mb-0 text-gray-800">
+                {{ document.title }}
+                {% if document.version %}
+                    <span class="badge badge-info">v{{ document.version }}</span>
+                {% endif %}
+            </h1>
+        </div>
+        <div class="col text-right">
+            <div class="btn-group" role="group">
+                <a href="{% url 'documents:document_update' pk=document.pk %}" class="btn btn-primary">
+                    <i class="fas fa-edit"></i> {% translate "Modifica" %}
+                </a>
+                <a href="{% url 'documents:document_download' pk=document.pk %}" class="btn btn-success">
+                    <i class="fas fa-download"></i> {% translate "Scarica" %}
+                </a>
+                <a href="{% url 'documents:document_delete' pk=document.pk %}" class="btn btn-danger">
+                    <i class="fas fa-trash"></i> {% translate "Elimina" %}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Informazioni Documento -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">{% translate "Dettagli Documento" %}</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>{% translate "Categoria" %}:</strong> {{ document.category.name }}</p>
+                            <p><strong>{% translate "Stato" %}:</strong> 
+                                {% if document.status == 'draft' %}
+                                    <span class="badge badge-secondary">{% translate "Bozza" %}</span>
+                                {% elif document.status == 'pending' %}
+                                    <span class="badge badge-warning">{% translate "In Attesa" %}</span>
+                                {% elif document.status == 'approved' %}
+                                    <span class="badge badge-success">{% translate "Approvato" %}</span>
+                                {% elif document.status == 'rejected' %}
+                                    <span class="badge badge-danger">{% translate "Respinto" %}</span>
+                                {% elif document.status == 'expired' %}
+                                    <span class="badge badge-danger">{% translate "Scaduto" %}</span>
+                                {% endif %}
+                            </p>
+                            <p><strong>{% translate "Data Emissione" %}:</strong> 
+                                {% if document.issue_date %}
+                                    {{ document.issue_date|date:"d/m/Y" }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </p>
+                            <p><strong>{% translate "Data Scadenza" %}:</strong> 
+                                {% if document.expiry_date %}
+                                    {{ document.expiry_date|date:"d/m/Y" }}
+                                    {% if document.is_expired %}
+                                        <i class="fas fa-exclamation-triangle text-danger" title="{% translate 'Scaduto' %}"></i>
+                                    {% endif %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>{% translate "Creato da" %}:</strong> {{ document.created_by.get_full_name }}</p>
+                            <p><strong>{% translate "Data Creazione" %}:</strong> {{ document.created_at|date:"d/m/Y H:i" }}</p>
+                            <p><strong>{% translate "Ultimo Aggiornamento" %}:</strong> {{ document.updated_at|date:"d/m/Y H:i" }}</p>
+                            <p><strong>{% translate "Dimensione File" %}:</strong> 
+                                {{ document.file_size_mb|floatformat:2 }} MB
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h5>{% translate "Descrizione" %}</h5>
+                    <p>{{ document.description|default:_("Nessuna descrizione disponibile.") }}</p>
+                </div>
+            </div>
+
+            <!-- Anteprima del Documento -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">{% translate "Anteprima Documento" %}</h6>
+                </div>
+                <div class="card-body">
+                    {% if document.is_pdf %}
+                        <div class="document-preview">
+                            <iframe src="{% url 'documents:document_preview' pk=document.pk %}" width="100%" height="500px"></iframe>
+                        </div>
+                    {% elif document.is_image %}
+                        <div class="document-preview text-center">
+                            <img src="{% url 'documents:document_preview' pk=document.pk %}" class="img-fluid" alt="{{ document.title }}">
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-file fa-4x mb-3 text-gray-300"></i>
+                            <p>{% translate "Anteprima non disponibile per questo tipo di file." %}</p>
+                            <a href="{% url 'documents:document_download' pk=document.pk %}" class="btn btn-primary">
+                                <i class="fas fa-download"></i> {% translate "Scarica il File" %}
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <!-- Entità Collegata -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">{% translate "Entità Collegata" %}</h6>
+                </div>
+                <div class="card-body">
+                    {% if document.project %}
+                        <p><strong>{% translate "Progetto" %}:</strong> 
+                            <a href="{% url 'projects:project_detail' pk=document.project.pk %}">
+                                <i class="fas fa-project-diagram"></i> {{ document.project.name }}
+                            </a>
+                        </p>
+                    {% elif document.content_type and document.object_id %}
+                        {% if document.content_type.model == 'project' %}
+                            <p><strong>{% translate "Progetto" %}:</strong> 
+                                <a href="{% url 'projects:project_detail' pk=document.object_id %}">
+                                    <i class="fas fa-project-diagram"></i> {{ document.content_object.name }}
+                                </a>
+                            </p>
+                        {% elif document.content_type.model == 'subproject' %}
+                            <p><strong>{% translate "Sotto-progetto" %}:</strong> 
+                                <a href="{% url 'projects:subproject_detail' pk=document.object_id %}">
+                                    <i class="fas fa-tasks"></i> {{ document.content_object.name }}
+                                </a>
+                            </p>
+                        {% elif document.content_type.model == 'chargingstation' %}
+                            <p><strong>{% translate "Stazione di Ricarica" %}:</strong> 
+                                <a href="{% url 'projects:chargingstation_detail' pk=document.object_id %}">
+                                    <i class="fas fa-charging-station"></i> {{ document.content_object.name }}
+                                </a>
+                            </p>
+                        {% endif %}
+                    {% else %}
+                        <p>{% translate "Nessuna entità collegata." %}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Modificare lo Stato -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">{% translate "Aggiorna Stato" %}</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'documents:update_document_status' pk=document.pk %}">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="status">{% translate "Nuovo Stato" %}:</label>
+                            <select class="form-control" name="status" id="status">
+                                <option value="draft" {% if document.status == 'draft' %}selected{% endif %}>{% translate "Bozza" %}</option>
+                                <option value="pending" {% if document.status == 'pending' %}selected{% endif %}>{% translate "In Attesa di Approvazione" %}</option>
+                                <option value="approved" {% if document.status == 'approved' %}selected{% endif %}>{% translate "Approvato" %}</option>
+                                <option value="rejected" {% if document.status == 'rejected' %}selected{% endif %}>{% translate "Respinto" %}</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i class="fas fa-save"></i> {% translate "Aggiorna Stato" %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Note e Commenti -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">{% translate "Note" %}</h6>
+                    <a href="{% url 'documents:add_document_note' pk=document.pk %}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-plus"></i>
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if notes %}
+                        <div class="document-notes">
+                            {% for note in notes %}
+                            <div class="document-note mb-3 p-3 border-left-primary">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <small class="text-muted">{{ note.created_by.get_full_name }}</small>
+                                    <small class="text-muted">{{ note.created_at|date:"d/m/Y H:i" }}</small>
+                                </div>
+                                <p class="mb-0">{{ note.text }}</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-center py-3">{% translate "Nessuna nota disponibile." %}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Attività -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">{% translate "Attività" %}</h6>
+                    <a href="{% url 'documents:add_document_task' pk=document.pk %}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-plus"></i>
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if tasks %}
+                        <div class="document-tasks">
+                            {% for task in tasks %}
+                            <div class="document-task mb-3 p-3 {% if task.is_overdue %}border-left-danger{% else %}border-left-info{% endif %}">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <h6 class="mb-0">{{ task.title }}</h6>
+                                    <span class="badge 
+                                        {% if task.status == 'pending' %}badge-secondary{% endif %}
+                                        {% if task.status == 'in_progress' %}badge-primary{% endif %}
+                                        {% if task.status == 'completed' %}badge-success{% endif %}
+                                        {% if task.status == 'cancelled' %}badge-danger{% endif %}
+                                    ">
+                                        {{ task.get_status_display }}
+                                    </span>
+                                </div>
+                                <p class="mb-2">{{ task.description }}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">
+                                        {% if task.due_date %}
+                                            <i class="fas fa-calendar-alt"></i> {{ task.due_date|date:"d/m/Y" }}
+                                            {% if task.is_overdue %}
+                                                <span class="text-danger">{% translate "In ritardo" %}</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    </small>
+                                    <a href="{% url 'documents:update_task_status' pk=task.pk %}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-edit"></i> {% translate "Aggiorna Stato" %}
+                                    </a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-center py-3">{% translate "Nessuna attività disponibile." %}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'documents/js/documents.js' %}"></script>
+{% endblock %}

@@ -27,7 +27,6 @@
         margin-bottom: 10px;
         border-radius: 5px;
     }
-    .tier-1 { background-color: #e3f2fd; }
     .tier-2 { background-color: #e8f5e9; }
     .tier-3 { background-color: #fff3e0; }
     .tier-4 { background-color: #ffebee; }
@@ -140,24 +139,6 @@
             <div class="card-body">
                 {% if active_electricity_tariffs and active_management_fees %}
                     <p class="mb-4">Confronto tra costi e prezzi per diverse fasce di potenza</p>
-                    <div class="price-tier tier-1">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="data-label">AC fino a 7kW</div>
-                                <div class="data-value">
-                                    Costo: €{{ active_electricity_tariffs.first.cost_tier1 }} /kWh | 
-                                    Prezzo: €{{ active_management_fees.first.customer_price_tier1 }} /kWh
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="data-label">Margine</div>
-                                <div class="data-value">
-                                    €{{ active_management_fees.first.customer_price_tier1|sub:active_electricity_tariffs.first.cost_tier1|floatformat:4 }} /kWh 
-                                    ({{ active_management_fees.first.customer_price_tier1|sub:active_electricity_tariffs.first.cost_tier1|div:active_electricity_tariffs.first.cost_tier1|mul:100|floatformat:0 }}%)
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                     
                     <div class="price-tier tier-2">
                         <div class="row">

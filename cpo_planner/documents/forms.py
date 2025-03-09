@@ -215,3 +215,29 @@ class ProjectDocumentForm(forms.ModelForm):
             'title': forms.TextInput(attrs={'class': 'form-control'}),
             'file': forms.FileInput(attrs={'class': 'form-control'})
         }
+        
+    def __init__(self, *args, **kwargs):
+        # Rimozione parametri extra
+        self.user = kwargs.pop('user', None)
+        self.entity_obj = kwargs.pop('entity_obj', None)
+        self.entity_type = kwargs.pop('entity_type', None)
+        
+        super().__init__(*args, **kwargs)
+        
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        
+        # Se c'è un'entità specificata, associa il documento
+        if self.entity_obj and self.entity_type:
+            if self.entity_type == 'project':
+                instance.project = self.entity_obj
+                print(f"DEBUG - Associato progetto {self.entity_obj} al documento")
+                
+        # Imposta l'utente creatore
+        if self.user and not instance.pk:
+            instance.created_by = self.user
+            
+        if commit:
+            instance.save()
+            
+        return instance

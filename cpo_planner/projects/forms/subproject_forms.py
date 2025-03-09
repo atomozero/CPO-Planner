@@ -7,6 +7,28 @@ from cpo_core.models.municipality import Municipality
 from infrastructure.models import StationUsageProfile
 
 class SubProjectForm(forms.ModelForm):
+    # Sovrascrivi i campi di coordinate per accettare valori con virgola
+    latitude_proposed = forms.DecimalField(
+        max_digits=9, decimal_places=6, required=False,
+        label=_("Latitudine Proposta"),
+        help_text=_("Usa il formato con punto decimale (es. 45.420930)")
+    )
+    longitude_proposed = forms.DecimalField(
+        max_digits=9, decimal_places=6, required=False,
+        label=_("Longitudine Proposta"),
+        help_text=_("Usa il formato con punto decimale (es. 12.123456)")
+    )
+    latitude_approved = forms.DecimalField(
+        max_digits=9, decimal_places=6, required=False,
+        label=_("Latitudine Approvata"),
+        help_text=_("Usa il formato con punto decimale (es. 45.420930)")
+    )
+    longitude_approved = forms.DecimalField(
+        max_digits=9, decimal_places=6, required=False,
+        label=_("Longitudine Approvata"),
+        help_text=_("Usa il formato con punto decimale (es. 12.123456)")
+    )
+    
     class Meta:
         model = SubProject
         fields = [
@@ -14,6 +36,9 @@ class SubProjectForm(forms.ModelForm):
             'name', 'description', 'address', 'cadastral_data',
             'latitude_proposed', 'longitude_proposed',
             'latitude_approved', 'longitude_approved',
+            
+            # Giorni di indisponibilità
+            'weekly_market_day', 'local_festival_days',
             
             # Specifiche tecniche
             'charger_brand', 'charger_model', 'power_kw', 'power_requested',
@@ -37,9 +62,19 @@ class SubProjectForm(forms.ModelForm):
             'connector_types': forms.TextInput(attrs={'placeholder': 'Es. Type 2, CCS, CHAdeMO'}),
             'cadastral_data': forms.TextInput(attrs={'placeholder': 'Foglio, Particella, Subalterno'}),
             'usage_profile': forms.Select(attrs={'class': 'form-control'}),
+            'weekly_market_day': forms.Select(attrs={'class': 'form-control'}),
+            'local_festival_days': forms.NumberInput(attrs={'min': '0', 'max': '60'}),
             'budget': forms.NumberInput(attrs={'readonly': 'readonly'}),
             'expected_revenue': forms.NumberInput(attrs={'readonly': 'readonly'}),
             'roi': forms.NumberInput(attrs={'readonly': 'readonly'}),
+            'power_kw': forms.NumberInput(attrs={'step': '0.1'}),
+            'ground_area_sqm': forms.NumberInput(attrs={'step': '0.01'}),
+            'equipment_cost': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'installation_cost': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'connection_cost': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'permit_cost': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'civil_works_cost': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'other_costs': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
         }
         
     # Campo nascosto per il project
@@ -50,7 +85,54 @@ class SubProjectForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         self.project_id = kwargs.pop('project_id', None)
+        
+        # Debug della chiamata a __init__
+        instance = kwargs.get('instance')
+        if instance:
+            print("DEBUG - __init__ SubProjectForm - received instance:", instance)
+            print("DEBUG - __init__ SubProjectForm - instance values:", {
+                'power_kw': instance.power_kw,
+                'ground_area_sqm': instance.ground_area_sqm,
+                'equipment_cost': instance.equipment_cost,
+                'installation_cost': instance.installation_cost,
+                'connection_cost': instance.connection_cost,
+                'latitude_approved': instance.latitude_approved,
+                'longitude_approved': instance.longitude_approved
+            })
+        
         super().__init__(*args, **kwargs)
+        
+        # Debug dei valori del campo dopo la creazione del form
+        if instance:
+            print("DEBUG - __init__ SubProjectForm - field values after form creation:", {
+                'power_kw': self.fields['power_kw'].initial,
+                'ground_area_sqm': self.fields['ground_area_sqm'].initial,
+                'equipment_cost': self.fields['equipment_cost'].initial,
+                'installation_cost': self.fields['installation_cost'].initial,
+                'connection_cost': self.fields['connection_cost'].initial,
+                'latitude_approved': self.fields['latitude_approved'].initial,
+                'longitude_approved': self.fields['longitude_approved'].initial
+            })
+            
+            # Imposta manualmente i valori iniziali dai valori dell'istanza
+            self.initial['power_kw'] = instance.power_kw
+            self.initial['ground_area_sqm'] = instance.ground_area_sqm
+            self.initial['equipment_cost'] = instance.equipment_cost
+            self.initial['installation_cost'] = instance.installation_cost
+            self.initial['connection_cost'] = instance.connection_cost
+            self.initial['permit_cost'] = instance.permit_cost
+            self.initial['civil_works_cost'] = instance.civil_works_cost
+            self.initial['other_costs'] = instance.other_costs
+            
+            # Imposta valori di coordinate anche con stringformat per assicurarsi che il formato sia corretto
+            if instance.latitude_proposed:
+                self.initial['latitude_proposed'] = instance.latitude_proposed
+            if instance.longitude_proposed:
+                self.initial['longitude_proposed'] = instance.longitude_proposed
+            if instance.latitude_approved:
+                self.initial['latitude_approved'] = instance.latitude_approved
+            if instance.longitude_approved:
+                self.initial['longitude_approved'] = instance.longitude_approved
         
         # Popola i profili di utilizzo
         self.fields['usage_profile'].queryset = StationUsageProfile.objects.all().order_by('name')

@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Calcoli Dettagliati - {{ station.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4>Calcoli Dettagliati per {{ station.name }}</h4>
+                </div>
+                <div class="card-body">
+                    {% if subproject %}
+                        <a href="{% url 'projects:subproject_detail' subproject.id %}" class="btn btn-outline-secondary mb-3">
+                            <i class="fas fa-arrow-left"></i> Torna al Sotto-Progetto
+                        </a>
+                    {% else %}
+                        <a href="{% url 'cpo_core:charging_station_detail' station.id %}" class="btn btn-outline-secondary mb-3">
+                            <i class="fas fa-arrow-left"></i> Torna alla Stazione
+                        </a>
+                    {% endif %}
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Questa pagina mostra i calcoli dettagliati dei ricavi e dei costi per la stazione di ricarica.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Parametri di base -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5>Parametri di Base</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <tbody>
+                            <tr>
+                                <th>Prezzo Ricarica (€/kWh):</th>
+                                <td class="text-end">{{ station.charging_price_kwh|floatformat:4 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Costo Energia (€/kWh):</th>
+                                <td class="text-end">{{ station.energy_cost_kwh|floatformat:4 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Sessioni Stimate/Giorno:</th>
+                                <td class="text-end">{{ station.estimated_sessions_day|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Media kWh/Sessione:</th>
+                                <td class="text-end">{{ station.avg_kwh_session|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Costo Stazione (€):</th>
+                                <td class="text-end">{{ station.station_cost|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Costo Installazione (€):</th>
+                                <td class="text-end">{{ station.installation_cost|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Costo Allaccio (€):</th>
+                                <td class="text-end">{{ station.connection_cost|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Investimento Totale (€):</th>
+                                <td class="text-end font-weight-bold">{{ total_investment|floatformat:2 }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calcoli Giornalieri e Annuali -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5>Calcoli Giornalieri e Annuali</h5>
+                </div>
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-3 text-muted">Calcoli Giornalieri</h6>
+                    <table class="table table-striped">
+                        <tbody>
+                            <tr>
+                                <th>Calcolo Ricavi Giornalieri:</th>
+                                <td class="text-end">
+                                    {{ station.charging_price_kwh|floatformat:4 }} € × {{ station.avg_kwh_session|floatformat:2 }} kWh × {{ station.estimated_sessions_day|floatformat:2 }} sessioni = {{ daily_revenue|floatformat:2 }} €
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Calcolo Costi Energia Giornalieri:</th>
+                                <td class="text-end">
+                                    {{ station.energy_cost_kwh|floatformat:4 }} € × {{ station.avg_kwh_session|floatformat:2 }} kWh × {{ station.estimated_sessions_day|floatformat:2 }} sessioni = {{ daily_energy_cost|floatformat:2 }} €
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h6 class="card-subtitle mb-3 mt-4 text-muted">Calcoli Annuali</h6>
+                    <table class="table table-striped">
+                        <tbody>
+                            <tr>
+                                <th>Ricavi Annuali:</th>
+                                <td class="text-end">{{ daily_revenue|floatformat:2 }} € × 365 giorni = {{ annual_revenue|floatformat:2 }} €</td>
+                            </tr>
+                            <tr>
+                                <th>Costi Energia Annuali:</th>
+                                <td class="text-end">{{ daily_energy_cost|floatformat:2 }} € × 365 giorni = {{ annual_energy_cost|floatformat:2 }} €</td>
+                            </tr>
+                            <tr>
+                                <th>Costi Manutenzione Annuali (5% del costo stazione):</th>
+                                <td class="text-end">{{ station.station_cost|floatformat:2 }} € × 0.05 = {{ annual_maintenance_cost|floatformat:2 }} €</td>
+                            </tr>
+                            <tr>
+                                <th>Costi Totali Annuali:</th>
+                                <td class="text-end">{{ annual_energy_cost|floatformat:2 }} € + {{ annual_maintenance_cost|floatformat:2 }} € = {{ total_annual_cost|floatformat:2 }} €</td>
+                            </tr>
+                            <tr>
+                                <th>Profitto Annuale:</th>
+                                <td class="text-end font-weight-bold">{{ annual_revenue|floatformat:2 }} € - {{ total_annual_cost|floatformat:2 }} € = {{ annual_profit|floatformat:2 }} €</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Metriche Finanziarie -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5>Metriche Finanziarie</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <tbody>
+                            <tr>
+                                <th>Margine per kWh:</th>
+                                <td class="text-end">{{ margin_per_kwh|floatformat:4 }} €</td>
+                            </tr>
+                            <tr>
+                                <th>Margine Percentuale:</th>
+                                <td class="text-end">{{ margin_percentage|floatformat:2 }}%</td>
+                            </tr>
+                            <tr>
+                                <th>ROI Annuale:</th>
+                                <td class="text-end">{{ annual_roi|floatformat:2 }}%</td>
+                            </tr>
+                            <tr>
+                                <th>Tempo di Ammortamento (anni):</th>
+                                <td class="text-end">{{ payback_years|floatformat:2 }} anni</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grafico Costi e Ricavi -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-warning">
+                    <h5>Grafico Costi e Ricavi</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="financialChart" width="400" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Proiezioni Mensili -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5>Proiezioni Mensili (considerando fattori stagionali)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Mese</th>
+                                    <th>Fattore Stagionale</th>
+                                    <th>Sessioni</th>
+                                    <th>kWh</th>
+                                    <th>Ricavi (€)</th>
+                                    <th>Costi Energia (€)</th>
+                                    <th>Costi Manutenzione (€)</th>
+                                    <th>Profitto (€)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for month in monthly_calculations %}
+                                <tr>
+                                    <td>{{ month.name }}</td>
+                                    <td class="text-center">{{ month.seasonal_factor|floatformat:2 }}</td>
+                                    <td class="text-end">{{ month.sessions|floatformat:1 }}</td>
+                                    <td class="text-end">{{ month.kwh|floatformat:1 }}</td>
+                                    <td class="text-end">{{ month.revenue|floatformat:2 }} €</td>
+                                    <td class="text-end">{{ month.energy_cost|floatformat:2 }} €</td>
+                                    <td class="text-end">{{ month.maintenance_cost|floatformat:2 }} €</td>
+                                    <td class="text-end">{{ month.profit|floatformat:2 }} €</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-primary">
+                                <tr>
+                                    <th>Totale Annuale</th>
+                                    <td class="text-center">-</td>
+                                    <td class="text-end">{{ station.estimated_sessions_day|floatformat:1 }} × 365</td>
+                                    <td class="text-end">-</td>
+                                    <td class="text-end">{{ annual_revenue|floatformat:2 }} €</td>
+                                    <td class="text-end">{{ annual_energy_cost|floatformat:2 }} €</td>
+                                    <td class="text-end">{{ annual_maintenance_cost|floatformat:2 }} €</td>
+                                    <td class="text-end">{{ annual_profit|floatformat:2 }} €</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formule di calcolo -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5>Formule di Calcolo</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Calcoli di Base</h6>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item">
+                                    <strong>Ricavi Giornalieri</strong> = Prezzo Ricarica (€/kWh) × Media kWh/Sessione × Sessioni/Giorno
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Ricavi Annuali</strong> = Ricavi Giornalieri × 365
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Costi Energia Giornalieri</strong> = Costo Energia (€/kWh) × Media kWh/Sessione × Sessioni/Giorno
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Costi Energia Annuali</strong> = Costi Energia Giornalieri × 365
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Costi Manutenzione Annuali</strong> = Costo Stazione × 5%
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Metriche Finanziarie</h6>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item">
+                                    <strong>Margine per kWh</strong> = Prezzo Ricarica - Costo Energia
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Margine Percentuale</strong> = (Margine per kWh / Costo Energia) × 100%
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Profitto Annuale</strong> = Ricavi Annuali - (Costi Energia Annuali + Costi Manutenzione Annuali)
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>ROI Annuale</strong> = (Profitto Annuale / Investimento Totale) × 100%
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Tempo di Ammortamento</strong> = Investimento Totale / Profitto Annuale
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Dati per il grafico
+    var financialData = {
+        labels: ['Ricavi', 'Costi Energia', 'Costi Manutenzione', 'Profitto'],
+        datasets: [{
+            label: 'Importo Annuale (€)',
+            data: [
+                {{ annual_revenue|floatformat:2 }}, 
+                {{ annual_energy_cost|floatformat:2 }}, 
+                {{ annual_maintenance_cost|floatformat:2 }}, 
+                {{ annual_profit|floatformat:2 }}
+            ],
+            backgroundColor: [
+                'rgba(75, 192, 192, 0.6)',
+                'rgba(255, 99, 132, 0.6)',
+                'rgba(255, 159, 64, 0.6)',
+                'rgba(54, 162, 235, 0.6)'
+            ],
+            borderColor: [
+                'rgba(75, 192, 192, 1)',
+                'rgba(255, 99, 132, 1)',
+                'rgba(255, 159, 64, 1)',
+                'rgba(54, 162, 235, 1)'
+            ],
+            borderWidth: 1
+        }]
+    };
+
+    // Configurazione del grafico
+    var ctx = document.getElementById('financialChart').getContext('2d');
+    var financialChart = new Chart(ctx, {
+        type: 'bar',
+        data: financialData,
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Euro (€)'
+                    }
+                }
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Riepilogo Finanziario Annuale'
+                },
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.raw.toFixed(2) + ' €';
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

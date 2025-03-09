@@ -38,4 +38,8 @@ urlpatterns = [
 
     # Stazioni di ricarica
     path('stations/', ChargingStationListView.as_view(), name='station_list'),
+    path('stations/<uuid:pk>/', views.ChargingStationDetailView.as_view(), name='charging_station_detail'),
+    path('stations/<uuid:pk>/calculations/', views.charging_station_calculations, name='charging_station_calculations'),
+    # Per supportare anche subproject (che hanno ID numerici)
+    path('stations/subproject/<int:subproject_id>/calculations/', views.charging_station_calculations_subproject, name='charging_station_calculations_subproject'),
 ]

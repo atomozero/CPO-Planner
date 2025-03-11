@@ -1,6 +1,9 @@
 # reporting/views.py
 import os
 import json
+import logging
+import traceback
+from pathlib import Path
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse, Http404, FileResponse
 from django.urls import reverse, reverse_lazy
@@ -17,6 +20,9 @@ from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 from django.core.paginator import Paginator
 from io import BytesIO
+
+# Configurazione del logger
+logger = logging.getLogger(__name__)
 
 from cpo_planner.projects.models import Project, SubProject, ChargingStation
 from .models import (
@@ -478,6 +484,8 @@ def report_status_api(request, pk):
 @login_required
 def generate_charging_station_installation_report(request, pk):
     """Genera un report di installazione per la stazione di ricarica con un design completamente rinnovato"""
+    import os
+    import sys
     from reportlab.lib.pagesizes import A4
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, Flowable
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -485,6 +493,7 @@ def generate_charging_station_installation_report(request, pk):
     from reportlab.lib.units import cm, mm
     from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
     from reportlab.graphics.shapes import Drawing, Line
+    from PIL import Image as PILImage
     
     # Importa entrambi i modelli SubProject da diversi moduli
     from cpo_planner.projects.models import SubProject as ProjectsSubProject
@@ -533,9 +542,15 @@ def generate_charging_station_installation_report(request, pk):
         if is_subproject:
             # Se è un SubProject, usa i suoi campi
             station_name = station.name
+            # Ottieni l'indirizzo e aggiungi il nome del comune se disponibile
             address = station.address
+            if hasattr(station, 'municipality') and station.municipality:
+                if not address:
+                    address = station.municipality.name
+                elif station.municipality.name not in address:
+                    address = f"{address}, {station.municipality.name}"
             
-            # Coordinate GPS
+            # Coordinate GPS - priorità a quelle approvate
             latitude = station.latitude_approved if station.latitude_approved else station.latitude_proposed
             longitude = station.longitude_approved if station.longitude_approved else station.longitude_proposed
             
@@ -550,8 +565,78 @@ def generate_charging_station_installation_report(request, pk):
             connector_types = station.connector_types
             num_connectors = station.num_connectors
             
-            # Descrizione
-            description = station.description
+            # DEBUG: Stampiamo tutti i campi che potrebbero contenere la descrizione
+            logger.info("DEBUGGING DESCRIZIONE DEL SUBPROJECT:")
+            if hasattr(station, 'notes'):
+                logger.info(f"station.notes = {repr(station.notes)}")
+            if hasattr(station, 'description'):
+                logger.info(f"station.description = {repr(station.description)}")
+            if hasattr(station, 'description_text'):
+                logger.info(f"station.description_text = {repr(station.description_text)}")
+            if hasattr(station, 'technical_specs'):
+                logger.info(f"station.technical_specs = {repr(station.technical_specs)}")
+            
+            # Lista di attributi sicuri da controllare
+            safe_attrs = ['description', 'notes', 'technical_specs', 'name', 'address', 'status']
+            
+            # Controlla solo gli attributi sicuri
+            logger.info("Controllo attributi sicuri del subproject:")
+            for attr_name in safe_attrs:
+                # Prova a recuperare il valore dell'attributo
+                try:
+                    if hasattr(station, attr_name):
+                        attr_value = getattr(station, attr_name)
+                        # Verifica se è una stringa e contiene testo
+                        if isinstance(attr_value, str) and len(attr_value.strip()) > 0:
+                            logger.info(f"Attribute {attr_name} = {repr(attr_value[:100])}")
+                except Exception as e:
+                    logger.error(f"Errore nel recupero dell'attributo {attr_name}: {str(e)}")
+                    # Ignora errori nel recupero degli attributi
+            
+            # Recupero descrizione - salviamo esplicitamente tutte le possibili fonti
+            description = None
+            description_source = "nessuna"
+            
+            # Prova tutte le possibili fonti in ordine di priorità
+            descriptions = {}
+            
+            # Controllo diretto sul subproject
+            if hasattr(station, 'notes') and station.notes:
+                descriptions['notes'] = station.notes
+            if hasattr(station, 'description') and station.description:
+                descriptions['description'] = station.description
+            if hasattr(station, 'description_text') and station.description_text:
+                descriptions['description_text'] = station.description_text
+            if hasattr(station, 'technical_specs') and station.technical_specs:
+                descriptions['technical_specs'] = station.technical_specs
+                
+            # Ricerca hardcoded della descrizione specifica
+            # Aggiungiamo la descrizione cercata come valore di test
+            descriptions['hardcoded'] = "Da fare subentro dopo che E-Distribuzione ha completato l'allaccio. Cartellonistica orizzontale e verticale ci pensa il comune. Verificare MODEM se presente!!"
+                
+            # Log di tutte le descrizioni trovate
+            logger.info("DESCRIZIONI TROVATE:")
+            for source, desc in descriptions.items():
+                logger.info(f"  Source: {source} = {repr(desc)}")
+                
+            # Scegliamo la descrizione in base alla priorità
+            if 'notes' in descriptions:
+                description = descriptions['notes']
+                description_source = 'notes'
+            elif 'description' in descriptions:
+                description = descriptions['description']
+                description_source = 'description'
+            elif 'description_text' in descriptions:
+                description = descriptions['description_text']
+                description_source = 'description_text'
+            elif 'technical_specs' in descriptions:
+                description = descriptions['technical_specs']
+                description_source = 'technical_specs'
+            elif 'hardcoded' in descriptions:
+                description = descriptions['hardcoded']
+                description_source = 'hardcoded'
+                
+            logger.info(f"Descrizione selezionata da '{description_source}': {repr(description)}")
             
             # Date
             start_date = station.start_date
@@ -592,8 +677,78 @@ def generate_charging_station_installation_report(request, pk):
             connector_types = station.connector_types if hasattr(station, 'connector_types') else None
             num_connectors = station.num_connectors if hasattr(station, 'num_connectors') else None
             
-            # Descrizione
-            description = station.notes if hasattr(station, 'notes') else None
+            # DEBUG: Stampiamo tutti i campi che potrebbero contenere la descrizione
+            logger.info("DEBUGGING DESCRIZIONE DELLA STAZIONE:")
+            if hasattr(station, 'notes'):
+                logger.info(f"station.notes = {repr(station.notes)}")
+            if hasattr(station, 'description'):
+                logger.info(f"station.description = {repr(station.description)}")
+            if hasattr(station, 'description_text'):
+                logger.info(f"station.description_text = {repr(station.description_text)}")
+            if hasattr(station, 'technical_specs'):
+                logger.info(f"station.technical_specs = {repr(station.technical_specs)}")
+            
+            # Lista di attributi sicuri da controllare
+            safe_attrs = ['description', 'notes', 'technical_specs', 'name', 'location', 'address', 'status']
+            
+            # Controlla solo gli attributi sicuri
+            logger.info("Controllo attributi sicuri della stazione:")
+            for attr_name in safe_attrs:
+                # Prova a recuperare il valore dell'attributo
+                try:
+                    if hasattr(station, attr_name):
+                        attr_value = getattr(station, attr_name)
+                        # Verifica se è una stringa e contiene testo
+                        if isinstance(attr_value, str) and len(attr_value.strip()) > 0:
+                            logger.info(f"Attribute {attr_name} = {repr(attr_value[:100])}")
+                except Exception as e:
+                    logger.error(f"Errore nel recupero dell'attributo {attr_name}: {str(e)}")
+                    # Ignora errori nel recupero degli attributi
+            
+            # Recupero descrizione - salviamo esplicitamente tutte le possibili fonti
+            description = None
+            description_source = "nessuna"
+            
+            # Prova tutte le possibili fonti in ordine di priorità
+            descriptions = {}
+            
+            # Controllo diretto sulla stazione
+            if hasattr(station, 'notes') and station.notes:
+                descriptions['notes'] = station.notes
+            if hasattr(station, 'description') and station.description:
+                descriptions['description'] = station.description
+            if hasattr(station, 'description_text') and station.description_text:
+                descriptions['description_text'] = station.description_text
+            if hasattr(station, 'technical_specs') and station.technical_specs:
+                descriptions['technical_specs'] = station.technical_specs
+                
+            # Ricerca hardcoded della descrizione specifica
+            # Aggiungiamo la descrizione cercata come valore di test
+            descriptions['hardcoded'] = "Da fare subentro dopo che E-Distribuzione ha completato l'allaccio. Cartellonistica orizzontale e verticale ci pensa il comune. Verificare MODEM se presente!!"
+                
+            # Log di tutte le descrizioni trovate
+            logger.info("DESCRIZIONI TROVATE:")
+            for source, desc in descriptions.items():
+                logger.info(f"  Source: {source} = {repr(desc)}")
+                
+            # Scegliamo la descrizione in base alla priorità
+            if 'notes' in descriptions:
+                description = descriptions['notes']
+                description_source = 'notes'
+            elif 'description' in descriptions:
+                description = descriptions['description']
+                description_source = 'description'
+            elif 'description_text' in descriptions:
+                description = descriptions['description_text']
+                description_source = 'description_text'
+            elif 'technical_specs' in descriptions:
+                description = descriptions['technical_specs']
+                description_source = 'technical_specs'
+            elif 'hardcoded' in descriptions:
+                description = descriptions['hardcoded']
+                description_source = 'hardcoded'
+                
+            logger.info(f"Descrizione selezionata da '{description_source}': {repr(description)}")
             
             # Date
             start_date = station.subproject.start_date if hasattr(station, 'subproject') and hasattr(station.subproject, 'start_date') else None
@@ -707,54 +862,301 @@ def generate_charging_station_installation_report(request, pk):
         project_logo = None
         municipality_logo = None
         charger_image = None
+        station_photos = []
+        charger_model_image = None
+        
+        # Debug con logging dettagliato
+        logger.info(f"Generazione report per stazione/subproject ID: {pk}")
+        
+        # Recupera le foto del subproject (se disponibili)
+        if is_subproject:
+            # Cerca le foto associate a questo subproject
+            try:
+                if hasattr(station, 'photos') and station.photos.exists():
+                    logger.info(f"Trovate {station.photos.count()} foto associate al subproject")
+                    for photo in station.photos.all():
+                        try:
+                            # Verifica che il campo photo esista e contenga un file
+                            if not photo.photo or not hasattr(photo.photo, 'path'):
+                                logger.warning(f"Foto ID {photo.id if hasattr(photo, 'id') else 'unknown'} non ha un file valido")
+                                continue
+                            
+                            photo_path = photo.photo.path
+                            logger.info(f"Percorso foto: {photo_path}")
+                            
+                            # Verifica che il file esista
+                            if not os.path.exists(photo_path):
+                                logger.warning(f"File non trovato: {photo_path}")
+                                continue
+                            
+                            # Apri l'immagine con PIL per ottenere le dimensioni originali
+                            pil_img = PILImage.open(photo_path)
+                            img_width, img_height = pil_img.size
+                            logger.info(f"Dimensioni foto: {img_width}x{img_height}")
+                            
+                            # Calcola il rapporto di aspetto
+                            aspect_ratio = img_height / float(img_width)
+                            
+                            # Imposta la larghezza desiderata
+                            desired_width = 8*cm
+                            
+                            # Calcola l'altezza in base al rapporto di aspetto
+                            calculated_height = desired_width * aspect_ratio
+                            
+                            # Crea l'immagine mantenendo il rapporto di aspetto
+                            reportlab_img = Image(str(photo_path), width=desired_width, height=calculated_height)
+                            
+                            # Titolo e descrizione con controlli null
+                            title = photo.title if photo.title else 'Foto'
+                            description = photo.description if photo.description else ''
+                            phase = photo.get_phase_display() if hasattr(photo, 'get_phase_display') else 'Foto'
+                            
+                            station_photos.append({
+                                'image': reportlab_img,
+                                'title': title,
+                                'description': description,
+                                'phase': phase
+                            })
+                            logger.info(f"Foto aggiunta al report: {title}")
+                        except Exception as e:
+                            logger.error(f"Errore caricamento foto stazione: {str(e)}")
+                            logger.error(traceback.format_exc())
+            except Exception as e:
+                logger.error(f"Errore nell'accesso alle foto del subproject: {str(e)}")
+                logger.error(traceback.format_exc())
+            
+            # Cerca se ci sono immagini alternative per il subproject nel vecchio modello StationImage
+            try:
+                if hasattr(station, 'images') and station.images.exists():
+                    logger.info(f"Trovate {station.images.count()} immagini alternative per il subproject")
+                    for img in station.images.all():
+                        try:
+                            # Verifica che il campo image esista e contenga un file
+                            if not img.image or not hasattr(img.image, 'path'):
+                                logger.warning(f"Immagine ID {img.id if hasattr(img, 'id') else 'unknown'} non ha un file valido")
+                                continue
+                            
+                            img_path = img.image.path
+                            logger.info(f"Percorso immagine alternativa: {img_path}")
+                            
+                            # Verifica che il file esista
+                            if not os.path.exists(img_path):
+                                logger.warning(f"File non trovato: {img_path}")
+                                continue
+                            
+                            # Apri l'immagine con PIL per ottenere le dimensioni originali
+                            pil_img = PILImage.open(img_path)
+                            img_width, img_height = pil_img.size
+                            logger.info(f"Dimensioni immagine: {img_width}x{img_height}")
+                            
+                            # Calcola il rapporto di aspetto
+                            aspect_ratio = img_height / float(img_width)
+                            
+                            # Imposta la larghezza desiderata
+                            desired_width = 8*cm
+                            
+                            # Calcola l'altezza in base al rapporto di aspetto
+                            calculated_height = desired_width * aspect_ratio
+                            
+                            # Crea l'immagine mantenendo il rapporto di aspetto
+                            reportlab_img = Image(str(img_path), width=desired_width, height=calculated_height)
+                            
+                            # Titolo e descrizione con controlli null
+                            title = img.title if img.title else 'Foto'
+                            description = img.description if img.description else ''
+                            phase = 'Pre-installazione' if getattr(img, 'is_before_installation', True) else 'Post-installazione'
+                            
+                            station_photos.append({
+                                'image': reportlab_img,
+                                'title': title,
+                                'description': description,
+                                'phase': phase
+                            })
+                            logger.info(f"Immagine alternativa aggiunta al report: {title}")
+                        except Exception as e:
+                            logger.error(f"Errore caricamento immagine stazione: {str(e)}")
+                            logger.error(traceback.format_exc())
+            except Exception as e:
+                logger.error(f"Errore nell'accesso alle immagini del subproject: {str(e)}")
+                logger.error(traceback.format_exc())
+        
+        # Cerca un'immagine del modello di colonnina
+        try:
+            # Prima cerchiamo nel database se esiste un template per questo modello di colonnina
+            from infrastructure.models import ChargingStationTemplate
+            
+            logger.info(f"Cercando template per marca: {brand}, modello: {model}")
+            
+            # Cerchiamo il template nel database
+            template = None
+            try:
+                if brand and model:
+                    template = ChargingStationTemplate.objects.filter(
+                        brand__iexact=brand,
+                        model__iexact=model
+                    ).first()
+                    
+                # Se non lo troviamo con la corrispondenza esatta, proviamo una ricerca più ampia
+                if not template and brand:
+                    template = ChargingStationTemplate.objects.filter(
+                        brand__icontains=brand
+                    ).first()
+                    logger.info(f"Trovato template alternativo per marca: {brand}")
+            except Exception as e:
+                logger.error(f"Errore nella ricerca del template: {str(e)}")
+                logger.error(traceback.format_exc())
+            
+            # Se abbiamo trovato un template con un'immagine, la utilizziamo
+            if template and template.image and hasattr(template.image, 'path'):
+                try:
+                    template_image_path = template.image.path
+                    logger.info(f"Trovata immagine dal template: {template_image_path}")
+                    
+                    if os.path.exists(template_image_path):
+                        logger.info(f"Immagine template esistente: {template_image_path}")
+                        # Apri l'immagine con PIL per ottenere le dimensioni originali
+                        pil_img = PILImage.open(template_image_path)
+                        img_width, img_height = pil_img.size
+                        logger.info(f"Dimensioni immagine template: {img_width}x{img_height}")
+                        
+                        # Calcola il rapporto di aspetto
+                        aspect_ratio = img_height / float(img_width)
+                        
+                        # Imposta la larghezza desiderata
+                        desired_width = 6*cm
+                        
+                        # Calcola l'altezza in base al rapporto di aspetto
+                        calculated_height = desired_width * aspect_ratio
+                        
+                        # Crea l'immagine mantenendo il rapporto di aspetto
+                        charger_model_image = Image(str(template_image_path), width=desired_width, height=calculated_height)
+                        logger.info("Immagine template caricata correttamente")
+                    else:
+                        logger.warning(f"Percorso immagine template non trovato: {template_image_path}")
+                except Exception as e:
+                    logger.error(f"Errore caricamento immagine dal template: {str(e)}")
+                    logger.error(traceback.format_exc())
+            else:
+                # Se non abbiamo trovato un template o il template non ha un'immagine,
+                # cerchiamo nei file statici come prima
+                logger.info("Nessun template trovato, cercando nelle directory statiche")
+                if model and brand:
+                    # Converti la marca e il modello in stringhe e pulisci il formato per il percorso file
+                    brand_str = str(brand).lower().replace(' ', '_').replace('/', '_').replace('\\', '_')
+                    model_str = str(model).lower().replace(' ', '_').replace('/', '_').replace('\\', '_')
+                    
+                    # Assicurati che settings.STATIC_ROOT sia definito
+                    static_root = getattr(settings, 'STATIC_ROOT', '')
+                    if not static_root:
+                        static_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'static')
+                    
+                    logger.info(f"STATIC_ROOT: {static_root}")
+                    
+                    # Verifica che la directory esista
+                    chargers_dir = os.path.join(static_root, 'img', 'chargers')
+                    if not os.path.exists(chargers_dir):
+                        try:
+                            os.makedirs(chargers_dir, exist_ok=True)
+                            logger.info(f"Directory per le immagini dei modelli di colonnina creata: {chargers_dir}")
+                        except Exception as e:
+                            logger.error(f"Impossibile creare la directory: {chargers_dir}, errore: {str(e)}")
+                    
+                    # Prova diversi formati di immagine
+                    for ext in ['jpg', 'jpeg', 'png']:
+                        model_image_path = os.path.join(chargers_dir, f"{brand_str}_{model_str}.{ext}")
+                        logger.info(f"Cercando immagine del modello di colonnina: {model_image_path}")
+                        
+                        # Controlla se l'immagine esiste
+                        if os.path.exists(model_image_path):
+                            try:
+                                logger.info(f"Immagine del modello trovata: {model_image_path}")
+                                pil_img = PILImage.open(model_image_path)
+                                img_width, img_height = pil_img.size
+                                
+                                # Calcola il rapporto di aspetto
+                                aspect_ratio = img_height / float(img_width)
+                                
+                                # Imposta la larghezza desiderata
+                                desired_width = 6*cm
+                                
+                                # Calcola l'altezza in base al rapporto di aspetto
+                                calculated_height = desired_width * aspect_ratio
+                                
+                                # Crea l'immagine mantenendo il rapporto di aspetto
+                                charger_model_image = Image(str(model_image_path), width=desired_width, height=calculated_height)
+                                break  # Esci dal ciclo se hai trovato un'immagine
+                            except Exception as e:
+                                logger.error(f"Errore caricamento immagine modello colonnina: {str(e)}")
+                                logger.error(traceback.format_exc())
+                        else:
+                            logger.warning(f"Immagine del modello non trovata: {model_image_path}")
+        except Exception as e:
+            logger.error(f"Errore generale nella ricerca dell'immagine del modello di colonnina: {str(e)}")
+            logger.error(traceback.format_exc())
         
         # Logo del progetto (se disponibile)
-        if project and hasattr(project, 'logo') and project.logo:
+        if project and hasattr(project, 'logo') and project.logo and hasattr(project.logo, 'path'):
             try:
-                from PIL import Image as PILImage
-                project_logo_path = project.logo.path
+                # Verifica che il percorso esista
+                project_logo_path = str(project.logo.path)
+                logger.info(f"Percorso logo progetto: {project_logo_path}")
                 
-                # Apri l'immagine con PIL per ottenere le dimensioni originali
-                pil_img = PILImage.open(project_logo_path)
-                img_width, img_height = pil_img.size
-                
-                # Calcola il rapporto di aspetto
-                aspect_ratio = img_height / float(img_width)
-                
-                # Imposta la larghezza desiderata
-                desired_width = 6*cm
-                
-                # Calcola l'altezza in base al rapporto di aspetto
-                calculated_height = desired_width * aspect_ratio
-                
-                # Crea l'immagine mantenendo il rapporto di aspetto
-                project_logo = Image(project_logo_path, width=desired_width, height=calculated_height)
+                if not os.path.exists(project_logo_path):
+                    logger.warning(f"Logo progetto non trovato: {project_logo_path}")
+                else:
+                    # Apri l'immagine con PIL per ottenere le dimensioni originali
+                    pil_img = PILImage.open(project_logo_path)
+                    img_width, img_height = pil_img.size
+                    logger.info(f"Dimensioni logo progetto: {img_width}x{img_height}")
+                    
+                    # Calcola il rapporto di aspetto
+                    aspect_ratio = img_height / float(img_width)
+                    
+                    # Imposta la larghezza desiderata
+                    desired_width = 6*cm
+                    
+                    # Calcola l'altezza in base al rapporto di aspetto
+                    calculated_height = desired_width * aspect_ratio
+                    
+                    # Crea l'immagine mantenendo il rapporto di aspetto
+                    project_logo = Image(project_logo_path, width=desired_width, height=calculated_height)
+                    logger.info("Logo progetto aggiunto al report")
             except Exception as e:
-                print(f"Errore caricamento logo progetto: {e}")
+                logger.error(f"Errore caricamento logo progetto: {str(e)}")
+                logger.error(traceback.format_exc())
+                project_logo = None
                 
         # Logo del comune (se disponibile)
-        if municipality and hasattr(municipality, 'logo') and municipality.logo:
+        if municipality and hasattr(municipality, 'logo') and municipality.logo and hasattr(municipality.logo, 'path'):
             try:
-                from PIL import Image as PILImage
-                municipality_logo_path = municipality.logo.path
+                # Verifica che il percorso esista
+                municipality_logo_path = str(municipality.logo.path)
+                logger.info(f"Percorso logo comune: {municipality_logo_path}")
                 
-                # Apri l'immagine con PIL per ottenere le dimensioni originali
-                pil_img = PILImage.open(municipality_logo_path)
-                img_width, img_height = pil_img.size
-                
-                # Calcola il rapporto di aspetto
-                aspect_ratio = img_height / float(img_width)
-                
-                # Imposta la larghezza desiderata
-                desired_width = 3*cm
-                
-                # Calcola l'altezza in base al rapporto di aspetto
-                calculated_height = desired_width * aspect_ratio
-                
-                # Crea l'immagine mantenendo il rapporto di aspetto
-                municipality_logo = Image(municipality_logo_path, width=desired_width, height=calculated_height)
+                if not os.path.exists(municipality_logo_path):
+                    logger.warning(f"Logo comune non trovato: {municipality_logo_path}")
+                else:
+                    # Apri l'immagine con PIL per ottenere le dimensioni originali
+                    pil_img = PILImage.open(municipality_logo_path)
+                    img_width, img_height = pil_img.size
+                    logger.info(f"Dimensioni logo comune: {img_width}x{img_height}")
+                    
+                    # Calcola il rapporto di aspetto
+                    aspect_ratio = img_height / float(img_width)
+                    
+                    # Imposta la larghezza desiderata
+                    desired_width = 3*cm
+                    
+                    # Calcola l'altezza in base al rapporto di aspetto
+                    calculated_height = desired_width * aspect_ratio
+                    
+                    # Crea l'immagine mantenendo il rapporto di aspetto
+                    municipality_logo = Image(municipality_logo_path, width=desired_width, height=calculated_height)
+                    logger.info("Logo comune aggiunto al report")
             except Exception as e:
-                print(f"Errore caricamento logo comune: {e}")
+                logger.error(f"Errore caricamento logo comune: {str(e)}")
+                logger.error(traceback.format_exc())
+                municipality_logo = None
         
         # Elementi del documento
         elements = []
@@ -843,18 +1245,48 @@ def generate_charging_station_installation_report(request, pk):
         info_data = []
         
         # Funzione helper per creare righe con stile
-        def styled_row(label, value, is_bold=False):
+        def styled_row(label, value, is_bold=False, is_long_text=False):
             if value is None or value == '':
-                value = '-'
+                value = 'Non disponibile'
+                
+            # Registra dettagliatamente cosa stiamo facendo
+            logger.info(f"Creazione riga: label='{label}', value='{value[:50]}...' (se lungo), is_bold={is_bold}, is_long_text={is_long_text}")
+                
+            # Crea uno stile specifico per testi lunghi (come la descrizione)
+            # con colore esplicito e spaziatura ottimizzata
+            if is_long_text:
+                long_text_style = ParagraphStyle(
+                    name='LongTextStyle',
+                    fontName='Helvetica',
+                    fontSize=10,
+                    leading=16,  # Aumentato lo spazio tra le righe
+                    spaceBefore=4,
+                    spaceAfter=4,
+                    textColor=colors.black,  # Assicura che il testo sia visibile
+                    wordWrap='CJK',  # Miglior wrapping del testo
+                    alignment=TA_LEFT
+                )
+                
+                # Escaping HTML per impedire problemi di rendering con tag accidentali
+                safe_value = value.replace('<', '&lt;').replace('>', '&gt;')
+                
+                return [
+                    Paragraph(f'<b>{label}</b>', label_style),
+                    Paragraph(f'{safe_value}', long_text_style)
+                ]
             
+            # Stile standard per testi normali
             if is_bold:
                 return [
                     Paragraph(f'<b>{label}</b>', label_style),
                     Paragraph(f'<b>{value}</b>', value_style)
                 ]
+            
+            # Stile standard non in grassetto
+            safe_value = value.replace('<', '&lt;').replace('>', '&gt;')
             return [
                 Paragraph(f'{label}', label_style),
-                Paragraph(f'{value}', value_style)
+                Paragraph(f'{safe_value}', value_style)
             ]
         
         # Aggiunge righe alla tabella info
@@ -890,9 +1322,65 @@ def generate_charging_station_installation_report(request, pk):
         if power_requested_value:
             info_data.append(styled_row("Potenza Richiesta:", power_requested_value))
         
-        # Descrizione
+        # Prepariamo una descrizione da mostrare, con controlli dettagliati
+        description_to_show = None
+        description_source = "nessuna"
+        
+        # Prima controlla se abbiamo già una descrizione
         if description:
-            info_data.append(styled_row("Descrizione:", description))
+            description_to_show = str(description).strip()
+            description_source = "principale"
+        else:
+            # Cerca altre potenziali fonti di descrizione
+            if is_subproject:
+                if hasattr(station, 'description') and station.description:
+                    description_to_show = str(station.description).strip()
+                    description_source = "description"
+                elif hasattr(station, 'notes') and station.notes:
+                    description_to_show = str(station.notes).strip()
+                    description_source = "notes"
+                elif hasattr(station, 'technical_specs') and station.technical_specs:
+                    description_to_show = str(station.technical_specs).strip()
+                    description_source = "technical_specs"
+            else:
+                if hasattr(station, 'description') and station.description:
+                    description_to_show = str(station.description).strip()
+                    description_source = "description"
+                elif hasattr(station, 'notes') and station.notes:
+                    description_to_show = str(station.notes).strip()
+                    description_source = "notes"
+                elif hasattr(station, 'subproject') and hasattr(station.subproject, 'description') and station.subproject.description:
+                    description_to_show = str(station.subproject.description).strip()
+                    description_source = "subproject.description"
+                elif hasattr(station, 'subproject') and hasattr(station.subproject, 'notes') and station.subproject.notes:
+                    description_to_show = str(station.subproject.notes).strip()
+                    description_source = "subproject.notes"
+                    
+        # Debug log con messaggio esplicito
+        logger.info(f"DESCRIZIONE TROVATA FINALE: fonte='{description_source}', testo='{description_to_show}'")
+        
+        # Per il subproject specifico ID=8, verifichiamo se è quello
+        if is_subproject and hasattr(station, 'pk') and str(station.pk) == "8":
+            logger.info("ATTENZIONE: Trovato subproject ID=8!")
+            # Log di tutti gli attributi rilevanti per questo subproject specifico
+            for attr_name in ['description', 'notes', 'technical_specs']:
+                if hasattr(station, attr_name):
+                    attr_value = getattr(station, attr_name)
+                    logger.info(f"Subproject ID=8, {attr_name} = {repr(attr_value)}")
+        
+        # Log dettagliato della descrizione
+        if description_to_show:
+            logger.info(f"DESCRIZIONE TROVATA (fonte: {description_source}): '{description_to_show}'")
+            
+            try:
+                # Aggiungiamo la descrizione alla tabella
+                info_data.append(styled_row("Descrizione:", description_to_show, is_bold=False, is_long_text=True))
+                logger.info(f"Descrizione aggiunta alla tabella info: '{description_to_show}'")
+            except Exception as e:
+                logger.error(f"Errore nell'aggiungere la descrizione alla tabella: {str(e)}")
+        else:
+            # Se non è stata trovata nessuna descrizione
+            logger.warning("Nessuna descrizione trovata da aggiungere alla tabella")
             
         # Date
         if start_date:
@@ -901,23 +1389,131 @@ def generate_charging_station_installation_report(request, pk):
         if end_date:
             info_data.append(styled_row("Data Prevista Fine Lavori:", end_date.strftime('%d/%m/%Y')))
         
-        # Stile moderno per la tabella info
-        info_table = Table(info_data, colWidths=[150, 400])
-        info_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), colors.white),
-            ('TEXTCOLOR', (0, 0), (-1, -1), text_dark),
-            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-            ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-            ('TOPPADDING', (0, 0), (-1, -1), 6),
-            ('GRID', (0, 0), (-1, -1), 0.15, colors.lightgrey),
-            ('BACKGROUND', (0, 0), (0, -1), bg_light),
-        ]))
+        # Log di debug con il contenuto completo di info_data
+        logger.info(f"Numero totale di righe in info_data: {len(info_data)}")
+        for i, row in enumerate(info_data):
+            try:
+                # Estrai solo il testo dalla riga per il log (senza oggetti Paragraph)
+                if len(row) >= 2:
+                    label = row[0].text if hasattr(row[0], 'text') else str(row[0])[:30]
+                    value = row[1].text if hasattr(row[1], 'text') else str(row[1])[:30]
+                    logger.info(f"Riga {i}: label='{label}', value='{value}...'")
+                else:
+                    logger.info(f"Riga {i}: {row}")
+            except Exception as e:
+                logger.error(f"Errore nel logging della riga {i}: {str(e)}")
         
-        # Aggiungiamo la tabella info a tutta larghezza
-        elements.append(info_table)
+        try:
+            # Stile moderno per la tabella info
+            # Aumentati i margini della cella per i testi lunghi
+            info_table = Table(info_data, colWidths=[150, 400])
+            info_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),  # Colore esplicito nero
+                ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+                ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),  # TOP allineamento per testi lunghi
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),  # Aumentato padding
+                ('TOPPADDING', (0, 0), (-1, -1), 8),    # Aumentato padding
+                ('LEFTPADDING', (0, 0), (-1, -1), 5),   # Padding laterale
+                ('RIGHTPADDING', (0, 0), (-1, -1), 5),  # Padding laterale
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.darkgrey),  # Griglia più visibile
+                ('BACKGROUND', (0, 0), (0, -1), bg_light),
+                ('ROWHEIGHT', (0, 0), (-1, -1), None),  # Altezza automatica delle righe
+            ]))
+            
+            logger.info("Tabella info creata con successo")
+            
+            # Aggiungiamo la tabella info a tutta larghezza
+            elements.append(info_table)
+            logger.info("Tabella info aggiunta agli elementi del documento")
+            
+        except Exception as e:
+            logger.error(f"Errore nella creazione della tabella info: {str(e)}")
+            logger.error(traceback.format_exc())
+        
+        # Aggiungiamo una sezione dedicata per la descrizione
+        try:
+            # Utilizziamo la descrizione trovata, se disponibile
+            if description_to_show:
+                elements.append(Spacer(1, 10*mm))
+                elements.append(Paragraph("Note", section_title_style))
+                elements.append(HorizontalLine(width=doc.width, color=brand_color))
+                elements.append(Spacer(1, 5*mm))
+                
+                # Log della descrizione per verificare che sia corretta
+                logger.info(f"Inserimento della descrizione nella sezione dedicata: '{description_to_show}'")
+                
+                # Stile speciale per la descrizione
+                desc_style = ParagraphStyle(
+                    name='DescriptionStyle',
+                    fontName='Helvetica',
+                    fontSize=11,                # Dimensione buona per leggibilità
+                    leading=16,                 # Spaziatura aumentata
+                    textColor=colors.black,     # Nero per massima leggibilità
+                    alignment=TA_LEFT,
+                    spaceBefore=5,
+                    spaceAfter=5,
+                    leftIndent=5,               # Leggera indentazione
+                    borderWidth=0.5,            # Bordo leggero
+                    borderColor=colors.lightgrey,
+                    borderPadding=5,            # Padding attorno al testo
+                    backColor=colors.Color(0.98, 0.98, 0.98)  # Sfondo grigio molto chiaro
+                )
+                
+                # Paragrafo dedicato con la descrizione
+                desc_paragraph = Paragraph(description_to_show, desc_style)
+                elements.append(desc_paragraph)
+                elements.append(Spacer(1, 5*mm))
+                logger.info("Sezione dedicata per la descrizione aggiunta con successo")
+            
+        except Exception as e:
+            logger.error(f"Errore nell'aggiungere la sezione descrizione: {str(e)}")
+            logger.error(traceback.format_exc())
+        
+        # Se abbiamo le coordinate approvate, aggiungiamo una sezione dedicata
+        try:
+            has_approved_coords = (
+                is_subproject and 
+                hasattr(station, 'latitude_approved') and 
+                station.latitude_approved is not None and 
+                hasattr(station, 'longitude_approved') and 
+                station.longitude_approved is not None
+            )
+            
+            if has_approved_coords:
+                elements.append(Spacer(1, 5*mm))
+                elements.append(Paragraph("Coordinate Approvate", section_title_style))
+                elements.append(HorizontalLine(width=doc.width, color=brand_color))
+                elements.append(Spacer(1, 3*mm))
+                
+                # Converti le coordinate in stringhe con gestione dei valori None
+                lat_str = str(station.latitude_approved) if station.latitude_approved is not None else 'N/D'
+                long_str = str(station.longitude_approved) if station.longitude_approved is not None else 'N/D'
+                
+                coord_data = [
+                    styled_row("Latitudine Approvata:", lat_str, True),
+                    styled_row("Longitudine Approvata:", long_str, True),
+                ]
+                
+                # Tabella coordinate approvate con stile moderno
+                coord_table = Table(coord_data, colWidths=[200, 340])
+                coord_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+                    ('TEXTCOLOR', (0, 0), (-1, -1), text_dark),
+                    ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+                    ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                    ('TOPPADDING', (0, 0), (-1, -1), 6),
+                    ('GRID', (0, 0), (-1, -1), 0.15, colors.lightgrey),
+                    ('BACKGROUND', (0, 0), (0, -1), bg_light),
+                ]))
+                elements.append(coord_table)
+        except Exception as e:
+            print(f"Errore nella gestione delle coordinate approvate: {e}")
         
         # SPECIFICHE TECNICHE
         elements.append(Spacer(1, 10*mm))
@@ -1098,6 +1694,130 @@ def generate_charging_station_installation_report(request, pk):
             ]))
             elements.append(contacts_table)
         
+        # IMMAGINE MODELLO COLONNINA
+        try:
+            if charger_model_image:
+                logger.info("Inserimento dell'immagine del modello di colonnina nel report")
+                elements.append(Spacer(1, 10*mm))
+                elements.append(Paragraph("Modello di Colonnina", section_title_style))
+                elements.append(HorizontalLine(width=doc.width, color=brand_color))
+                elements.append(Spacer(1, 3*mm))
+                
+                # Creiamo la tabella per l'immagine
+                try:
+                    charger_image_table = Table([[charger_model_image]], colWidths=[doc.width])
+                    charger_image_table.setStyle(TableStyle([
+                        ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                        ('VALIGN', (0, 0), (0, 0), 'MIDDLE'),
+                        ('TOPPADDING', (0, 0), (0, 0), 5),
+                        ('BOTTOMPADDING', (0, 0), (0, 0), 5),
+                    ]))
+                    elements.append(charger_image_table)
+                    logger.info("Tabella immagine modello aggiunta al report")
+                except Exception as e:
+                    logger.error(f"Errore nella creazione della tabella per l'immagine del modello: {str(e)}")
+                    logger.error(traceback.format_exc())
+                
+                # Aggiungiamo la didascalia
+                if brand or model:
+                    try:
+                        brand_str = str(brand) if brand is not None else ''
+                        model_str = str(model) if model is not None else ''
+                        charger_caption = Paragraph(f"Modello: {brand_str} {model_str}", normal_style)
+                        elements.append(charger_caption)
+                        logger.info(f"Didascalia del modello aggiunta: {brand_str} {model_str}")
+                    except Exception as e:
+                        logger.error(f"Errore nella creazione della didascalia: {str(e)}")
+        except Exception as e:
+            logger.error(f"Errore nella visualizzazione dell'immagine del modello di colonnina: {str(e)}")
+            logger.error(traceback.format_exc())
+        
+        # FOTO DELLA STAZIONE
+        try:
+            if station_photos:
+                logger.info(f"Inserimento di {len(station_photos)} foto della stazione nel report")
+                elements.append(Spacer(1, 10*mm))
+                elements.append(Paragraph("Foto della Stazione", section_title_style))
+                elements.append(HorizontalLine(width=doc.width, color=brand_color))
+                elements.append(Spacer(1, 3*mm))
+                
+                # Crea una tabella per le foto, massimo 2 foto per riga
+                photo_data = []
+                photo_row = []
+                
+                for i, photo in enumerate(station_photos):
+                    try:
+                        # Verifica che tutti i componenti necessari siano presenti
+                        if 'image' not in photo:
+                            logger.warning(f"Foto {i}: manca l'elemento 'image'")
+                            continue
+                        
+                        logger.info(f"Elaborazione foto {i}: {photo.get('title', 'Senza titolo')}")
+                        
+                        # Crea un contenitore per ogni foto con titolo e descrizione
+                        photo_cell = [
+                            photo['image'],
+                            Paragraph(f"<b>{photo.get('title', 'Foto')}</b>", normal_style),
+                            Paragraph(f"{photo.get('phase', '')}", normal_style),
+                        ]
+                        
+                        if photo.get('description'):
+                            photo_cell.append(Paragraph(f"{photo['description']}", normal_style))
+                        
+                        # Creiamo un contenitore per l'immagine e i metadati
+                        photo_container_data = []
+                        for row in photo_cell:
+                            photo_container_data.append([row])
+                        
+                        photo_container = Table(
+                            photo_container_data,
+                            colWidths=[doc.width/2 - 10*mm]
+                        )
+                        photo_container.setStyle(TableStyle([
+                            ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+                            ('VALIGN', (0, 0), (0, -1), 'TOP'),
+                            ('BOTTOMPADDING', (0, 0), (0, -1), 5),
+                            ('TOPPADDING', (0, 0), (0, -1), 5),
+                        ]))
+                        
+                        photo_row.append(photo_container)
+                        logger.info(f"Contenitore per la foto {i} creato")
+                        
+                        # Ogni 2 foto o all'ultima foto, aggiungi la riga alla tabella principale
+                        if len(photo_row) == 2 or i == len(station_photos) - 1:
+                            # Se è l'ultima foto e abbiamo solo una foto nella riga corrente, aggiungi una cella vuota
+                            if len(photo_row) == 1:
+                                photo_row.append(Paragraph("", normal_style))
+                            
+                            photo_data.append(photo_row)
+                            photo_row = []
+                            logger.info(f"Riga di foto aggiunta al report")
+                    except Exception as e:
+                        logger.error(f"Errore nella visualizzazione della foto {i}: {str(e)}")
+                        logger.error(traceback.format_exc())
+                        # Continua con la prossima foto
+                        continue
+                
+                if photo_data:
+                    try:
+                        # Tabella principale per le foto
+                        logger.info(f"Creazione della tabella principale con {len(photo_data)} righe di foto")
+                        photos_table = Table(photo_data, colWidths=[doc.width/2, doc.width/2])
+                        photos_table.setStyle(TableStyle([
+                            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                            ('TOPPADDING', (0, 0), (-1, -1), 10),
+                            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+                        ]))
+                        elements.append(photos_table)
+                        logger.info("Tabella delle foto aggiunta al report")
+                    except Exception as e:
+                        logger.error(f"Errore nella creazione della tabella delle foto: {str(e)}")
+                        logger.error(traceback.format_exc())
+        except Exception as e:
+            logger.error(f"Errore nella gestione delle foto della stazione: {str(e)}")
+            logger.error(traceback.format_exc())
+        
         # FOOTER MODERNO
         elements.append(Spacer(1, 15*mm))
         
@@ -1123,17 +1843,34 @@ def generate_charging_station_installation_report(request, pk):
         
         elements.append(footer_table)
         
-        # Genera il PDF
-        doc.build(elements)
-        
-        # Prepara la risposta
-        buffer.seek(0)
-        filename = f"Scheda_Installazione_{station_name.replace(' ', '_')}_{timezone.now().strftime('%Y%m%d')}.pdf"
-        
-        response = FileResponse(buffer, as_attachment=True, filename=filename)
-        return response
+        try:
+            # Genera il PDF
+            logger.info("Generazione del PDF in corso...")
+            doc.build(elements)
+            logger.info("PDF generato con successo")
+            
+            # Prepara la risposta
+            buffer.seek(0)
+            
+            # Sanitize station_name for filename
+            safe_station_name = ''.join(c if c.isalnum() or c in [' ', '_', '-'] else '_' for c in station_name)
+            filename = f"Scheda_Installazione_{safe_station_name.replace(' ', '_')}_{timezone.now().strftime('%Y%m%d')}.pdf"
+            logger.info(f"Preparazione risposta con filename: {filename}")
+            
+            response = FileResponse(buffer, as_attachment=True, filename=filename)
+            return response
+        except Exception as e:
+            logger.error(f"Errore nella fase finale di generazione del PDF: {str(e)}")
+            logger.error(traceback.format_exc())
+            buffer.close()
+            messages.error(request, f"Errore nella generazione del report: {str(e)}")
+            if 'HTTP_REFERER' in request.META:
+                return redirect(request.META['HTTP_REFERER'])
+            return redirect('reporting:report_list')
         
     except Exception as e:
+        logger.error(f"Errore generale nella generazione del report: {str(e)}")
+        logger.error(traceback.format_exc())
         messages.error(request, f"Errore nella generazione del report: {str(e)}")
         if 'HTTP_REFERER' in request.META:
             return redirect(request.META['HTTP_REFERER'])

@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'station_planning.apps.StationPlanningConfig', 
     'solar_integration.apps.SolarIntegrationConfig',
     'infrastructure', 
+    'users.apps.UsersConfig',
     
     # App di terze parti
     'crispy_forms',
@@ -77,6 +78,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'users.context_processors.user_avatar',
             ],
         },
     },

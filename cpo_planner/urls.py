@@ -16,6 +16,7 @@ urlpatterns = [
     path('report/', include('cpo_planner.reporting.urls', namespace='reporting')),
     path('environmental/', include('cpo_planner.environmental.urls')),
     path('mappa/', include('cpo_planner.mapping.urls')),
+    path('users/', include('users.urls')),
     # Autenticazione
     path('login/', auth_views.LoginView.as_view(template_name='auth/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='/login/'), name='logout'),

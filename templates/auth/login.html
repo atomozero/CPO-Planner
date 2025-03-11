@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Login - CPO Planner{% endblock %}
+{% block title %}CPO Planner | Piattaforma Avanzata per la Gestione delle Infrastrutture di Ricarica EV{% endblock %}
 
 {% block auth_content %}
 <div class="container">
@@ -11,22 +11,50 @@
                 <div class="card-body p-0">
                     <div class="row">
                         <div class="col-lg-6 d-none d-lg-block bg-login-image">
-                            <!-- Background image will be set via CSS -->
+                            <div class="overlay-text p-4">
+                                <h2 class="text-white mb-3">Il Software Open Source per CPO Leader di Settore</h2>
+                                <p class="text-white mb-4">Pianifica, progetta e gestisci le tue infrastrutture di ricarica per veicoli elettrici con la piattaforma più completa sul mercato</p>
+                                <ul class="benefits-list text-white">
+                                    <li><i class="fas fa-chart-line mr-2"></i> ROI e analisi finanziarie precise</li>
+                                    <li><i class="fas fa-solar-panel mr-2"></i> Integrazione con impianti fotovoltaici</li>
+                                    <li><i class="fas fa-file-invoice mr-2"></i> Business plan professionali automatizzati</li>
+                                    <li><i class="fas fa-project-diagram mr-2"></i> Gestione modulare multi-progetto</li>
+                                    <li><i class="fas fa-calendar-alt mr-2"></i> Cronoprogrammi dettagliati</li>
+                                    <li><i class="fas fa-print mr-2"></i> Documenti per comuni e finanziatori</li>
+                                </ul>
+                                <div class="mt-4">
+                                    <span class="badge badge-light p-2 mr-2">Open Source</span>
+                                    <span class="badge badge-success p-2">Sostenibilità Ambientale</span>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-lg-6">
                             <div class="p-5">
                                 <div class="text-center">
-                                    <h1 class="h4 text-gray-900 mb-4">Benvenuto in CPO Planner</h1>
+                                    <img src="{% static '/img/favicon.svg' %}" alt="CPO Planner" class="mb-4" style="max-height: 70px;">
+                                    <h1 class="h3 text-gray-900 mb-2">CPO Planner</h1>
+                                    <h2 class="h5 text-primary mb-4">Investi nel futuro della mobilità elettrica</h2>
+                                    <p class="text-muted mb-4">La piattaforma avanzata per i Charge Point Operator che vogliono massimizzare il ROI delle infrastrutture di ricarica</p>
                                 </div>
                                 <form class="user" method="post">
                                     {% csrf_token %}
                                     <div class="form-group">
-                                        <input type="text" class="form-control form-control-user" name="username" 
-                                               placeholder="Username" required>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                            </div>
+                                            <input type="text" class="form-control form-control-user" name="username" 
+                                                   placeholder="Username" required>
+                                        </div>
                                     </div>
                                     <div class="form-group">
-                                        <input type="password" class="form-control form-control-user" name="password"
-                                               placeholder="Password" required>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                            </div>
+                                            <input type="password" class="form-control form-control-user" name="password"
+                                                   placeholder="Password" required>
+                                        </div>
                                     </div>
                                     <div class="form-group">
                                         <div class="custom-control custom-checkbox small">
@@ -36,16 +64,28 @@
                                     </div>
                                     {% if form.errors %}
                                     <div class="alert alert-danger">
-                                        Username o password non validi. Per favore riprova.
+                                        <i class="fas fa-exclamation-circle mr-2"></i> Username o password non validi. Per favore riprova.
                                     </div>
                                     {% endif %}
                                     <button type="submit" class="btn btn-primary btn-user btn-block">
-                                        Login
+                                        <i class="fas fa-sign-in-alt mr-2"></i> Accedi
                                     </button>
                                 </form>
                                 <hr>
                                 <div class="text-center">
-                                    <a class="small" href="{% url 'password_reset' %}">Password dimenticata?</a>
+                                    <!-- Link password reset rimosso temporaneamente -->
+                                    <a class="small" href="#"><i class="fas fa-key mr-1"></i> Password dimenticata?</a>
+                                </div>
+                                {% if register_url %}
+                                <!-- Link registrazione rimosso temporaneamente -->
+                                {% endif %}
+                                <div class="text-center mt-4">
+                                    <div class="small text-success">
+                                        <i class="fas fa-leaf"></i> Investi nel futuro sostenibile della mobilità
+                                    </div>
+                                    <div class="small text-primary mt-1">
+                                        <i class="fas fa-bolt"></i> Massimizza i tuoi investimenti nell'elettrico
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -60,12 +100,12 @@
 {% block extra_css %}
 <style>
     .bg-login-image {
-        background: url('{% static "img/login-bg.jpg" %}');
+        background: url('{% static "img/charging-station-large.jpg" %}');
         background-position: center;
         background-size: cover;
+        position: relative;
     }
     
-    /* Fallback if image not available */
     .bg-login-image:before {
         content: "";
         position: absolute;
@@ -73,8 +113,87 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
-        opacity: 0.8;
+        background: linear-gradient(135deg, rgba(25, 118, 210, 0.8) 0%, rgba(10, 61, 98, 0.9) 100%);
+    }
+    
+    .overlay-text {
+        position: relative;
+        z-index: 10;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    
+    .benefits-list {
+        list-style: none;
+        padding-left: 0;
+        margin-bottom: 2rem;
+    }
+    
+    .benefits-list li {
+        margin-bottom: 0.8rem;
+        font-size: 1rem;
+    }
+    
+    /* Effetti visual marketing */
+    .badge-success {
+        background-color: #28a745;
+        background-image: linear-gradient(45deg, #28a745, #20c997);
+    }
+    
+    .badge-light {
+        background-image: linear-gradient(45deg, #f8f9fa, #e9ecef);
+        color: #1976D2;
+        font-weight: 600;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(to right, #1976D2, #2196F3);
+        border: none;
+        transition: all 0.3s;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(33, 150, 243, 0.3);
+    }
+    
+    .form-control-user {
+        border-radius: 0.5rem;
+    }
+    
+    .input-group-text {
+        border-top-left-radius: 0.5rem;
+        border-bottom-left-radius: 0.5rem;
+        background-color: #f8f9fc;
+    }
+    
+    .card {
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+    
+    @media (max-width: 992px) {
+        .overlay-text {
+            padding: 2rem;
+            text-align: center;
+        }
     }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Animazione rimossa temporaneamente
+        // $('.card').addClass('animate__animated animate__fadeIn');
+        
+        // Focus automatico sul campo username
+        $('input[name="username"]').focus();
+    });
+</script>
 {% endblock %}

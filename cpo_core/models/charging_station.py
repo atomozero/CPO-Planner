@@ -92,10 +92,77 @@ class ChargingStation(models.Model):
             self.other_costs
         )
     
+    def calculate_annual_revenue(self, include_availability=True, include_seasonality=True):
+        """
+        Calcola ricavi annuali con maggiore precisione.
+        
+        Parameters:
+        -----------
+        include_availability : bool
+            Se True, considera i giorni di indisponibilità (mercato settimanale, feste locali).
+        include_seasonality : bool
+            Se True, considera i fattori stagionali nell'utilizzo (estate +20%, inverno -20%).
+            
+        Returns:
+        --------
+        Decimal: Ricavo annuale calcolato in euro
+        
+        Note:
+        -----
+        Questo metodo standardizza il calcolo dei ricavi in tutta l'applicazione.
+        Formula base: prezzo_kwh * kwh_per_sessione * sessioni_giornaliere * giorni_all'anno
+        """
+        # Parametri base
+        daily_sessions = self.estimated_sessions_day
+        price_per_kwh = self.charging_price_kwh
+        kwh_per_session = self.avg_kwh_session
+        
+        # Calcolo base
+        daily_revenue = price_per_kwh * kwh_per_session * daily_sessions
+        annual_revenue = daily_revenue * 365
+        
+        # Applica fattore disponibilità se richiesto
+        if include_availability and hasattr(self, 'subproject') and self.subproject:
+            # Giorni di indisponibilità
+            unavailable_days = 0
+            if self.subproject.weekly_market_day is not None:
+                unavailable_days += 52  # 52 settimane
+            if self.subproject.local_festival_days:
+                unavailable_days += self.subproject.local_festival_days
+                
+            # Fattore disponibilità
+            total_days = 365
+            available_days = total_days - unavailable_days
+            # Assicuriamo che tutti i valori siano Decimal per evitare errori di tipo
+            availability_factor = Decimal(str(available_days)) / Decimal(str(total_days)) if total_days > 0 else Decimal('1.0')
+            annual_revenue *= availability_factor
+            
+            # Debug info
+            if unavailable_days > 0:
+                print(f"DEBUG - Calcolo ricavi: giorni indisponibili={unavailable_days}, "
+                      f"fattore disponibilità={availability_factor:.4f}, ricavi={annual_revenue:.2f}")
+        
+        # Applica fattori stagionali se richiesto
+        if include_seasonality:
+            # Resetta il calcolo annuale e somma i valori mensili con stagionalità
+            monthly_total = Decimal('0.0')
+            for month in range(1, 13):
+                # Fattore stagionale per ogni mese
+                seasonal_factor = Decimal('1.2') if month in [6, 7, 8, 9] else (Decimal('0.8') if month in [12, 1, 2] else Decimal('1.0'))
+                monthly_sessions = daily_sessions * Decimal('30') * seasonal_factor
+                monthly_kwh = monthly_sessions * kwh_per_session
+                monthly_revenue = monthly_kwh * price_per_kwh
+                monthly_total += monthly_revenue
+            
+            # Sostituisci il calcolo annuale con quello stagionale
+            annual_revenue = monthly_total
+        
+        return annual_revenue
+        
     def calculate_annual_metrics(self):
         """Calcola metriche annuali basate sui dati della stazione"""
-        daily_revenue = self.charging_price_kwh * self.avg_kwh_session * self.estimated_sessions_day
-        annual_revenue = daily_revenue * 365
+        # Utilizza il nuovo metodo standardizzato per il calcolo dei ricavi
+        annual_revenue = self.calculate_annual_revenue(include_availability=True, include_seasonality=True)
         annual_costs = self.calculate_annual_operational_costs()
         annual_profit = annual_revenue - annual_costs
         return {

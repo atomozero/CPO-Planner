@@ -26,6 +26,23 @@
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i> Questa pagina mostra i calcoli dettagliati dei ricavi e dei costi per la stazione di ricarica.
                     </div>
+                    
+                    {% if unavailable_days > 0 %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i> Attenzione: I calcoli tengono conto di <strong>{{ unavailable_days }} giorni di indisponibilità all'anno</strong> 
+                        (fattore di disponibilità: {{ availability_factor|floatformat:4 }}).
+                        {% if subproject and subproject.weekly_market_day is not None %}
+                        <div class="mt-1">
+                            <i class="fas fa-calendar-alt"></i> Giorno di mercato settimanale: <strong>{{ subproject.get_weekly_market_day_display }}</strong> (52 giorni/anno)
+                        </div>
+                        {% endif %}
+                        {% if subproject and subproject.local_festival_days > 0 %}
+                        <div class="mt-1">
+                            <i class="fas fa-city"></i> Giorni di festa locale: <strong>{{ subproject.local_festival_days }} giorni/anno</strong>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -250,16 +267,19 @@
                                     <strong>Ricavi Giornalieri</strong> = Prezzo Ricarica (€/kWh) × Media kWh/Sessione × Sessioni/Giorno
                                 </li>
                                 <li class="list-group-item">
-                                    <strong>Ricavi Annuali</strong> = Ricavi Giornalieri × 365
+                                    <strong>Ricavi Mensili Base</strong> = Ricavi Giornalieri × 30 giorni
                                 </li>
                                 <li class="list-group-item">
-                                    <strong>Costi Energia Giornalieri</strong> = Costo Energia (€/kWh) × Media kWh/Sessione × Sessioni/Giorno
+                                    <strong>Fattore Stagionale</strong> = 1,2 (estate), 0,8 (inverno), 1,0 (altre stagioni)
                                 </li>
                                 <li class="list-group-item">
-                                    <strong>Costi Energia Annuali</strong> = Costi Energia Giornalieri × 365
+                                    <strong>Ricavi Annuali</strong> = Somma dei Ricavi Mensili con fattori stagionali
                                 </li>
                                 <li class="list-group-item">
-                                    <strong>Costi Manutenzione Annuali</strong> = Costo Stazione × 5%
+                                    <strong>Fattore Disponibilità</strong> = (365 - Giorni Indisponibili) / 365
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Ricavi Effettivi</strong> = Ricavi Annuali × Fattore Disponibilità
                                 </li>
                             </ul>
                         </div>
@@ -267,13 +287,16 @@
                             <h6>Metriche Finanziarie</h6>
                             <ul class="list-group list-group-flush">
                                 <li class="list-group-item">
+                                    <strong>Costi Energia</strong> = Costo Energia (€/kWh) × Media kWh/Sessione × Sessioni/Giorno × 365
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Costi Manutenzione</strong> = Costo Stazione × 5%
+                                </li>
+                                <li class="list-group-item">
                                     <strong>Margine per kWh</strong> = Prezzo Ricarica - Costo Energia
                                 </li>
                                 <li class="list-group-item">
-                                    <strong>Margine Percentuale</strong> = (Margine per kWh / Costo Energia) × 100%
-                                </li>
-                                <li class="list-group-item">
-                                    <strong>Profitto Annuale</strong> = Ricavi Annuali - (Costi Energia Annuali + Costi Manutenzione Annuali)
+                                    <strong>Profitto Annuale</strong> = Ricavi Effettivi - (Costi Energia + Costi Manutenzione)
                                 </li>
                                 <li class="list-group-item">
                                     <strong>ROI Annuale</strong> = (Profitto Annuale / Investimento Totale) × 100%

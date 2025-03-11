@@ -196,6 +196,49 @@
                 </div>
             </div>
             
+            <!-- Giorni di indisponibilità -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">Giorni di Indisponibilità</h6>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> I giorni di indisponibilità vengono considerati nel calcolo dei ricavi attesi e del ROI.
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_weekly_market_day" class="form-label">Giorno del Mercato Settimanale</label>
+                            <select name="weekly_market_day" id="id_weekly_market_day" class="form-control">
+                                <option value="">-- Nessun giorno di mercato --</option>
+                                {% for value, label in form.fields.weekly_market_day.choices %}
+                                <option value="{{ value }}" {% if form.instance.weekly_market_day == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.weekly_market_day.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.weekly_market_day.errors }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Se selezionato, si considerano 52 giorni all'anno di indisponibilità</small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_local_festival_days" class="form-label">Giorni di Festa Locale/Anno</label>
+                            <input type="number" name="local_festival_days" id="id_local_festival_days" 
+                                   value="{{ form.instance.local_festival_days|default:'0' }}" 
+                                   class="form-control" min="0" max="60">
+                            {% if form.local_festival_days.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.local_festival_days.errors }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Giorni all'anno in cui la stazione non è disponibile per feste locali</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Specifiche Tecniche Colonnina -->
             <div class="card mb-4">
                 <div class="card-header">

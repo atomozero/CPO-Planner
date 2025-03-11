@@ -21,6 +21,25 @@ class SubProjectDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         context['project'] = self.object.project
         
+        # Calcola i giorni di indisponibilità e il fattore di disponibilità
+        unavailable_days = 0
+        if self.object.weekly_market_day is not None:
+            unavailable_days += 52  # 52 settimane all'anno
+        
+        # Aggiungi giorni di festa locale
+        if self.object.local_festival_days:
+            unavailable_days += self.object.local_festival_days
+            
+        # Calcola il fattore di disponibilità
+        total_days = 365
+        available_days = total_days - unavailable_days
+        availability_factor = available_days / total_days if total_days > 0 else 1.0
+        
+        # Aggiungi al contesto
+        context['unavailable_days'] = unavailable_days
+        context['available_days'] = available_days
+        context['availability_factor'] = availability_factor
+        
         # Ottieni le foto della stazione
         from cpo_core.models.charging_station import ChargingStationPhoto
         from cpo_core.models.charging_station import ChargingStation

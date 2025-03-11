@@ -215,43 +215,52 @@ class SubProject(models.Model):
         if total_cost > 0:
             self.budget = total_cost
             
-        # Calcola i ricavi attesi e il ROI se c'è un profilo di utilizzo
-        if self.usage_profile and self.power_kw:
-            # Ricavi mensili stimati in base al profilo di utilizzo
-            monthly_usage = self.usage_profile.calculate_monthly_usage(float(self.power_kw))
+        # Calcola i ricavi attesi e il ROI utilizzando il metodo standardizzato
+        from cpo_core.models.charging_station import ChargingStation
+        
+        if self.power_kw:
+            # Assicuriamo che i parametri relativi ai giorni di indisponibilità siano validi
+            if self.local_festival_days is None:
+                self.local_festival_days = 0
+                
+            # Crea una stazione virtuale temporanea per utilizzare il metodo di calcolo standardizzato
+            temp_station = ChargingStation(
+                power_kw=self.power_kw,
+                charging_price_kwh=Decimal('0.45'),  # Prezzo standard
+                avg_kwh_session=Decimal('15.0'),     # kWh per sessione standard
+                estimated_sessions_day=Decimal('5.0')  # Sessioni al giorno standard
+            )
             
-            # Calcolo dei giorni di indisponibilità all'anno
-            unavailable_days = 0
+            # Imposta il riferimento al subproject per accedere ai dati di indisponibilità
+            temp_station.subproject = self
             
-            # Se c'è un giorno di mercato settimanale, sono 52 giorni all'anno
-            if self.weekly_market_day is not None:
-                unavailable_days += 52  # 52 settimane
+            # Calcola il ricavo annuale utilizzando il metodo standardizzato
+            try:
+                annual_revenue = temp_station.calculate_annual_revenue(
+                    include_availability=True,  # Considera i giorni di indisponibilità
+                    include_seasonality=True    # Considera i fattori stagionali
+                )
+            except Exception as e:
+                print(f"DEBUG - Errore nel calcolo ricavi: {e}")
+                # Fallback in caso di errore: calcolo più semplice
+                daily_revenue = temp_station.charging_price_kwh * temp_station.avg_kwh_session * temp_station.estimated_sessions_day
+                annual_revenue = daily_revenue * Decimal('365')
             
-            # Aggiungi i giorni di festa paesana
-            if self.local_festival_days:
-                unavailable_days += self.local_festival_days
-            
-            # Calcolo del fattore di disponibilità (giorni disponibili / giorni totali)
-            total_days = 365
-            available_days = total_days - unavailable_days
-            availability_factor = available_days / total_days if total_days > 0 else 1.0
-            
-            # Assumiamo un prezzo medio di vendita di 0.45€/kWh
-            monthly_revenue = monthly_usage * 0.45
-            
-            # Il ricavo annuale tiene conto dei giorni di indisponibilità
-            annual_revenue = monthly_revenue * 12 * availability_factor
+            # Aggiorna i campi nel modello
             self.expected_revenue = annual_revenue
             
             # Debug info
-            print(f"DEBUG - Calcolo ricavi con giorni indisponibili: mercato={self.weekly_market_day}, "
-                  f"feste={self.local_festival_days}, giorni indisponibili={unavailable_days}, "
-                  f"fattore disponibilità={availability_factor:.4f}, ricavi={annual_revenue:.2f}")
+            print(f"DEBUG - Calcolo ricavi standardizzato: power_kw={self.power_kw}, "
+                  f"mercato={self.weekly_market_day}, feste={self.local_festival_days}, "
+                  f"ricavi={annual_revenue:.2f}")
             
             # Calcolo ROI
             if self.budget and self.budget > 0:
                 # ROI annuo = (ricavi annuali / investimento totale) * 100
-                self.roi = (annual_revenue / float(self.budget)) * 100
+                # Converti entrambi i valori a Decimal per evitare errori di tipo
+                annual_revenue_decimal = Decimal(str(annual_revenue)) if not isinstance(annual_revenue, Decimal) else annual_revenue
+                budget_decimal = Decimal(str(self.budget)) if not isinstance(self.budget, Decimal) else self.budget
+                self.roi = (annual_revenue_decimal / budget_decimal) * Decimal('100')
         
         super().save(*args, **kwargs)
         # Aggiorna le metriche del progetto principale dopo il salvataggio

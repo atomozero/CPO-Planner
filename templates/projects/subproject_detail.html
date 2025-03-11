@@ -84,6 +84,71 @@
             </div>
         </div>
         
+        <!-- Giorni di Indisponibilità -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Giorni di Indisponibilità</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <tbody>
+                            <tr>
+                                <th width="40%">Giorno di Mercato Settimanale</th>
+                                <td>
+                                    {% if subproject.weekly_market_day is not None %}
+                                        {{ subproject.get_weekly_market_day_display }}
+                                        <span class="badge badge-info ml-2">52 giorni/anno</span>
+                                    {% else %}
+                                        <span class="text-muted">Nessun giorno di mercato</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Giorni di Festa Locale</th>
+                                <td>
+                                    {% if subproject.local_festival_days %}
+                                        {{ subproject.local_festival_days }} giorni all'anno
+                                    {% else %}
+                                        <span class="text-muted">Nessun giorno di festa locale</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Totale Giorni Indisponibili</th>
+                                <td>
+                                    {% if unavailable_days > 0 %}
+                                        <strong>{{ unavailable_days }} giorni all'anno</strong>
+                                        
+                                        {% if subproject.weekly_market_day is not None and subproject.local_festival_days %}
+                                            <div class="small text-muted mt-1">
+                                                (52 giorni di mercato + {{ subproject.local_festival_days }} giorni di feste)
+                                            </div>
+                                        {% elif subproject.weekly_market_day is not None %}
+                                            <div class="small text-muted mt-1">(solo mercato settimanale)</div>
+                                        {% elif subproject.local_festival_days %}
+                                            <div class="small text-muted mt-1">(solo feste locali)</div>
+                                        {% endif %}
+                                        
+                                        <div class="mt-2">
+                                            <span class="badge badge-warning">
+                                                Fattore disponibilità: {{ availability_factor|floatformat:4 }}
+                                            </span>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">Nessun giorno di indisponibilità</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="alert alert-info mt-3 mb-0">
+                    <i class="fas fa-info-circle mr-1"></i> I giorni di indisponibilità vengono considerati nel calcolo dei ricavi attesi e del ROI.
+                </div>
+            </div>
+        </div>
+        
         <!-- Specifiche Tecniche della Colonnina -->
         <div class="card shadow mb-4">
             <div class="card-header py-3">

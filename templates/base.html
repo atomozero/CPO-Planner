@@ -33,9 +33,68 @@
         .sidebar-divider {
             margin: 0 1rem 1rem;
         }
+        
+        /* Stile per il preloader */
+        #preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #f8f9fc;
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0, 0, 123, 0.1);
+            border-radius: 50%;
+            border-top-color: #4e73df;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Nasconde il contenuto finché non è pronto */
+        #content-container {
+            display: none;
+        }
     </style>
+    
+    <!-- jQuery (necessario per inizializzare tutto prima di mostrare la pagina) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- Script per pre-inizializzare la barra laterale prima di mostrare la pagina -->
+    <script>
+        $(function() {
+            // Verifica se la barra laterale era precedentemente collassata
+            if (localStorage.getItem('sidebar-collapsed') === 'true') {
+                $("body").addClass("sidebar-toggled");
+                $(".sidebar").addClass("toggled");
+            }
+            
+            // Nascondi il preloader e mostra il contenuto
+            setTimeout(function() {
+                $("#preloader").fadeOut(300);
+                $("#content-container").fadeIn(300);
+            }, 300);
+        });
+    </script>
 </head>
 <body id="page-top">
+<!-- Preloader -->
+<div id="preloader">
+    <div id="spinner"></div>
+</div>
+
+<!-- Contenitore principale (inizialmente nascosto) -->
+<div id="content-container">
 {% if not request.path == '/login/' and not 'password-reset' in request.path %}
     <!-- Page Wrapper -->
     <div id="wrapper">
@@ -52,11 +111,11 @@
             <!-- Divider -->
             <hr class="sidebar-divider my-0">
 
-            <!-- Nav Item - Dashboard -->
+            <!-- Nav Item - Dashboard Principale -->
             <li class="nav-item {% if request.path == '/' %}active{% endif %}">
                 <a class="nav-link" href="{% url 'cpo_core:dashboard' %}">
-                    <i class="fas fa-fw fa-tachometer-alt"></i>
-                    <span>Dashboard</span>
+                    <i class="fas fa-fw fa-home"></i>
+                    <span>Home</span>
                 </a>
             </li>
 
@@ -65,94 +124,135 @@
 
             <!-- Heading -->
             <div class="sidebar-heading">
-                Gestione
+                Pianificazione
+            </div>
+
+            <!-- Nav Item - Progetti -->
+            <li class="nav-item {% if 'projects' in request.path %}active{% endif %}">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseProjects"
+                    aria-expanded="true" aria-controls="collapseProjects">
+                    <i class="fas fa-fw fa-project-diagram"></i>
+                    <span>Progetti</span>
+                </a>
+                <div id="collapseProjects" class="collapse" aria-labelledby="headingProjects" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <h6 class="collapse-header">Gestione Progetti:</h6>
+                        <a class="collapse-item" href="{% url 'projects:project_list' %}">Lista Progetti</a>
+                        <a class="collapse-item" href="{% url 'projects:project_create' %}">Nuovo Progetto</a>
+                    </div>
+                </div>
+            </li>
+
+            <!-- Nav Item - Comuni -->
+            <li class="nav-item {% if 'municipality' in request.path %}active{% endif %}">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseMunicipalities"
+                    aria-expanded="true" aria-controls="collapseMunicipalities">
+                    <i class="fas fa-fw fa-city"></i>
+                    <span>Comuni & P.A.</span>
+                </a>
+                <div id="collapseMunicipalities" class="collapse" aria-labelledby="headingMunicipalities" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <h6 class="collapse-header">Gestione Comuni:</h6>
+                        <a class="collapse-item" href="{% url 'infrastructure:municipality-list' %}">Lista Comuni</a>
+                        <a class="collapse-item" href="{% url 'infrastructure:municipality-create' %}">Nuovo Comune</a>
+                        <a class="collapse-item" href="{% url 'infrastructure:import_municipalities' %}">Importa Comuni</a>
+                    </div>
+                </div>
+            </li>
+
+            <!-- Nav Item - Mappatura -->
+            <li class="nav-item {% if 'mappa' in request.path %}active{% endif %}">
+                <a class="nav-link" href="{% url 'mapping:map_view' %}">
+                    <i class="fas fa-fw fa-map-marked-alt"></i>
+                    <span>Mappatura</span>
+                </a>
+            </li>
+
+            <!-- Divider -->
+            <hr class="sidebar-divider">
+
+            <!-- Heading -->
+            <div class="sidebar-heading">
+                Infrastruttura
             </div>
 
             <!-- Nav Item - Infrastructure Dashboard -->
-            <li class="nav-item {% if 'infrastructure' in request.path and 'municipality' not in request.path and 'tech-config' not in request.path %}active{% endif %}">
+            <li class="nav-item {% if 'infrastructure' in request.path and 'tech-config' not in request.path and 'template' not in request.path and 'tariff' not in request.path and 'profile' not in request.path and 'municipality' not in request.path %}active{% endif %}">
                 <a class="nav-link" href="{% url 'infrastructure:dashboard' %}">
                     <i class="fas fa-fw fa-network-wired"></i>
                     <span>Dashboard Infrastruttura</span>
                 </a>
             </li>
             
-            <!-- Nav Item - System Settings -->
-            <li class="nav-item {% if 'tech-config' in request.path %}active{% endif %}">
-                <a class="nav-link" href="{% url 'infrastructure:tech-config' %}">
-                    <i class="fas fa-fw fa-cogs"></i>
-                    <span>Impostazioni Generali</span>
+            <!-- Nav Item - Stazioni di Ricarica -->
+            <li class="nav-item {% if 'station' in request.path %}active{% endif %}">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseStations"
+                    aria-expanded="true" aria-controls="collapseStations">
+                    <i class="fas fa-fw fa-charging-station"></i>
+                    <span>Stazioni di Ricarica</span>
                 </a>
+                <div id="collapseStations" class="collapse" aria-labelledby="headingStations" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <h6 class="collapse-header">Gestione Stazioni:</h6>
+                        <a class="collapse-item" href="{% url 'cpo_core:station_list' %}">Lista Stazioni</a>
+                        <a class="collapse-item" href="{% url 'infrastructure:template-list' %}">Template Stazioni</a>
+                    </div>
+                </div>
             </li>
 
-<!-- Nav Item - Progetti (aggiornato) -->
-<li class="nav-item {% if 'projects' in request.path %}active{% endif %}">
-    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseProjects"
-        aria-expanded="true" aria-controls="collapseProjects">
-        <i class="fas fa-fw fa-project-diagram"></i>
-        <span>Progetti</span>
-    </a>
-    <div id="collapseProjects" class="collapse" aria-labelledby="headingProjects" data-parent="#accordionSidebar">
-        <div class="bg-white py-2 collapse-inner rounded">
-            <h6 class="collapse-header">Gestione Progetti:</h6>
-            <a class="collapse-item" href="{% url 'projects:project_list' %}">Lista Progetti</a>
-            <a class="collapse-item" href="{% url 'projects:project_create' %}">Nuovo Progetto</a>
-        </div>
-    </div>
-</li>
-
-<!-- Nav Item - Comuni -->
-<li class="nav-item {% if 'municipality' in request.path %}active{% endif %}">
-    <a class="nav-link" href="{% url 'infrastructure:municipality-list' %}">
-        <i class="fas fa-fw fa-city"></i>
-        <span>Comuni</span>
-    </a>
-</li>
-
-<!-- Nav Item - Stazioni di Ricarica -->
-<li class="nav-item {% if 'charging-stations' in request.path %}active{% endif %}">
-    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseStations"
-        aria-expanded="true" aria-controls="collapseStations">
-        <i class="fas fa-fw fa-charging-station"></i>
-        <span>Stazioni di Ricarica</span>
-    </a>
-    <div id="collapseStations" class="collapse" aria-labelledby="headingStations" data-parent="#accordionSidebar">
-        <div class="bg-white py-2 collapse-inner rounded">
-            <h6 class="collapse-header">Gestione Stazioni:</h6>
-            <a class="collapse-item" href="{% url 'cpo_core:station_list' %}">Lista Stazioni</a>
-            <a class="collapse-item" href="{% url 'infrastructure:template-list' %}">Template Stazioni</a>
-        </div>
-    </div>
-</li>
+            <!-- Nav Item - Configurazione Tecnica -->
+            <li class="nav-item {% if 'tech-config' in request.path or 'tariff' in request.path or 'profile' in request.path or 'pun-data' in request.path %}active{% endif %}">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseConfig"
+                    aria-expanded="true" aria-controls="collapseConfig">
+                    <i class="fas fa-fw fa-cogs"></i>
+                    <span>Configurazione Tecnica</span>
+                </a>
+                <div id="collapseConfig" class="collapse" aria-labelledby="headingConfig" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <h6 class="collapse-header">Impostazioni:</h6>
+                        <a class="collapse-item" href="{% url 'infrastructure:tech-config' %}">Dashboard Configurazione</a>
+                        <a class="collapse-item" href="{% url 'infrastructure:global-settings' %}">Impostazioni Globali</a>
+                        <h6 class="collapse-header">Energia & Tariffe:</h6>
+                        <a class="collapse-item" href="{% url 'infrastructure:tariff-list' %}">Tariffe Elettriche</a>
+                        <a class="collapse-item" href="{% url 'infrastructure:pun-data-list' %}">Dati PUN</a>
+                        <a class="collapse-item" href="{% url 'infrastructure:energy-projection-list' %}">Proiezioni Energia</a>
+                        <a class="collapse-item" href="{% url 'infrastructure:profile-list' %}">Profili di Utilizzo</a>
+                        <a class="collapse-item" href="{% url 'infrastructure:fee-list' %}">Costi di Gestione</a>
+                    </div>
+                </div>
+            </li>
 
             <!-- Divider -->
             <hr class="sidebar-divider">
 
             <!-- Heading -->
             <div class="sidebar-heading">
-                Analisi
+                Analisi e Report
             </div>
             
             <!-- Nav Item - Analisi Finanziaria -->
-            <li class="nav-item {% if 'financial' in request.path %}active{% endif %}">
-                <a class="nav-link" href="{% url 'cpo_core:financial_overview' %}">
+            <li class="nav-item {% if 'financial' in request.path or 'financial_overview' in request.path %}active{% endif %}">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseFinancial"
+                    aria-expanded="true" aria-controls="collapseFinancial">
                     <i class="fas fa-fw fa-chart-line"></i>
                     <span>Analisi Finanziaria</span>
                 </a>
+                <div id="collapseFinancial" class="collapse" aria-labelledby="headingFinancial" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <h6 class="collapse-header">Strumenti Finanziari:</h6>
+                        <a class="collapse-item" href="{% url 'cpo_core:financial_overview' %}">Panoramica Finanziaria</a>
+                        <a class="collapse-item" href="{% url 'financial:dashboard' %}">Dashboard Finanziaria</a>
+                        <a class="collapse-item" href="{% url 'cpo_core:roi_calculator' %}">Calcolatore ROI</a>
+                        <a class="collapse-item" href="{% url 'financial:report_list' %}">Report Finanziari</a>
+                    </div>
+                </div>
             </li>
             
             <!-- Nav Item - Dashboard Ambientale -->
             <li class="nav-item {% if 'environmental' in request.path %}active{% endif %}">
                 <a class="nav-link" href="{% url 'environmental:dashboard' %}">
                     <i class="fas fa-fw fa-leaf"></i>
-                    <span>Dashboard Ambientale</span>
-                </a>
-            </li>
-            
-            <!-- Nav Item - Mappatura -->
-            <li class="nav-item {% if 'mappa' in request.path %}active{% endif %}">
-                <a class="nav-link" href="{% url 'mapping:map_view' %}">
-                    <i class="fas fa-fw fa-map-marked-alt"></i>
-                    <span>Mappatura</span>
+                    <span>Impatto Ambientale</span>
                 </a>
             </li>
 
@@ -286,13 +386,39 @@
         {% block auth_content %}{% endblock %}
     </div>
 {% endif %}
+</div><!-- Fine contenitore principale -->
 
     <!-- Bootstrap core JavaScript-->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- SB Admin 2 Core JavaScript-->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/startbootstrap-sb-admin-2/4.1.3/js/sb-admin-2.min.js"></script>
+    
+    <!-- Script per mantenere lo stato della barra laterale -->
+    <script>
+    $(document).ready(function() {
+        // Disattiva il codice originale di SB Admin 2
+        $("#sidebarToggle, #sidebarToggleTop").off('click');
+        
+        // Aggiungi il nuovo handler
+        $("#sidebarToggle, #sidebarToggleTop").on('click', function(e) {
+            e.preventDefault();
+            
+            // Toggle delle classi
+            $("body").toggleClass("sidebar-toggled");
+            $(".sidebar").toggleClass("toggled");
+            
+            // Salva lo stato
+            var isToggled = $(".sidebar").hasClass("toggled");
+            localStorage.setItem('sidebar-collapsed', isToggled ? 'true' : 'false');
+            
+            // Chiudi i sottomenu quando la barra è collassata
+            if (isToggled) {
+                $('.sidebar .collapse').collapse('hide');
+            }
+        });
+    });
+    </script>
     
     {% block extra_js %}{% endblock %}
 </body>

@@ -105,6 +105,9 @@ class SubProject(models.Model):
                                           help_text=_("Giorno della settimana in cui si tiene il mercato e la stazione non è disponibile"))
     local_festival_days = models.IntegerField(_("Giorni festa paesana all'anno"), null=True, blank=True, default=0,
                                            help_text=_("Numero di giorni all'anno in cui la stazione non è disponibile per feste locali"))
+    # Nuovo campo per i giorni di pioggia
+    rainy_days = models.PositiveSmallIntegerField(_("Giorni di Pioggia Previsti/Anno"), default=0,
+                                             help_text=_("Giorni di pioggia stimati che riducono l'utilizzo delle colonnine del 30%"))
     
     # Dettagli colonnine
     charger_brand = models.CharField(_("Marca Colonnina"), max_length=100, blank=True, null=True)
@@ -161,6 +164,38 @@ class SubProject(models.Model):
     status_changed_date = models.DateTimeField(_("Data Cambio Stato"), auto_now=False, null=True, blank=True)
     status_changed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, 
                                        related_name='status_changes', verbose_name=_('Cambio Stato Da'))
+    
+    def calculate_availability_factor(self):
+        """
+        Calcola il fattore di disponibilità basato sui giorni di indisponibilità e sui giorni di pioggia
+        """
+        # Giorni totali in un anno
+        total_days = 365
+        
+        # Calcola i giorni di indisponibilità totali
+        unavailable_days = 0
+        
+        # Aggiungi i giorni di mercato (52 settimane)
+        if self.weekly_market_day is not None:
+            unavailable_days += 52
+            
+        # Aggiungi i giorni di festa locale
+        if self.local_festival_days:
+            unavailable_days += self.local_festival_days
+        
+        # Calcolo della disponibilità di base
+        available_days = total_days - unavailable_days
+        base_availability_factor = available_days / total_days if total_days > 0 else 1.0
+        
+        # Calcolo dell'impatto dei giorni di pioggia (riduzione del 30%)
+        rainy_days_impact = 0
+        if self.rainy_days:
+            rainy_days_impact = (self.rainy_days * 0.3) / total_days if total_days > 0 else 0
+        
+        # Fattore di disponibilità finale considerando anche i giorni di pioggia
+        availability_factor = base_availability_factor * (1 - rainy_days_impact)
+        
+        return availability_factor
     
     def save(self, *args, **kwargs):
         # Debug: mostra i valori dei costi prima del salvataggio
@@ -223,6 +258,10 @@ class SubProject(models.Model):
             if self.local_festival_days is None:
                 self.local_festival_days = 0
                 
+            # Assicuriamo che rainy_days sia valido
+            if self.rainy_days is None:
+                self.rainy_days = 0
+                
             # Crea una stazione virtuale temporanea per utilizzare il metodo di calcolo standardizzato
             temp_station = ChargingStation(
                 power_kw=self.power_kw,
@@ -244,7 +283,10 @@ class SubProject(models.Model):
                 print(f"DEBUG - Errore nel calcolo ricavi: {e}")
                 # Fallback in caso di errore: calcolo più semplice
                 daily_revenue = temp_station.charging_price_kwh * temp_station.avg_kwh_session * temp_station.estimated_sessions_day
-                annual_revenue = daily_revenue * Decimal('365')
+                
+                # Considera il fattore di disponibilità che ora include i giorni di pioggia
+                availability_factor = self.calculate_availability_factor()
+                annual_revenue = daily_revenue * Decimal('365') * Decimal(str(availability_factor))
             
             # Aggiorna i campi nel modello
             self.expected_revenue = annual_revenue
@@ -252,7 +294,7 @@ class SubProject(models.Model):
             # Debug info
             print(f"DEBUG - Calcolo ricavi standardizzato: power_kw={self.power_kw}, "
                   f"mercato={self.weekly_market_day}, feste={self.local_festival_days}, "
-                  f"ricavi={annual_revenue:.2f}")
+                  f"pioggia={self.rainy_days}, ricavi={annual_revenue:.2f}")
             
             # Calcolo ROI
             if self.budget and self.budget > 0:

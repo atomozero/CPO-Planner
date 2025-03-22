@@ -25,9 +25,6 @@
                     </div>
                     {% endif %}
                 </div>
-                
-                <!-- Campo Comune (preselezionato Milano) -->
-                <input type="hidden" name="municipality" value="1">
             </div>
             
             <!-- Date -->
@@ -114,25 +111,59 @@
                     <small class="form-text text-muted">Calcolato automaticamente in base ai ricavi attesi e al budget</small>
                 </div>
             </div>
-            
+                        
+            <!-- Nuova Sezione Posizione con indirizzo e comune invertiti -->
             <div class="card mb-4">
                 <div class="card-header">
                     <h6 class="m-0 font-weight-bold text-primary">Posizione</h6>
                 </div>
                 <div class="card-body">
-                    <!-- Indirizzo e Dati Catastali -->
+<!-- Soluzione per visualizzare correttamente il nome del comune -->
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <label for="id_address" class="form-label">Indirizzo</label>
+        <input type="text" name="address" id="id_address" value="{{ form.instance.address|default:'' }}" class="form-control">
+        {% if form.address.errors %}
+        <div class="invalid-feedback d-block">
+            {{ form.address.errors }}
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-6 mb-3">
+        <label for="id_municipality_display" class="form-label">Comune</label>
+        
+        <!-- Aggiungiamo un blocco di debug nascosto per verificare quali dati sono disponibili -->
+        <div style="display: none;">
+            Debug: 
+            Project: {{ project }}
+            Project municipality: {{ project.municipality }}
+            Project municipality name: {{ project.municipality.name }}
+            Project region: {{ project.region }}
+            Raw municipality: {{ form.instance.municipality }}
+        </div>
+        
+        <!-- Tentiamo vari modi per ottenere il nome del comune -->
+        {% if project.municipality.name %}
+            <input type="text" id="id_municipality_display" class="form-control" value="{{ project.municipality.name }}" readonly>
+        {% elif project.region %}
+            <input type="text" id="id_municipality_display" class="form-control" value="{{ project.region }}" readonly>
+        {% elif form.instance.municipality.name %}
+            <input type="text" id="id_municipality_display" class="form-control" value="{{ form.instance.municipality.name }}" readonly>
+        {% elif form.instance.municipality %}
+            <input type="text" id="id_municipality_display" class="form-control" value="{{ form.instance.municipality }}" readonly>
+        {% else %}
+            <input type="text" id="id_municipality_display" class="form-control" value="Comune non disponibile" readonly>
+        {% endif %}
+        
+        <input type="hidden" name="municipality" id="id_municipality" value="{{ project.municipality.id|default:form.instance.municipality.id }}">
+        <small class="form-text text-muted">Comune associato al progetto principale</small>
+    </div>
+</div>
+                    
+                    <!-- Dati Catastali -->
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="id_address" class="form-label">Indirizzo</label>
-                            <input type="text" name="address" id="id_address" value="{{ form.instance.address|default:'' }}" class="form-control">
-                            {% if form.address.errors %}
-                            <div class="invalid-feedback d-block">
-                                {{ form.address.errors }}
-                            </div>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-12 mb-3">
                             <label for="id_cadastral_data" class="form-label">Dati Catastali</label>
                             <input type="text" name="cadastral_data" id="id_cadastral_data" value="{{ form.instance.cadastral_data|default:'' }}" class="form-control" placeholder="Foglio, Particella, Subalterno">
                             {% if form.cadastral_data.errors %}
@@ -196,48 +227,72 @@
                 </div>
             </div>
             
-            <!-- Giorni di indisponibilità -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h6 class="m-0 font-weight-bold text-primary">Giorni di Indisponibilità</h6>
+            <!-- Sezione Giorni di Indisponibilità aggiornata con giorni di pioggia -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h6 class="m-0 font-weight-bold text-primary">Giorni di Indisponibilità</h6>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> I giorni di indisponibilità vengono considerati nel calcolo dei ricavi attesi e del ROI.
+        </div>
+        
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label for="id_weekly_market_day" class="form-label">Giorno del Mercato Settimanale</label>
+                <select name="weekly_market_day" id="id_weekly_market_day" class="form-control">
+                    <option value="">-- Nessun giorno di mercato --</option>
+                    {% for value, label in form.fields.weekly_market_day.choices %}
+                    <option value="{{ value }}" {% if form.instance.weekly_market_day == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                {% if form.weekly_market_day.errors %}
+                <div class="invalid-feedback d-block">
+                    {{ form.weekly_market_day.errors }}
                 </div>
-                <div class="card-body">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i> I giorni di indisponibilità vengono considerati nel calcolo dei ricavi attesi e del ROI.
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="id_weekly_market_day" class="form-label">Giorno del Mercato Settimanale</label>
-                            <select name="weekly_market_day" id="id_weekly_market_day" class="form-control">
-                                <option value="">-- Nessun giorno di mercato --</option>
-                                {% for value, label in form.fields.weekly_market_day.choices %}
-                                <option value="{{ value }}" {% if form.instance.weekly_market_day == value %}selected{% endif %}>{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                            {% if form.weekly_market_day.errors %}
-                            <div class="invalid-feedback d-block">
-                                {{ form.weekly_market_day.errors }}
-                            </div>
-                            {% endif %}
-                            <small class="form-text text-muted">Se selezionato, si considerano 52 giorni all'anno di indisponibilità</small>
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label for="id_local_festival_days" class="form-label">Giorni di Festa Locale/Anno</label>
-                            <input type="number" name="local_festival_days" id="id_local_festival_days" 
-                                   value="{{ form.instance.local_festival_days|default:'0' }}" 
-                                   class="form-control" min="0" max="60">
-                            {% if form.local_festival_days.errors %}
-                            <div class="invalid-feedback d-block">
-                                {{ form.local_festival_days.errors }}
-                            </div>
-                            {% endif %}
-                            <small class="form-text text-muted">Giorni all'anno in cui la stazione non è disponibile per feste locali</small>
-                        </div>
-                    </div>
+                {% endif %}
+                <small class="form-text text-muted">Se selezionato, si considerano 52 giorni all'anno di indisponibilità</small>
+            </div>
+            
+            <div class="col-md-4 mb-3">
+                <label for="id_local_festival_days" class="form-label">Giorni di Festa Locale/Anno</label>
+                <input type="number" name="local_festival_days" id="id_local_festival_days" 
+                       value="{{ form.instance.local_festival_days|default:'0' }}" 
+                       class="form-control" min="0" max="60">
+                {% if form.local_festival_days.errors %}
+                <div class="invalid-feedback d-block">
+                    {{ form.local_festival_days.errors }}
+                </div>
+                {% endif %}
+                <small class="form-text text-muted">Giorni all'anno in cui la stazione non è disponibile per feste locali</small>
+            </div>
+            
+            <!-- Nuovo campo per i giorni di pioggia -->
+            <div class="col-md-4 mb-3">
+                <label for="id_rainy_days" class="form-label">Giorni di Pioggia Previsti/Anno</label>
+                <input type="number" name="rainy_days" id="id_rainy_days" 
+                       value="{{ form.instance.rainy_days|default:'0' }}" 
+                       class="form-control" min="0" max="200">
+                {% if form.rainy_days.errors %}
+                <div class="invalid-feedback d-block">
+                    {{ form.rainy_days.errors }}
+                </div>
+                {% endif %}
+                <small class="form-text text-muted">Giorni di pioggia stimati all'anno (impatto minore sull'utilizzo)</small>
+            </div>
+        </div>
+        
+        <!-- Aggiunta informazione sull'impatto dei giorni di pioggia -->
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-secondary mt-3">
+                    <i class="fas fa-umbrella"></i> <strong>Nota:</strong> I giorni di pioggia influenzano l'utilizzo delle colonnine principalmente in situazioni di emergenza. 
+                    La riduzione dei ricavi in questi giorni è stimata al 30% rispetto a un giorno normale.
                 </div>
             </div>
+        </div>
+    </div>
+</div>
             
             <!-- Specifiche Tecniche Colonnina -->
             <div class="card mb-4">

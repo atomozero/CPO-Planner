@@ -34,6 +34,23 @@ class SubProject(models.Model):
     start_date = models.DateField(_('Data Inizio'))
     expected_completion_date = models.DateField(_('Data Prevista Completamento'))
     
+    # Giorni di indisponibilità
+    WEEKDAY_CHOICES = [
+        ('', _('-- Nessuno --')),
+        ('monday', _('Lunedì')),
+        ('tuesday', _('Martedì')),
+        ('wednesday', _('Mercoledì')),
+        ('thursday', _('Giovedì')),
+        ('friday', _('Venerdì')),
+        ('saturday', _('Sabato')),
+        ('sunday', _('Domenica')),
+    ]
+    weekly_market_day = models.CharField(_('Giorno Mercato Settimanale'), max_length=10, 
+                                         choices=WEEKDAY_CHOICES, blank=True, null=True)
+    local_festival_days = models.PositiveSmallIntegerField(_('Giorni Festa Locale/Anno'), default=0)
+    rainy_days = models.PositiveSmallIntegerField(_('Giorni di Pioggia Previsti/Anno'), default=0,
+                                                 help_text=_('Giorni di pioggia stimati che riducono l\'utilizzo delle colonnine'))
+    
     # Informazioni Finanziarie
     budget = models.DecimalField(_('Budget Totale'), max_digits=12, decimal_places=2)
     expected_revenue = models.DecimalField(_('Ricavi Attesi'), max_digits=12, decimal_places=2)
@@ -66,6 +83,35 @@ class SubProject(models.Model):
         super().save(*args, **kwargs)
         # Aggiorna le metriche del progetto principale dopo il salvataggio
         self.project.calculate_total_metrics()
+    
+    def calculate_availability_factor(self):
+        """
+        Calcola il fattore di disponibilità basato sui giorni di indisponibilità
+        """
+        # Giorni totali in un anno
+        total_days = 365
+        
+        # Calcola i giorni di indisponibilità totali
+        unavailable_days = 0
+        
+        # Aggiungi i giorni di mercato (52 settimane)
+        if self.weekly_market_day:
+            unavailable_days += 52
+            
+        # Aggiungi i giorni di festa locale
+        unavailable_days += self.local_festival_days
+        
+        # Calcolo della disponibilità di base
+        available_days = total_days - unavailable_days
+        base_availability_factor = available_days / total_days if total_days > 0 else 1.0
+        
+        # Calcolo dell'impatto dei giorni di pioggia (riduzione del 30%)
+        rainy_days_impact = (self.rainy_days * 0.3) / total_days if total_days > 0 else 0
+        
+        # Fattore di disponibilità finale considerando anche i giorni di pioggia
+        availability_factor = base_availability_factor * (1 - rainy_days_impact)
+        
+        return availability_factor
     
     class Meta:
         verbose_name = _('Sotto-Progetto')

@@ -38,7 +38,7 @@ class SubProjectForm(forms.ModelForm):
             'latitude_approved', 'longitude_approved',
             
             # Giorni di indisponibilità
-            'weekly_market_day', 'local_festival_days',
+            'weekly_market_day', 'local_festival_days', 'rainy_days',  # Aggiunto rainy_days
             
             # Specifiche tecniche
             'charger_brand', 'charger_model', 'power_kw', 'power_requested',
@@ -64,6 +64,7 @@ class SubProjectForm(forms.ModelForm):
             'usage_profile': forms.Select(attrs={'class': 'form-control'}),
             'weekly_market_day': forms.Select(attrs={'class': 'form-control'}),
             'local_festival_days': forms.NumberInput(attrs={'min': '0', 'max': '60'}),
+            'rainy_days': forms.NumberInput(attrs={'min': '0', 'max': '200'}),  # Widget per giorni di pioggia
             'budget': forms.NumberInput(attrs={'readonly': 'readonly'}),
             'expected_revenue': forms.NumberInput(attrs={'readonly': 'readonly'}),
             'roi': forms.NumberInput(attrs={'readonly': 'readonly'}),
@@ -153,6 +154,12 @@ class SubProjectForm(forms.ModelForm):
         self.fields['use_project_completion_date'].help_text = _(
             "Se selezionato, verrà usata la data di completamento del progetto principale anziché "
             "specificare una data di completamento separata."
+        )
+        
+        # Aggiungi help text per il campo rainy_days
+        self.fields['rainy_days'].help_text = _(
+            "Giorni di pioggia stimati all'anno. L'utilizzo delle colonnine in questi giorni "
+            "è ridotto del 30% rispetto a un giorno normale."
         )
         
         # Nascondi il campo municipality dal form, verrà popolato automaticamente nella view

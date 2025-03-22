@@ -2,9 +2,176 @@ import numpy as np
 import numpy_financial as npf
 from decimal import Decimal
 import random
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
+from calendar import monthrange
 
-from ..models.financial import FinancialParameters, FinancialAnalysis
+from ..models.financial import FinancialParameters, FinancialAnalysis, FinancialConfig
+from ..models.charging_station import ChargingStation
+
+
+class FinancialModel:
+    """
+    Modello finanziario per calcoli standardizzati di ROI, NPV, e altri indicatori finanziari.
+    Gestisce diverse configurazioni e applica aggiustamenti stagionali ai calcoli.
+    """
+    
+    def __init__(self, config=None):
+        """
+        Inizializza il modello finanziario con una configurazione specifica.
+        
+        Args:
+            config: Istanza di FinancialConfig (se None, usa quella predefinita)
+        """
+        self.config = config or FinancialConfig.get_default()
+        self.discount_rate = float(self.config.discount_rate) / 100
+        self.seasonal_factors = self.config.seasonal_adjustments
+    
+    def apply_seasonal_adjustment(self, base_value, month, enable_adjustments=True):
+        """
+        Applica l'aggiustamento stagionale a un valore base.
+        
+        Args:
+            base_value: Valore base da aggiustare
+            month: Mese (1-12) per cui applicare l'aggiustamento
+            enable_adjustments: Se True, applica l'aggiustamento stagionale
+            
+        Returns:
+            float: Valore aggiustato
+        """
+        if not enable_adjustments:
+            return float(base_value)
+            
+        month_str = str(month)
+        factor = float(self.seasonal_factors.get(month_str, 1.0))
+        return float(base_value) * factor
+    
+    def get_monthly_factors(self, year=None):
+        """
+        Restituisce i fattori mensili per un intero anno.
+        
+        Args:
+            year: Anno per cui generare i fattori (default: anno corrente)
+            
+        Returns:
+            dict: Dizionario con date e fattori stagionali
+        """
+        if not year:
+            year = datetime.now().year
+            
+        monthly_factors = {}
+        
+        for month in range(1, 13):
+            days_in_month = monthrange(year, month)[1]
+            month_date = date(year, month, 1)
+            month_str = month_date.strftime('%Y-%m')
+            
+            factor = float(self.seasonal_factors.get(str(month), 1.0))
+            monthly_factors[month_str] = factor
+            
+        return monthly_factors
+    
+    def calculate_npv(self, cash_flows, discount_rate=None):
+        """
+        Calcola il Valore Attuale Netto (NPV).
+        
+        Args:
+            cash_flows: Lista di flussi di cassa
+            discount_rate: Tasso di sconto (se None, usa quello predefinito)
+            
+        Returns:
+            float: NPV calcolato
+        """
+        if discount_rate is None:
+            discount_rate = self.discount_rate
+            
+        return npf.npv(discount_rate, cash_flows)
+    
+    def calculate_irr(self, cash_flows):
+        """
+        Calcola il Tasso Interno di Rendimento (IRR).
+        
+        Args:
+            cash_flows: Lista di flussi di cassa
+            
+        Returns:
+            float: IRR calcolato (in percentuale)
+        """
+        try:
+            irr = npf.irr(cash_flows)
+            if np.isnan(irr):
+                return 0
+            return irr * 100  # Converte in percentuale
+        except:
+            return 0
+    
+    def calculate_payback_period(self, cash_flows, cumulative_cash_flows=None):
+        """
+        Calcola il periodo di payback.
+        
+        Args:
+            cash_flows: Lista di flussi di cassa
+            cumulative_cash_flows: Lista di flussi di cassa cumulativi (opzionale)
+            
+        Returns:
+            float: Periodo di payback in anni
+        """
+        if cumulative_cash_flows is None:
+            cumulative = np.cumsum(cash_flows)
+        else:
+            cumulative = np.array(cumulative_cash_flows)
+            
+        if np.all(cumulative <= 0):
+            return len(cash_flows) - 1
+            
+        positive_years = np.where(cumulative > 0)[0]
+        if len(positive_years) > 0:
+            first_positive = positive_years[0]
+            if first_positive > 0:
+                # Interpola per ottenere un valore più preciso
+                prev_value = cumulative[first_positive - 1]
+                curr_value = cumulative[first_positive]
+                
+                if curr_value - prev_value != 0:
+                    fraction = -prev_value / (curr_value - prev_value)
+                    payback = first_positive - 1 + fraction
+                else:
+                    payback = first_positive
+            else:
+                payback = 0
+        else:
+            payback = len(cash_flows) - 1
+            
+        return payback
+    
+    def calculate_roi(self, total_investment, net_profit):
+        """
+        Calcola il Return on Investment (ROI).
+        
+        Args:
+            total_investment: Investimento totale
+            net_profit: Profitto netto
+            
+        Returns:
+            float: ROI in percentuale
+        """
+        if total_investment <= 0:
+            return 0
+        return (net_profit / total_investment) * 100
+    
+    def calculate_profitability_index(self, npv, total_investment):
+        """
+        Calcola l'indice di redditività (PI).
+        
+        Args:
+            npv: Valore Attuale Netto
+            total_investment: Investimento totale
+            
+        Returns:
+            float: Indice di redditività
+        """
+        if total_investment <= 0:
+            return 0
+        return (npv + total_investment) / total_investment
 
 
 class FinancialAnalysisService:
@@ -30,10 +197,11 @@ class FinancialAnalysisService:
             except FinancialParameters.DoesNotExist:
                 self.params = FinancialParameters.objects.create(project=project)
         else:
-            self.params = self.charging_station.municipality.project.financial_parameters
+            self.params = self.charging_station.sub_project.project.financial_parameters
             
-        self.discount_rate = Decimal('0.08')  # Tasso di sconto per NPV
-    
+        # Crea il modello finanziario con la configurazione del progetto
+        self.financial_model = FinancialModel(config=self.params.config)
+        
     def calculate_analysis(self):
         """
         Esegue l'analisi finanziaria completa.
@@ -93,12 +261,13 @@ class FinancialAnalysisService:
         """
         if self.project:
             total = Decimal('0')
-            for municipality in self.project.municipalities.all():
-                for station in municipality.charging_stations.all():
-                    total += station.total_cost
+            # Utilizziamo SubProject per accedere alle stazioni
+            for subproject in self.project.subprojects.all():
+                for station in subproject.charging_stations.all():
+                    total += station.calculate_total_investment()
             return total
         else:
-            return self.charging_station.total_cost
+            return self.charging_station.calculate_total_investment()
     
     def _calculate_yearly_cash_flow(self, total_investment):
         """
@@ -135,15 +304,16 @@ class FinancialAnalysisService:
         # Parametri iniziali per le stazioni di ricarica
         if self.project:
             stations = []
-            for municipality in self.project.municipalities.all():
-                stations.extend(list(municipality.charging_stations.all()))
+            for subproject in self.project.subprojects.all():
+                stations.extend(list(subproject.charging_stations.all()))
             
             # Raccogli dati iniziali per ogni stazione
-            base_revenue = sum(station.calculate_base_revenue() for station in stations)
-            base_energy_cost = sum(station.calculate_base_energy_cost() for station in stations)
+            base_revenue = sum(station.calculate_annual_metrics()['annual_revenue'] for station in stations)
+            base_energy_cost = sum(station.calculate_annual_metrics()['annual_costs'] for station in stations)
         else:
-            base_revenue = self.charging_station.calculate_base_revenue()
-            base_energy_cost = self.charging_station.calculate_base_energy_cost()
+            metrics = self.charging_station.calculate_annual_metrics()
+            base_revenue = metrics['annual_revenue']
+            base_energy_cost = metrics['annual_costs']
         
         # Calcola flussi di cassa per ogni anno
         for year in range(1, years + 1):
@@ -300,8 +470,8 @@ class FinancialAnalysisService:
         
         if self.project:
             stations = []
-            for municipality in self.project.municipalities.all():
-                stations.extend(list(municipality.charging_stations.all()))
+            for subproject in self.project.subprojects.all():
+                stations.extend(list(subproject.charging_stations.all()))
             
             # Inizializza stato delle stazioni (tutte attive)
             station_states = [True] * len(stations)
@@ -360,59 +530,22 @@ class FinancialAnalysisService:
         # Estrai flussi di cassa netti
         net_cash_flows = np.array(cash_flow['net_cash_flow'])
         
-        # Calcola NPV
-        discount_rate = float(self.discount_rate)
-        npv = npf.npv(discount_rate, net_cash_flows)
-        
-        # Calcola IRR (gestisce gli errori)
-        try:
-            irr = npf.irr(net_cash_flows)
-            if np.isnan(irr):
-                irr = 0
-        except:
-            irr = 0
-        
-        # Calcola periodo di payback
-        cumulative = np.array(cash_flow['cumulative_cash_flow'])
-        if np.all(cumulative <= 0):
-            payback = float(self.params.investment_years)
-        else:
-            # Trova l'anno in cui il flusso di cassa cumulativo diventa positivo
-            positive_years = np.where(cumulative > 0)[0]
-            if len(positive_years) > 0:
-                first_positive = positive_years[0]
-                if first_positive > 0:
-                    # Interpola per ottenere un valore più preciso
-                    prev_value = cumulative[first_positive - 1]
-                    curr_value = cumulative[first_positive]
-                    
-                    if curr_value - prev_value != 0:
-                        fraction = -prev_value / (curr_value - prev_value)
-                        payback = first_positive - 1 + fraction
-                    else:
-                        payback = first_positive
-                else:
-                    payback = 0
-            else:
-                payback = float(self.params.investment_years)
+        # Utilizza il modello finanziario per i calcoli
+        npv = self.financial_model.calculate_npv(net_cash_flows)
+        irr = self.financial_model.calculate_irr(net_cash_flows)
+        payback = self.financial_model.calculate_payback_period(net_cash_flows, np.array(cash_flow['cumulative_cash_flow']))
         
         # Calcola ROI
         total_investment = -net_cash_flows[0]
-        if total_investment > 0:
-            net_profit = sum(net_cash_flows[1:])
-            roi = (net_profit / total_investment) * 100
-        else:
-            roi = 0
+        net_profit = sum(net_cash_flows[1:])
+        roi = self.financial_model.calculate_roi(total_investment, net_profit)
         
         # Calcola indice di redditività (PI)
-        if total_investment > 0:
-            pi = (npv + total_investment) / total_investment
-        else:
-            pi = 0
+        pi = self.financial_model.calculate_profitability_index(npv, total_investment)
         
         return (
             Decimal(str(round(npv, 2))),
-            Decimal(str(round(irr * 100, 2))),
+            Decimal(str(round(irr, 2))),
             Decimal(str(round(payback, 2))),
             Decimal(str(round(roi, 2))),
             Decimal(str(round(pi, 2)))
@@ -440,7 +573,7 @@ class FinancialAnalysisService:
         
     def _calculate_monthly_cash_flow(self, total_investment):
         """
-        Calcola i flussi di cassa mensili per i primi 24 mesi.
+        Calcola i flussi di cassa mensili per i primi 24 mesi con aggiustamenti stagionali.
         
         Args:
             total_investment: Investimento totale iniziale
@@ -454,21 +587,36 @@ class FinancialAnalysisService:
         maintenance_percentage = float(self.params.maintenance_cost_percentage) / 100 / 12  # Mensile
         energy_price_increase = float(self.params.energy_price_increase_rate) / 100 / 12  # Mensile
         charging_price_increase = float(self.params.charging_price_increase_rate) / 100 / 12  # Mensile
+        apply_seasonal = self.params.apply_seasonal_adjustments
         
         # Date per i mesi
         today = date.today()
-        month_dates = [(today + timedelta(days=30*m)).strftime('%Y-%m') for m in range(months + 1)]
+        month_dates = []
         
         # Inizializza struttura dati per i flussi di cassa
         cash_flow = {
-            'months': month_dates,
+            'months': [],
             'revenue': [0] * (months + 1),
             'operational_costs': [0] * (months + 1),
             'maintenance_costs': [0] * (months + 1),
             'loan_payments': [0] * (months + 1),
             'net_cash_flow': [0] * (months + 1),
-            'cumulative_cash_flow': [0] * (months + 1)
+            'cumulative_cash_flow': [0] * (months + 1),
+            'seasonal_factors': [1.0] * (months + 1)
         }
+        
+        # Genera date mensili e fattori stagionali
+        for m in range(months + 1):
+            current_date = today + timedelta(days=30*m)
+            month_str = current_date.strftime('%Y-%m')
+            cash_flow['months'].append(month_str)
+            
+            # Salva il fattore stagionale per questo mese
+            if m > 0:  # Ignora mese 0 (è l'investimento iniziale)
+                factor = self.financial_model.apply_seasonal_adjustment(
+                    1.0, current_date.month, enable_adjustments=apply_seasonal
+                )
+                cash_flow['seasonal_factors'][m] = round(factor, 2)
         
         # Mese 0: solo investimento iniziale (negativo)
         cash_flow['net_cash_flow'][0] = -float(total_investment)
@@ -477,30 +625,37 @@ class FinancialAnalysisService:
         # Parametri iniziali per le stazioni di ricarica
         if self.project:
             stations = []
-            for municipality in self.project.municipalities.all():
-                stations.extend(list(municipality.charging_stations.all()))
+            for subproject in self.project.subprojects.all():
+                stations.extend(list(subproject.charging_stations.all()))
             
             # Raccogli dati iniziali per ogni stazione
-            base_revenue = sum(station.calculate_base_revenue() for station in stations) / 12  # Mensile
-            base_energy_cost = sum(station.calculate_base_energy_cost() for station in stations) / 12  # Mensile
+            base_revenue = sum(station.calculate_annual_metrics()['annual_revenue'] for station in stations) / 12  # Mensile
+            base_energy_cost = sum(station.calculate_annual_metrics()['annual_costs'] for station in stations) / 12  # Mensile
         else:
-            base_revenue = self.charging_station.calculate_base_revenue() / 12  # Mensile
-            base_energy_cost = self.charging_station.calculate_base_energy_cost() / 12  # Mensile
+            metrics = self.charging_station.calculate_annual_metrics()
+            base_revenue = metrics['annual_revenue'] / 12  # Mensile
+            base_energy_cost = metrics['annual_costs'] / 12  # Mensile
         
         # Calcola flussi di cassa per ogni mese
         for month in range(1, months + 1):
+            current_date = today + timedelta(days=30*(month-1))
+            current_month = current_date.month
+            
             # Aumenti mensili basati sui tassi
             market_factor = (1 + market_growth) ** (month - 1)
             inflation_factor = (1 + inflation) ** (month - 1)
             energy_price_factor = (1 + energy_price_increase) ** (month - 1)
             charging_price_factor = (1 + charging_price_increase) ** (month - 1)
             
-            # Calcola ricavi con crescita di mercato e aumento dei prezzi
-            monthly_revenue = base_revenue * market_factor * charging_price_factor
+            # Applica fattore stagionale
+            seasonal_factor = cash_flow['seasonal_factors'][month]
+            
+            # Calcola ricavi con crescita di mercato, aumento dei prezzi e aggiustamento stagionale
+            monthly_revenue = base_revenue * market_factor * charging_price_factor * seasonal_factor
             cash_flow['revenue'][month] = round(float(monthly_revenue), 2)
             
-            # Calcola costi operativi (principalmente energia)
-            monthly_energy_cost = base_energy_cost * market_factor * energy_price_factor
+            # Calcola costi operativi (principalmente energia) con aggiustamento stagionale
+            monthly_energy_cost = base_energy_cost * market_factor * energy_price_factor * seasonal_factor
             cash_flow['operational_costs'][month] = round(float(monthly_energy_cost), 2)
             
             # Calcola costi di manutenzione con inflazione
@@ -525,4 +680,3 @@ class FinancialAnalysisService:
                 cash_flow['cumulative_cash_flow'][month-1] + net_cash, 2)
         
         return cash_flow
-            

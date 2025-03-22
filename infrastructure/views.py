@@ -247,12 +247,11 @@ class MunicipalityListView(LoginRequiredMixin, ListView):
     model = Municipality
     context_object_name = 'municipality_list'  # Questo nome corrisponde a quello usato nel template
     template_name = 'infrastructure/municipality_list.html'
-    
+
     def get_queryset(self):
-        # Mostra solo i comuni che hanno sottoprogetti associati
-        municipality_ids = SubProject.objects.values_list('municipality_id', flat=True).distinct()
-        return Municipality.objects.filter(id__in=municipality_ids)
-    
+        # Mostra tutti i comuni nel database
+        return Municipality.objects.all()
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
@@ -790,13 +789,8 @@ class ProjectTaskListView(LoginRequiredMixin, ListView):
     model = ProjectTask
     context_object_name = 'tasks'
     template_name = 'tasks/task_list.html'
-    
-    def get_queryset(self):
-        project_id = self.kwargs.get('project_id')
-        if project_id:
-            return ProjectTask.objects.filter(project_id=project_id)
-        return ProjectTask.objects.all()
-    
+
+        
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         project_id = self.kwargs.get('project_id')

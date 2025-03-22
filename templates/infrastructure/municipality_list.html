@@ -5,15 +5,20 @@
 {% block title %}Comuni | CPO Planner{% endblock %}
 
 {% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb bg-light">
+    <li class="breadcrumb-item"><a href="{% url 'infrastructure:dashboard' %}">Dashboard</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Comuni</li>
+  </ol>
+</nav>
+
 <!-- Page Heading -->
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
     <h1 class="h3 mb-0 text-gray-800">Comuni</h1>
     <div>
         <a href="{% url 'infrastructure:import_municipalities' %}" class="d-none d-sm-inline-block btn btn-sm btn-success shadow-sm mr-2">
             <i class="fas fa-download fa-sm text-white-50 mr-2"></i>Importa Comuni Italiani
-        </a>
-        <a href="{% url 'infrastructure:municipality-create' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-            <i class="fas fa-plus fa-sm text-white-50 mr-2"></i>Nuovo Comune
         </a>
     </div>
 </div>
@@ -101,9 +106,12 @@
     <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
         <h6 class="m-0 font-weight-bold text-primary">Lista dei Comuni</h6>
         <div class="d-flex align-items-center">
-            <small class="text-muted mr-3">Dati demografici: ISTAT, 2021</small>
+            <span class="badge badge-info mr-3" data-toggle="tooltip" title="Ultimo aggiornamento">
+                <i class="fas fa-info-circle mr-1"></i> Dati ISTAT 2021
+            </span>
+            <!-- Campo di ricerca -->
             <div class="input-group" style="width: 250px;">
-                <input type="text" id="searchMunicipality" class="form-control bg-light border-0 small" placeholder="Cerca...">
+                <input type="text" id="tableSearch" class="form-control bg-light border-0 small" placeholder="Cerca comuni...">
                 <div class="input-group-append">
                     <button class="btn btn-primary" type="button">
                         <i class="fas fa-search fa-sm"></i>
@@ -115,8 +123,8 @@
     <div class="card-body">
         {% if municipality_list %}
         <div class="table-responsive">
-            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                <thead>
+            <table class="table table-bordered table-hover" id="municipalityTable" width="100%" cellspacing="0">
+                <thead class="bg-light">
                     <tr>
                         <th>Nome</th>
                         <th>Provincia</th>
@@ -130,21 +138,42 @@
                 <tbody>
                     {% for municipality in municipality_list %}
                     <tr>
-                        <td>{{ municipality.name }}</td>
+                        <td>
+                            <strong>{{ municipality.name }}</strong>
+                            {% if municipality.logo %}
+                            <img src="{{ municipality.logo.url }}" alt="{{ municipality.name }}" class="img-fluid" style="max-height: 20px; max-width: 20px; margin-left: 5px;">
+                            {% endif %}
+                        </td>
                         <td>{{ municipality.province }}</td>
                         <td>{{ municipality.region }}</td>
                         <td>{{ municipality.population|default:"N/D"|intcomma }}</td>
-                        <td>{{ municipality_data|get_item:municipality.id|get_item:'projects_count' }}</td>
-                        <td>{{ municipality_data|get_item:municipality.id|get_item:'stations_count' }}</td>
+                        <td>
+                            {% with project_count=municipality_data|get_item:municipality.id|get_item:'projects_count'|default:"0" %}
+                            {% if project_count == "0" %}
+                            <span class="badge badge-light">Nessun progetto</span>
+                            {% else %}
+                            <span class="badge badge-primary">{{ project_count }}</span>
+                            {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td>
+                            {% with station_count=municipality_data|get_item:municipality.id|get_item:'stations_count'|default:"0" %}
+                            {% if station_count == "0" %}
+                            <span class="badge badge-light">Nessuna stazione</span>
+                            {% else %}
+                            <span class="badge badge-success">{{ station_count }}</span>
+                            {% endif %}
+                            {% endwith %}
+                        </td>
                         <td>
                             <div class="btn-group" role="group">
                                 <a href="{% url 'infrastructure:municipality-detail' municipality.id %}" class="btn btn-info btn-sm" title="Dettaglio">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a href="#" class="btn btn-warning btn-sm" title="Modifica">
+                                <a href="{% url 'infrastructure:municipality-update' municipality.id %}" class="btn btn-warning btn-sm" title="Modifica">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <a href="#" class="btn btn-danger btn-sm" title="Elimina">
+                                <a href="{% url 'infrastructure:municipality-delete' municipality.id %}" class="btn btn-danger btn-sm" title="Elimina">
                                     <i class="fas fa-trash"></i>
                                 </a>
                             </div>
@@ -156,7 +185,7 @@
         </div>
         {% else %}
         <div class="alert alert-info">
-            Nessun comune registrato. <a href="{% url 'infrastructure:municipality-create' %}">Aggiungi il primo comune</a>.
+            <i class="fas fa-info-circle mr-2"></i>Nessun comune registrato ad una stazione di ricarica.
         </div>
         {% endif %}
     </div>
@@ -195,24 +224,45 @@
 {% block extra_js %}
 <script>
     $(document).ready(function() {
-        // Inizializza DataTables se disponibile
-        if ($.fn.DataTable) {
-            $('#dataTable').DataTable({
-                "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Italian.json"
-                }
-            });
-        }
+        // Inizializza tooltips
+        $('[data-toggle="tooltip"]').tooltip();
         
-        // Gestione ricerca personalizzata
-        $("#searchMunicipality").on("keyup", function() {
-            var value = $(this).val().toLowerCase();
-            $("#dataTable tbody tr").filter(function() {
-                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
-            });
+        // Nascondi il campo di ricerca predefinito di DataTables e usa solo quello personalizzato
+        $.fn.dataTable.ext.classes.sFilter = 'dataTables_filter d-none';
+        
+        // Inizializza DataTables
+        var municipalityTable = $('#municipalityTable').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Italian.json"
+            },
+            "pageLength": 15,
+            "ordering": true,
+            "info": true,
+            "searching": true,
+            "responsive": true,
+            "dom": '<"top"f>rt<"bottom"lip><"clear">',
+            "columnDefs": [
+                { "width": "15%", "targets": 0 },
+                { "width": "10%", "targets": 1 },
+                { "width": "10%", "targets": 2 },
+                { "width": "15%", "targets": 3 },
+                { "width": "10%", "targets": 4 },
+                { "width": "10%", "targets": 5 },
+                { "width": "15%", "targets": 6 }
+            ],
+            "stateSave": true, // Salva lo stato della tabella
+            "drawCallback": function() {
+                // Aggiorna la UI dopo ogni ridisegno
+                $('[data-toggle="tooltip"]').tooltip();
+            }
         });
         
-        // Inizializza Chart.js se disponibile e se esistono gli elementi canvas
+        // Collega la ricerca personalizzata a DataTables
+        $('#tableSearch').on('keyup', function(){
+            municipalityTable.search($(this).val()).draw();
+        });
+        
+        // Inizializza Chart.js per i grafici
         if (typeof Chart !== 'undefined') {
             // Grafico a torta per regioni
             var pieElement = document.getElementById("regionPieChart");

@@ -3,9 +3,141 @@
 
 {% block title %}{{ template.brand }} {{ template.model }} | Template Stazione{% endblock %}
 
+{% block extra_head %}
+{% if print_mode %}
+<style>
+    /* CSS specifico per la versione PDF */
+    @page {
+        size: A4;
+        margin: 1cm;
+    }
+    
+    body {
+        font-family: Arial, sans-serif;
+        background-color: white !important;
+        color: black !important;
+    }
+    
+    .navbar, .sidebar, .topbar, .breadcrumb, .footer, .scroll-to-top {
+        display: none !important;
+    }
+    
+    .container-fluid {
+        padding: 1cm !important;
+        width: 100% !important;
+    }
+    
+    .no-print {
+        display: none !important;
+    }
+    
+    .card {
+        page-break-inside: avoid;
+        border: 1px solid #ddd !important;
+        margin-bottom: 1.5rem;
+        box-shadow: none !important;
+    }
+    
+    .card-header {
+        background-color: #f8f9fa !important;
+        padding: 0.75rem;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .text-primary {
+        color: #4e73df !important;
+    }
+    
+    .font-weight-bold {
+        font-weight: bold;
+    }
+    
+    .card-body {
+        padding: 1.25rem;
+    }
+    
+    table {
+        width: 100%;
+        margin-bottom: 1rem;
+        border-collapse: collapse;
+    }
+    
+    table th, table td {
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+    }
+    
+    .table-primary {
+        background-color: #cfe2ff !important;
+    }
+    
+    .table-warning {
+        background-color: #fff3cd !important;
+    }
+    
+    .table-danger {
+        background-color: #f8d7da !important;
+    }
+    
+    .img-fluid {
+        max-width: 90%;
+        max-height: 12cm;
+        height: auto;
+        page-break-inside: avoid;
+    }
+    
+    a {
+        text-decoration: none !important;
+        color: black !important;
+    }
+    
+    .btn {
+        display: none !important;
+    }
+    
+    /* Elementi visibili solo in stampa */
+    .print-header, .print-date, .print-footer {
+        display: block !important;
+    }
+    
+    /* Intestazione pagina */
+    .print-header {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    
+    /* Data di stampa */
+    .print-date {
+        font-size: 9pt;
+        color: #777;
+        margin-bottom: 20px;
+        text-align: right;
+    }
+    
+    /* Footer di stampa */
+    .print-footer {
+        font-size: 9pt;
+        text-align: center;
+        color: #777;
+        margin-top: 30px;
+        border-top: 1px solid #eee;
+        padding-top: 10px;
+    }
+</style>
+{% endif %}
+{% endblock %}
+
 {% block content %}
+<!-- Intestazione visibile solo nella stampa -->
+{% if print_mode %}
+<div class="print-header">
+    <h1>{{ template.brand }} {{ template.model }} - {{ template.power_kw }}kW</h1>
+    <div class="print-date">Data: {{ current_date }}</div>
+</div>
+{% endif %}
+
 <div class="container-fluid">
-    <h1 class="h3 mb-4 text-gray-800">
+    <h1 class="h3 mb-4 text-gray-800 {% if print_mode %}d-none{% endif %}">
         {{ template.brand }} {{ template.model }} - {{ template.power_kw }}kW
     </h1>
     
@@ -15,12 +147,15 @@
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold text-primary">{% trans "Dettagli Template" %}</h6>
-                    <div>
+                    <div class="no-print">
                         <a href="{% url 'infrastructure:template-update' template.id %}" class="btn btn-warning btn-sm">
                             <i class="fas fa-edit mr-1"></i> {% trans "Modifica" %}
                         </a>
                         <a href="{% url 'infrastructure:station-from-template' template.id %}" class="btn btn-success btn-sm">
                             <i class="fas fa-plus mr-1"></i> {% trans "Crea Stazione" %}
+                        </a>
+                        <a href="{% url 'infrastructure:template-print-pdf' template.id %}" class="btn btn-info btn-sm" target="_blank">
+                            <i class="fas fa-print mr-1"></i> {% trans "Stampa PDF" %}
                         </a>
                     </div>
                 </div>
@@ -225,5 +360,11 @@
             {% endif %}
         </div>
     </div>
+    
+    {% if print_mode %}
+    <div class="print-footer">
+        <p>© {% now "Y" %} CPO Planner - Documento generato automaticamente</p>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ template.brand }} {{ template.model }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm;
+            /* Aggiunta del testo CPO Planner a sinistra */
+            @bottom-left {
+                content: "CPO Planner - {{ template.brand }} {{ template.model }}";
+                font-size: 9pt;
+                color: #666;
+            }
+            /* Aggiunta dei numeri di pagina in basso a destra */
+            @bottom-right {
+                content: "Pagina " counter(page) " di " counter(pages);
+                font-size: 9pt;
+                color: #666;
+            }
+        }
+        body { 
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; 
+            margin: 0;
+            padding: 0;
+            color: #333;
+            line-height: 1.4;
+            counter-reset: page;
+        }
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+        h1 { 
+            color: #4e73df; 
+            text-align: center; 
+            margin: 0 0 5px 0; 
+            font-size: 26px;
+        }
+        h2 { 
+            color: #4e73df; 
+            margin: 0 0 15px 0; 
+            font-size: 20px;
+            background-color: #f0f3fa;
+            padding: 10px 15px;
+            border-radius: 5px 5px 0 0;
+            border-bottom: 1px solid #dbe3ff;
+        }
+        h3 {
+            color: #4e73df;
+            font-size: 16px;
+            margin: 20px 0 10px 0;
+        }
+        table { 
+            border-collapse: collapse; 
+            width: 100%; 
+            margin-bottom: 20px; 
+            background-color: white;
+        }
+        th, td { 
+            border: 1px solid #ddd; 
+            padding: 10px 12px; 
+            text-align: left; 
+        }
+        th { 
+            background-color: #f8f9fc; 
+            font-weight: 600;
+            width: 40%;
+        }
+        .text-right { 
+            text-align: right; 
+        }
+        .card { 
+            border: 1px solid #dbe3ff; 
+            border-radius: 6px; 
+            margin-bottom: 25px; 
+            background-color: #f8f9fc;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            page-break-inside: avoid; /* Evita interruzioni all'interno della card */
+        }
+        .card-body {
+            padding: 15px;
+        }
+        .total-row {
+            background-color: #cfe2ff;
+            font-weight: bold;
+        }
+        .annual-row {
+            background-color: #f8d7da;
+        }
+        .monthly-row {
+            background-color: #fff3cd;
+        }
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 30px;
+        }
+        .header-title {
+            text-align: center;
+            flex-grow: 1;
+        }
+        .date {
+            font-size: 11pt;
+            color: #666;
+            text-align: right;
+        }
+        .footer {
+            font-size: 10pt;
+            text-align: center;
+            color: #666;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        .image-container {
+            text-align: center;
+            padding: 20px;
+        }
+        .image-container img {
+            max-width: 80%;
+            max-height: 350px;
+            object-fit: contain;
+        }
+        .specs-table td {
+            vertical-align: top;
+        }
+        .features-table td:last-child {
+            text-align: center;
+            width: 120px;
+        }
+        .yes {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .no {
+            color: #dc3545;
+        }
+        .description-box {
+            background-color: white;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+            margin-top: 15px;
+        }
+        .section-header {
+            color: #4e73df;
+            font-weight: bold;
+            margin-bottom: 5px;
+            margin-top: 15px;
+        }
+        .cost-table td:last-child {
+            text-align: right;
+            width: 120px;
+        }
+        /* Controlli specifici per interruzioni di pagina */
+        .section-info {
+            page-break-after: auto;
+        }
+        .section-specs {
+            page-break-before: auto;
+            page-break-after: auto;
+        }
+        .section-costs {
+            page-break-before: auto;
+        }
+        .section-image {
+            page-break-before: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-container">
+            <div class="header-title">
+                <h1>{{ template.brand }} {{ template.model }}</h1>
+            </div>
+           
+        </div>
+        
+        <div class="card section-info">
+            <h2>Informazioni Generali</h2>
+            <div class="card-body">
+                <table>
+                    <tr>
+                        <th>Nome Template</th>
+                        <td>{{ template.name }}</td>
+                    </tr>
+                    <tr>
+                        <th>Marca</th>
+                        <td>{{ template.brand }}</td>
+                    </tr>
+                    <tr>
+                        <th>Modello</th>
+                        <td>{{ template.model }}</td>
+                    </tr>
+                    <tr>
+                        <th>Tipo di Connessione</th>
+                        <td>{{ template.get_connection_type_display }}</td>
+                    </tr>
+                    <tr>
+                        <th>Potenza</th>
+                        <td>{{ template.power_kw }} kW</td>
+                    </tr>
+                    <tr>
+                        <th>Connettori</th>
+                        <td>{{ template.num_connectors }} x {{ template.get_connector_type_display }}</td>
+                    </tr>
+                </table>
+                
+                {% if template.description %}
+                <div class="section-header">Descrizione</div>
+                <div class="description-box">
+                    {{ template.description|linebreaks }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card section-specs">
+            <h2>Specifiche Tecniche</h2>
+            <div class="card-body">
+                <table class="specs-table">
+                    {% if template.dimensions %}
+                    <tr>
+                        <th>Dimensioni</th>
+                        <td>{{ template.dimensions }}</td>
+                    </tr>
+                    {% endif %}
+                    
+                    {% if template.weight %}
+                    <tr>
+                        <th>Peso</th>
+                        <td>{{ template.weight }} kg</td>
+                    </tr>
+                    {% endif %}
+                    
+                    {% if template.ground_area %}
+                    <tr>
+                        <th>Superficie occupata</th>
+                        <td>{{ template.ground_area }} m²</td>
+                    </tr>
+                    {% endif %}
+                    
+                    {% if template.protection_rating %}
+                    <tr>
+                        <th>Grado di protezione IP</th>
+                        <td>{{ template.protection_rating }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+                
+                <div class="section-header">Funzionalità</div>
+                <table class="features-table">
+                    <tr>
+                        <th>Display</th>
+                        <td class="{% if template.has_display %}yes{% else %}no{% endif %}">
+                            {% if template.has_display %}Si{% else %}No{% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Lettore RFID</th>
+                        <td class="{% if template.has_rfid %}yes{% else %}no{% endif %}">
+                            {% if template.has_rfid %}Si{% else %}No{% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Controllo da App</th>
+                        <td class="{% if template.has_app_control %}yes{% else %}no{% endif %}">
+                            {% if template.has_app_control %}Si{% else %}No{% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Connessione LAN</th>
+                        <td class="{% if template.has_lan %}yes{% else %}no{% endif %}">
+                            {% if template.has_lan %}Si{% else %}No{% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>WiFi</th>
+                        <td class="{% if template.has_wifi %}yes{% else %}no{% endif %}">
+                            {% if template.has_wifi %}Si{% else %}No{% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Connessione 4G</th>
+                        <td class="{% if template.has_4g %}yes{% else %}no{% endif %}">
+                            {% if template.has_4g %}Si{% else %}No{% endif %}
+                        </td>
+                    </tr>
+                </table>
+                
+                {% if template.technical_specs %}
+                <div class="section-header">Specifiche Tecniche Aggiuntive</div>
+                <div class="description-box">
+                    {{ template.technical_specs|linebreaks }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card section-costs">
+            <h2>Costi</h2>
+            <div class="card-body">
+                <table class="cost-table">
+                    <tr>
+                        <th>Costo d'acquisto</th>
+                        <td>€ {{ template.purchase_cost|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <th>Costo d'installazione</th>
+                        <td>€ {{ template.installation_cost|floatformat:2 }}</td>
+                    </tr>
+                    {% if template.has_4g %}
+                    <tr>
+                        <th>Costo modem 4G</th>
+                        <td>€ {{ template.modem_4g_cost|floatformat:2 }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr class="total-row">
+                        <th>Costo totale</th>
+                        <td>€ {{ total_cost|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <th>Manutenzione annuale</th>
+                        <td>€ {{ template.maintenance_cost|floatformat:2 }}</td>
+                    </tr>
+                    {% if template.has_4g %}
+                    <tr>
+                        <th>Costo annuale SIM dati</th>
+                        <td>€ {{ template.sim_annual_cost|floatformat:2 }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+                
+                {% if active_tariff and usage_profile %}
+                <div class="section-header">Costi Operativi Stimati</div>
+                <p><small>Basati su {{ usage_profile.name }} e {{ active_tariff.name }}</small></p>
+                <table class="cost-table">
+                    <tr>
+                        <th>Costo energia mensile</th>
+                        <td>€ {{ monthly_energy_cost|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <th>Costi fissi mensili</th>
+                        <td>€ {{ monthly_fixed_cost|floatformat:2 }}</td>
+                    </tr>
+                    <tr class="monthly-row">
+                        <th>Totale mensile</th>
+                        <td>€ {{ monthly_total_cost|floatformat:2 }}</td>
+                    </tr>
+                    <tr class="annual-row">
+                        <th>Totale annuale</th>
+                        <td>€ {{ annual_operating_cost|floatformat:2 }}</td>
+                    </tr>
+                </table>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if template.image %}
+        <div class="card section-image">
+            <h2>Immagine</h2>
+            <div class="card-body">
+                <div class="image-container">
+                    <img src="{{ template.image.url }}" alt="{{ template.name }}">
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        
+    </div>
+</body>
+</html>

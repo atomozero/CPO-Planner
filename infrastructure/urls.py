@@ -77,7 +77,7 @@ urlpatterns = [
     path('templates/<int:pk>/', views.ChargingStationTemplateDetailView.as_view(), name='template-detail'),
     path('templates/add/', views.ChargingStationTemplateCreateView.as_view(), name='template-create'),
     path('templates/<int:pk>/edit/', views.ChargingStationTemplateUpdateView.as_view(), name='template-update'),
-    
+    path('templates/<int:pk>/pdf/', views.ChargingStationTemplatePrintPDFView.as_view(), name='template-print-pdf'),
     # Quick create station from template
     path('templates/<int:template_id>/create-station/', views.station_from_template, name='station-from-template'),
     path('templates/<int:template_id>/create-station/<int:project_id>/', views.station_from_template, name='project-station-from-template'),

@@ -35,6 +35,82 @@ from django.core.management import call_command
 from django.http import JsonResponse
 from django.db.models import Avg, Count, Sum
 
+# Importazioni aggiuntive per WeasyPrint
+from django.template.loader import render_to_string
+from weasyprint import HTML, CSS
+from weasyprint.text.fonts import FontConfiguration
+
+from django.conf import settings
+
+class ChargingStationTemplatePrintPDFView(LoginRequiredMixin, DetailView):
+    model = ChargingStationTemplate
+    
+    def get(self, request, *args, **kwargs):
+        template = self.get_object()
+        
+        # Calcola il costo totale
+        total_cost = template.calculate_total_cost()
+        
+        # Recupera dati aggiuntivi (come nella vista originale)
+        annual_cost = template.calculate_annual_cost()
+        
+        # Ottieni eventuale tariffa elettrica e profilo di utilizzo attivi
+        active_tariff = ElectricityTariff.objects.filter(active=True).first()
+        default_profile = StationUsageProfile.objects.first()
+        
+        monthly_energy_cost = 0
+        monthly_fixed_cost = 0
+        monthly_total_cost = 0
+        annual_operating_cost = 0
+        
+        # Calcola i costi operativi stimati se sono disponibili la tariffa e il profilo
+        if active_tariff and default_profile:
+            monthly_kwh = default_profile.calculate_monthly_usage(template.power_kw)
+            
+            # Determina il costo in base alla potenza
+            if template.power_kw <= 7:
+                kwh_cost = float(active_tariff.cost_tier1)
+            elif template.power_kw <= 22:
+                kwh_cost = float(active_tariff.cost_tier2)
+            elif template.power_kw <= 50:
+                kwh_cost = float(active_tariff.cost_tier3)
+            elif template.power_kw <= 150:
+                kwh_cost = float(active_tariff.cost_tier4)
+            else:
+                kwh_cost = float(active_tariff.cost_tier5)
+                
+            monthly_energy_cost = monthly_kwh * kwh_cost
+            monthly_fixed_cost = float(active_tariff.connection_fee) + (template.power_kw * float(active_tariff.power_fee))
+            monthly_total_cost = monthly_energy_cost + monthly_fixed_cost
+            annual_operating_cost = (monthly_energy_cost + monthly_fixed_cost) * 12
+        
+        # Prepara il contesto per il rendering del template
+        context = {
+            'template': template,
+            'total_cost': total_cost,
+            'annual_cost': annual_cost,
+            'active_tariff': active_tariff,
+            'usage_profile': default_profile,
+            'monthly_energy_cost': monthly_energy_cost,
+            'monthly_fixed_cost': monthly_fixed_cost,
+            'monthly_total_cost': monthly_total_cost,
+            'annual_operating_cost': annual_operating_cost,
+            'current_date': datetime.now().strftime('%d/%m/%Y'),  # Data di generazione del report
+        }
+        
+        # Renderizza l'HTML usando il template specifico per PDF
+        html_string = render_to_string('infrastructure/station_template_pdf.html', context, request=request)
+        
+        # Converti HTML in PDF
+        html = HTML(string=html_string, base_url=request.build_absolute_uri('/'))
+        pdf = html.write_pdf()
+        
+        # Prepara la risposta
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="{template.brand}_{template.model}_template.pdf"'
+        
+        return response
+    
 def municipality_autocomplete(request):
     query = request.GET.get('q', '')
     municipality_id = request.GET.get('id')

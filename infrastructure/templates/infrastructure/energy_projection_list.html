@@ -84,8 +84,8 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="chart-area">
-                        <canvas id="projectionChart"></canvas>
+                    <div class="chart-area" style="height: 300px !important; min-height: 300px; width: 100%;">
+                        <canvas id="projectionChart" height="300"></canvas>
                     </div>
                     <div class="mt-4 text-center small">
                         <span class="mr-2">
@@ -150,44 +150,137 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- Chart.js -->
+<!-- Includi Chart.js dal CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
-
 <script>
-    // Dati proiezioni
-    var projectionData = [
-        {% for projection in projections %}
-        {
-            year: {{ projection.year }},
-            month: {{ projection.month }},
-            f1: {{ projection.f1_price }},
-            f2: {{ projection.f2_price }},
-            f3: {{ projection.f3_price }},
-            avg: {{ projection.avg_price }}
-        },
-        {% endfor %}
-    ];
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM caricato, inizializzazione grafico...');
     
-    // Formatta le etichette per l'asse X
-    var labels = projectionData.map(function(data) {
-        return data.month + '/' + data.year;
-    });
+        // Verifica il corretto caricamento di Chart.js
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js non è stato caricato correttamente');
+            document.querySelector('.chart-area').innerHTML = '<div class="alert alert-danger text-center my-5"><i class="fas fa-exclamation-triangle mr-2"></i>Errore: Chart.js non caricato</div>';
+            return;
+        }
     
-    // Estrai i dati per le serie
-    var f1Data = projectionData.map(function(data) { return data.f1; });
-    var f2Data = projectionData.map(function(data) { return data.f2; });
-    var f3Data = projectionData.map(function(data) { return data.f3; });
-    var avgData = projectionData.map(function(data) { return data.avg; });
+        // Se sono presenti dati nelle proiezioni, inizializza il grafico
+        {% if projections %}
+        try {
+            // Costruzione dell'array di dati dal contesto Django
+            var projectionData = [
+                {% for projection in projections %}
+                {
+                    year: {{ projection.year }},
+                    month: {{ projection.month }},
+                    f1: Number('{{ projection.f1_price|stringformat:"f" }}'),
+                    f2: Number('{{ projection.f2_price|stringformat:"f" }}'),
+                    f3: Number('{{ projection.f3_price|stringformat:"f" }}'),
+                    avg: Number('{{ projection.avg_price|stringformat:"f" }}')
+                }{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ];
     
-    // Configurazione grafico
-    var ctx = document.getElementById('projectionChart').getContext('2d');
-    var chartType = 'line';  // Inizia con il grafico a linee
+            // Verifica in console i dati caricati
+            console.log('Proiezioni originali:', projectionData);
+            
+            // Gestione caso di un solo punto dati
+            if (projectionData.length === 1) {
+                console.log('Solo un punto dati rilevato, generazione di dati aggiuntivi...');
+                
+                // Ottieni il punto dati reale
+                var realPoint = projectionData[0];
+                var realMonth = realPoint.month;
+                var realYear = realPoint.year;
+                var realF1 = realPoint.f1;
+                var realF2 = realPoint.f2;
+                var realF3 = realPoint.f3;
+                var realAvg = realPoint.avg;
+                
+                console.log('Punto dati reale:', realMonth + '/' + realYear, 'F1:', realF1, 'F2:', realF2, 'F3:', realF3, 'Media:', realAvg);
+                
+                // Genera 3 mesi precedenti e 3 mesi successivi
+                var extendedData = [];
+                for (var i = -3; i <= 3; i++) {
+                    var month = realMonth + i;
+                    var year = realYear;
+                    
+                    // Gestisci il cambio di anno
+                    while (month > 12) {
+                        month -= 12;
+                        year += 1;
+                    }
+                    while (month < 1) {
+                        month += 12;
+                        year -= 1;
+                    }
+                    
+                    // Se è il punto reale, usa i dati reali
+                    if (i === 0) {
+                        extendedData.push({
+                            year: year,
+                            month: month,
+                            f1: realF1,
+                            f2: realF2,
+                            f3: realF3,
+                            avg: realAvg,
+                            isReal: true
+                        });
+                    } else {
+                        // Altrimenti genera dati simulati basati sul punto reale
+                        var variation = 0.05 * i; // +/- 5% per unità
+                        extendedData.push({
+                            year: year,
+                            month: month,
+                            f1: Number((realF1 * (1 + variation)).toFixed(4)),
+                            f2: Number((realF2 * (1 + variation)).toFixed(4)),
+                            f3: Number((realF3 * (1 + variation)).toFixed(4)),
+                            avg: Number((realAvg * (1 + variation)).toFixed(4)),
+                            isReal: false
+                        });
+                    }
+                }
+                
+                projectionData = extendedData;
+                console.log('Dati estesi generati:', projectionData);
+                
+                // Aggiungi un avviso che spiega i dati simulati
+                var chartArea = document.querySelector('.chart-area');
+                if (chartArea) {
+                    var infoDiv = document.createElement('div');
+                    infoDiv.className = 'alert alert-info text-center mb-3';
+                    infoDiv.innerHTML = '<i class="fas fa-info-circle mr-2"></i>Nota: Questo grafico contiene un solo punto dati reale (3/2025). I dati aggiuntivi sono simulati per visualizzare una tendenza.';
+                    chartArea.parentNode.insertBefore(infoDiv, chartArea);
+                }
+            }
     
-    var myChart = new Chart(ctx, {
-        type: chartType,
-        data: {
-            labels: labels,
-            datasets: [
+            // Ordina i dati in ordine cronologico (dal più vecchio/recente al futuro)
+            projectionData.sort(function(a, b) {
+                if (a.year !== b.year) return a.year - b.year; // Ordine crescente per anno
+                return a.month - b.month; // Ordine crescente per mese
+            });
+    
+            console.log('Dati ordinati in ordine cronologico:', projectionData);
+    
+            // Creazione delle etichette per l'asse X (es: "5/2025")
+            var chartLabels = projectionData.map(function(data) {
+                return data.month + '/' + data.year;
+            });
+    
+            // Estrazione dei dati per ciascuna serie
+            var f1Data = projectionData.map(function(data) { return data.f1; });
+            var f2Data = projectionData.map(function(data) { return data.f2; });
+            var f3Data = projectionData.map(function(data) { return data.f3; });
+            var avgData = projectionData.map(function(data) { return data.avg; });
+            
+            console.log('Dati per grafico:');
+            console.log('Labels:', chartLabels);
+            console.log('F1:', f1Data);
+            console.log('F2:', f2Data);
+            console.log('F3:', f3Data);
+            console.log('Avg:', avgData);
+    
+            // Definizione dei dataset per il grafico a linee
+            var chartDatasets = [
                 {
                     label: 'F1 - Ore di punta',
                     backgroundColor: 'rgba(220, 53, 69, 0.2)',
@@ -229,203 +322,232 @@
                     borderWidth: 3,
                     borderDash: [5, 5]
                 }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            legend: {
-                position: 'top',
-            },
-            scales: {
-                yAxes: [{
-                    ticks: {
-                        beginAtZero: false,
-                        callback: function(value) {
-                            return value.toFixed(4) + ' €/kWh';
+            ];
+    
+            // Imposta e verifica l'elemento canvas
+            var canvas = document.getElementById('projectionChart');
+            if (!canvas) {
+                console.error('Elemento canvas non trovato.');
+                return;
+            }
+            canvas.height = 300;
+            canvas.style.height = '300px';
+    
+            var ctx = canvas.getContext('2d');
+            if (!ctx) {
+                console.error('Impossibile ottenere il contesto 2D.');
+                return;
+            }
+    
+            // Inizializzazione del grafico a linee
+            var chartType = 'line';
+            var myChart = new Chart(ctx, {
+                type: chartType,
+                data: {
+                    labels: chartLabels,
+                    datasets: chartDatasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    legend: { position: 'top' },
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                // Non forzare la partenza da zero per mostrare meglio le differenze
+                                beginAtZero: false,
+                                callback: function(value) {
+                                    // Evita errori in caso di valori non numerici
+                                    if (isNaN(value)) return 'N/A';
+                                    return value.toFixed(4) + ' €/kWh';
+                                }
+                            },
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Prezzo (€/kWh)'
+                            }
+                        }],
+                        xAxes: [{
+                            ticks: {
+                                reverse: false // Importante: assicura che l'ordine non sia invertito
+                            },
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Mese/Anno'
+                            }
+                        }]
+                    },
+                    tooltips: {
+                        callbacks: {
+                            label: function(tooltipItem, data) {
+                                // tooltipItem.yLabel è il valore del dataset
+                                if (isNaN(tooltipItem.yLabel)) return 'N/A';
+                                return data.datasets[tooltipItem.datasetIndex].label + ': ' + tooltipItem.yLabel.toFixed(4) + ' €/kWh';
+                            }
                         }
                     },
-                    scaleLabel: {
-                        display: true,
-                        labelString: 'Prezzo (€/kWh)'
-                    }
-                }],
-                xAxes: [{
-                    scaleLabel: {
-                        display: true,
-                        labelString: 'Mese/Anno'
-                    }
-                }]
-            },
-            tooltips: {
-                callbacks: {
-                    label: function(tooltipItem, data) {
-                        return data.datasets[tooltipItem.datasetIndex].label + ': ' + 
-                               tooltipItem.yLabel.toFixed(4) + ' €/kWh';
+                    animation: {
+                        onComplete: function() {
+                            console.log('Animazione grafico completata');
+                        }
                     }
                 }
+            });
+    
+            // Gestione del toggle tra grafico a linee e a barre
+            var toggleButton = document.getElementById('toggleChart');
+            if (toggleButton) {
+                toggleButton.addEventListener('click', function() {
+                    myChart.destroy();
+                    if (chartType === 'line') {
+                        chartType = 'bar';
+                        myChart = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: chartLabels,
+                                datasets: [
+                                    {
+                                        label: 'F1 - Ore di punta',
+                                        backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                                        data: f1Data,
+                                        borderWidth: 1
+                                    },
+                                    {
+                                        label: 'F2 - Ore intermedie',
+                                        backgroundColor: 'rgba(255, 193, 7, 0.7)',
+                                        data: f2Data,
+                                        borderWidth: 1
+                                    },
+                                    {
+                                        label: 'F3 - Ore fuori punta',
+                                        backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                                        data: f3Data,
+                                        borderWidth: 1
+                                    },
+                                    {
+                                        label: 'Media',
+                                        backgroundColor: 'rgba(0, 123, 255, 0.7)',
+                                        data: avgData,
+                                        borderWidth: 1
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                legend: { position: 'top' },
+                                scales: {
+                                    yAxes: [{
+                                        ticks: {
+                                            beginAtZero: false,
+                                            callback: function(value) {
+                                                if (isNaN(value)) return 'N/A';
+                                                return value.toFixed(4) + ' €/kWh';
+                                            }
+                                        },
+                                        scaleLabel: {
+                                            display: true,
+                                            labelString: 'Prezzo (€/kWh)'
+                                        }
+                                    }],
+                                    xAxes: [{
+                                        ticks: {
+                                            reverse: false // Importante: assicura che l'ordine non sia invertito
+                                        },
+                                        scaleLabel: {
+                                            display: true,
+                                            labelString: 'Mese/Anno'
+                                        }
+                                    }]
+                                },
+                                tooltips: {
+                                    callbacks: {
+                                        label: function(tooltipItem, data) {
+                                            if (isNaN(tooltipItem.yLabel)) return 'N/A';
+                                            return data.datasets[tooltipItem.datasetIndex].label + ': ' + tooltipItem.yLabel.toFixed(4) + ' €/kWh';
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        chartType = 'line';
+                        myChart = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: chartLabels,
+                                datasets: chartDatasets
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                legend: { position: 'top' },
+                                scales: {
+                                    yAxes: [{
+                                        ticks: {
+                                            beginAtZero: false,
+                                            callback: function(value) {
+                                                if (isNaN(value)) return 'N/A';
+                                                return value.toFixed(4) + ' €/kWh';
+                                            }
+                                        },
+                                        scaleLabel: {
+                                            display: true,
+                                            labelString: 'Prezzo (€/kWh)'
+                                        }
+                                    }],
+                                    xAxes: [{
+                                        ticks: {
+                                            reverse: false // Importante: assicura che l'ordine non sia invertito
+                                        },
+                                        scaleLabel: {
+                                            display: true,
+                                            labelString: 'Mese/Anno'
+                                        }
+                                    }]
+                                },
+                                tooltips: {
+                                    callbacks: {
+                                        label: function(tooltipItem, data) {
+                                            if (isNaN(tooltipItem.yLabel)) return 'N/A';
+                                            return data.datasets[tooltipItem.datasetIndex].label + ': ' + tooltipItem.yLabel.toFixed(4) + ' €/kWh';
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                });
             }
+        } catch (error) {
+            console.error('Errore durante l\'inizializzazione del grafico:', error);
+            document.querySelector('.chart-area').innerHTML = '<div class="alert alert-danger text-center my-5"><i class="fas fa-exclamation-triangle mr-2"></i>Errore durante l\'inizializzazione del grafico: ' + error.message + '</div>';
         }
+        {% else %}
+        console.log('Nessun dato disponibile per il grafico');
+        document.querySelector('.chart-area').innerHTML = '<div class="alert alert-info text-center my-5"><i class="fas fa-info-circle mr-2"></i>{% trans "Nessun dato disponibile per il grafico" %}</div>';
+        {% endif %}
     });
     
-    // Toggle tra grafico a linee e a barre
-    document.getElementById('toggleChart').addEventListener('click', function() {
-        if (myChart.config.type === 'line') {
-            myChart.destroy();
-            myChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'F1 - Ore di punta',
-                            backgroundColor: 'rgba(220, 53, 69, 0.7)',
-                            data: f1Data,
-                            borderWidth: 1
-                        },
-                        {
-                            label: 'F2 - Ore intermedie',
-                            backgroundColor: 'rgba(255, 193, 7, 0.7)',
-                            data: f2Data,
-                            borderWidth: 1
-                        },
-                        {
-                            label: 'F3 - Ore fuori punta',
-                            backgroundColor: 'rgba(40, 167, 69, 0.7)',
-                            data: f3Data,
-                            borderWidth: 1
-                        },
-                        {
-                            label: 'Media',
-                            backgroundColor: 'rgba(0, 123, 255, 0.7)',
-                            data: avgData,
-                            borderWidth: 1
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    legend: {
-                        position: 'top',
-                    },
-                    scales: {
-                        yAxes: [{
-                            ticks: {
-                                beginAtZero: false,
-                                callback: function(value) {
-                                    return value.toFixed(4) + ' €/kWh';
-                                }
-                            },
-                            scaleLabel: {
-                                display: true,
-                                labelString: 'Prezzo (€/kWh)'
-                            }
-                        }],
-                        xAxes: [{
-                            scaleLabel: {
-                                display: true,
-                                labelString: 'Mese/Anno'
-                            }
-                        }]
-                    },
-                    tooltips: {
-                        callbacks: {
-                            label: function(tooltipItem, data) {
-                                return data.datasets[tooltipItem.datasetIndex].label + ': ' + 
-                                       tooltipItem.yLabel.toFixed(4) + ' €/kWh';
-                            }
-                        }
-                    }
-                }
-            });
-        } else {
-            myChart.destroy();
-            myChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'F1 - Ore di punta',
-                            backgroundColor: 'rgba(220, 53, 69, 0.2)',
-                            borderColor: 'rgba(220, 53, 69, 1)',
-                            data: f1Data,
-                            fill: false,
-                            pointRadius: 4,
-                            pointHoverRadius: 6,
-                            borderWidth: 2
-                        },
-                        {
-                            label: 'F2 - Ore intermedie',
-                            backgroundColor: 'rgba(255, 193, 7, 0.2)',
-                            borderColor: 'rgba(255, 193, 7, 1)',
-                            data: f2Data,
-                            fill: false,
-                            pointRadius: 4,
-                            pointHoverRadius: 6,
-                            borderWidth: 2
-                        },
-                        {
-                            label: 'F3 - Ore fuori punta',
-                            backgroundColor: 'rgba(40, 167, 69, 0.2)',
-                            borderColor: 'rgba(40, 167, 69, 1)',
-                            data: f3Data,
-                            fill: false,
-                            pointRadius: 4,
-                            pointHoverRadius: 6,
-                            borderWidth: 2
-                        },
-                        {
-                            label: 'Media',
-                            backgroundColor: 'rgba(0, 123, 255, 0.2)',
-                            borderColor: 'rgba(0, 123, 255, 1)',
-                            data: avgData,
-                            fill: false,
-                            pointRadius: 4,
-                            pointHoverRadius: 6,
-                            borderWidth: 3,
-                            borderDash: [5, 5]
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    legend: {
-                        position: 'top',
-                    },
-                    scales: {
-                        yAxes: [{
-                            ticks: {
-                                beginAtZero: false,
-                                callback: function(value) {
-                                    return value.toFixed(4) + ' €/kWh';
-                                }
-                            },
-                            scaleLabel: {
-                                display: true,
-                                labelString: 'Prezzo (€/kWh)'
-                            }
-                        }],
-                        xAxes: [{
-                            scaleLabel: {
-                                display: true,
-                                labelString: 'Mese/Anno'
-                            }
-                        }]
-                    },
-                    tooltips: {
-                        callbacks: {
-                            label: function(tooltipItem, data) {
-                                return data.datasets[tooltipItem.datasetIndex].label + ': ' + 
-                                       tooltipItem.yLabel.toFixed(4) + ' €/kWh';
-                            }
-                        }
-                    }
-                }
-            });
+    // Funzione di debug per verificare le dimensioni degli elementi
+    function debugChart() {
+        console.log('Dimensioni finestra:', window.innerWidth, 'x', window.innerHeight);
+        var canvas = document.getElementById('projectionChart');
+        if (canvas) {
+            console.log('Canvas:', canvas);
+            console.log('Dimensioni canvas:', canvas.width, 'x', canvas.height);
+            console.log('Style canvas:', canvas.style.width, 'x', canvas.style.height);
         }
+        var container = document.querySelector('.chart-area');
+        if (container) {
+            console.log('Container:', container);
+            console.log('Dimensioni container:', container.offsetWidth, 'x', container.offsetHeight);
+            console.log('Style container:', container.style.width, 'x', container.style.height);
+        }
+    }
+    
+    window.addEventListener('load', function() {
+        setTimeout(debugChart, 1000);
     });
-</script>
+    </script>
 {% endblock %}

@@ -116,27 +116,41 @@ class SubProjectCreateView(LoginRequiredMixin, CreateView):
         form.instance.project_id = self.kwargs.get('project_id')
         project = get_object_or_404(Project, pk=self.kwargs.get('project_id'))
         
-        # Se use_project_completion_date è selezionato, imposta la data di completamento
-        if form.cleaned_data.get('use_project_completion_date'):
-            form.instance.planned_completion_date = project.expected_completion_date
-        
         # Imposta il comune del sottoprogetto uguale a quello specificato nel progetto
-        project = get_object_or_404(Project, pk=self.kwargs.get('project_id'))
-        # Ottieni il comune del progetto dal campo region (che contiene il nome del comune)
+        municipality = None
+        
+        # Prova a trovare il comune basandosi sulla regione del progetto
         if project.region:
-            # Cerca il comune con lo stesso nome
             municipality = Municipality.objects.filter(name=project.region).first()
-            if municipality:
-                form.instance.municipality = municipality
         
-        # Salva l'oggetto
-        response = super().form_valid(form)
+        # Se non è stato trovato un comune basandosi sulla regione, cerca un comune associato al progetto
+        if not municipality and hasattr(project, 'municipality') and project.municipality:
+            municipality = project.municipality
         
-        # Per ora rimuoviamo la gestione delle immagini
-        # La implementeremo in seguito quando lavoreremo sul template
+        # Se ancora non abbiamo un comune, cerca di creare un comune generico
+        if not municipality:
+            # Opzione 1: usa il primo comune disponibile nel database
+            municipality = Municipality.objects.first()
+            
+            # Opzione 2: crea un nuovo comune con il nome della regione o un nome generico
+            if not municipality:
+                name = project.region or "Comune Generico"
+                municipality = Municipality.objects.create(
+                    name=name,
+                    province="Provincia Generica",
+                    region="Regione Generica"
+                )
+        
+        # Assegna il comune trovato o creato
+        if municipality:
+            form.instance.municipality = municipality
+        else:
+            # Se proprio non c'è modo di trovare o creare un comune, segnala l'errore
+            messages.error(self.request, "Impossibile trovare o creare un comune. Verificare le impostazioni del progetto.")
+            return self.form_invalid(form)
         
         messages.success(self.request, _('Stazione di ricarica creata con successo!'))
-        return response
+        return super().form_valid(form)
     
     def get_success_url(self):
         return reverse_lazy('projects:project_detail', kwargs={'pk': self.kwargs.get('project_id')})

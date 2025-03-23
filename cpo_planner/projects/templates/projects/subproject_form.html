@@ -264,7 +264,7 @@
             <div class="col-12">
                 <div class="alert alert-secondary mt-3">
                     <i class="fas fa-umbrella"></i> <strong>Nota:</strong> I giorni di pioggia influenzano l'utilizzo delle colonnine principalmente in situazioni di emergenza. 
-                    La riduzione dei ricavi in questi giorni è stimata al 30% rispetto a un giorno normale.
+                    La riduzione dei ricavi in questi giorni è stimata al 90% rispetto a un giorno normale.
                 </div>
             </div>
         </div>
@@ -770,11 +770,11 @@ $(document).ready(function() {
         
         // Fattori di utilizzo basati sul tipo di connettore
         const connectorUtilization = {
-            "1": 0.8,  // Tipo 1
+            "1": 0.5,  // Tipo 1
             "2": 1.0,  // Tipo 2 (standard)
             "3": 1.2,  // CCS
-            "4": 1.1,  // CHAdeMO
-            "5": 0.7   // Altro
+            "4": 0.6,  // CHAdeMO
+            "5": 0.5   // Altro
         };
         
         // Calcola ricavi stimati in base al profilo, potenza e numero di connettori/colonnine
@@ -794,7 +794,7 @@ $(document).ready(function() {
         // Calcola il fattore di disponibilità
         let unavailableDays = marketDay + festivalDays;
         let availableDays = 365 - unavailableDays;
-        let rainyImpact = rainyDays * 0.3; // I giorni di pioggia riducono i ricavi del 30%
+        let rainyImpact = rainyDays * 0.9; // I giorni di pioggia riducono i ricavi del 90%
         
         let availabilityFactor = (availableDays - rainyImpact) / 365;
         estimatedRevenue *= availabilityFactor;
@@ -919,9 +919,63 @@ $(document).ready(function() {
         }
     });
     
+    // Funzione per calcolare e validare i giorni totali di indisponibilità
+    function validateUnavailableDays() {
+        // Calcola i giorni totali
+        let marketDay = $('#id_weekly_market_day').val() ? 52 : 0;
+        let festivalDays = parseInt($('#id_local_festival_days').val()) || 0;
+        let rainyDays = parseInt($('#id_rainy_days').val()) || 0;
+        
+        let totalDays = marketDay + festivalDays + rainyDays;
+        
+        // Cerca il contenitore della card-body nella sezione "Giorni di Indisponibilità"
+        let container = $('.card-header:contains("Giorni di Indisponibilità")').next('.card-body');
+        
+        // Aggiorna o crea un display per mostrare il totale
+        if ($('#total_unavailable_days').length === 0) {
+            // Se l'elemento non esiste, crealo
+            container.append(
+                '<div class="row mt-3">' +
+                '   <div class="col-12">' +
+                '       <div id="days_validation_message" class="alert alert-info">' +
+                '           <i class="fas fa-info-circle"></i> Totale giorni di indisponibilità: <span id="total_unavailable_days">0</span> / 365' +
+                '       </div>' +
+                '   </div>' +
+                '</div>'
+            );
+        }
+        
+        // Aggiorna il totale visualizzato
+        $('#total_unavailable_days').text(totalDays);
+        
+        // Cambia lo stile e il messaggio in base alla validità
+        let validationMessage = $('#days_validation_message');
+        let saveButton = $('button[type="submit"]');
+        
+        if (totalDays > 365) {
+            validationMessage.removeClass('alert-info alert-secondary').addClass('alert-danger');
+            validationMessage.html('<i class="fas fa-exclamation-triangle"></i> <strong>Errore:</strong> Il totale dei giorni di indisponibilità (' + totalDays + ') supera i 365 giorni dell\'anno!');
+            saveButton.prop('disabled', true);
+            return false;
+        } else {
+            validationMessage.removeClass('alert-danger').addClass('alert-info');
+            validationMessage.html('<i class="fas fa-info-circle"></i> Totale giorni di indisponibilità: <span id="total_unavailable_days">' + totalDays + '</span> / 365');
+            saveButton.prop('disabled', false);
+            return true;
+        }
+    }
+    
+    // Aggiungi event handler per tutti i campi relativi ai giorni
+    $('#id_weekly_market_day, #id_local_festival_days, #id_rainy_days').on('change input', function() {
+        validateUnavailableDays();
+        calculateExpectedRevenue(); // Ricalcola anche i ricavi attesi
+    });
+    
     // Calcola il budget e i ricavi attesi iniziali
     calculateBudget();
     calculateExpectedRevenue();
+    // Esegui la validazione dei giorni all'avvio
+    validateUnavailableDays();
 });
 </script>
 {% endblock %}

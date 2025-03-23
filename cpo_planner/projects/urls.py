@@ -10,7 +10,8 @@ from .views.subproject_views import (
 from .views.charging_station_views import (
     ChargingStationDetailView, ChargingStationCreateView, ChargingStationUpdateView, ChargingStationDeleteView,
     ChargerListView, ChargerDetailView, ChargerCreateView, ChargerUpdateView, ChargerDeleteView,
-    ChargingStationPhotoCreateView, ChargingStationPhotoUpdateView, ChargingStationPhotoDetailView, ChargingStationPhotoDeleteView
+    ChargingStationPhotoCreateView, ChargingStationPhotoUpdateView, ChargingStationPhotoDetailView, ChargingStationPhotoDeleteView,
+    usage_profile_detail  # Nuova importazione per l'endpoint API
 )
 from .views.financial_views import (
     FinancialParametersUpdateView, RunFinancialAnalysisView,
@@ -58,6 +59,9 @@ urlpatterns = [
     path('station/<int:pk>/', ChargingStationDetailView.as_view(), name='station_detail'),
     path('station/<int:pk>/update/', ChargingStationUpdateView.as_view(), name='station_update'),
     path('station/<int:pk>/delete/', ChargingStationDeleteView.as_view(), name='station_delete'),
+    
+    # API endpoint per i profili di utilizzo
+    path('api/usage-profiles/<int:profile_id>/', usage_profile_detail, name='api_usage_profile_detail'),
     
     # Financial views
     path('<int:project_id>/financial-parameters/', 

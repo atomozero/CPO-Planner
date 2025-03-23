@@ -503,7 +503,41 @@ class ManagementFee(models.Model):
         verbose_name = _("Configurazione tariffaria")
         verbose_name_plural = _("Configurazioni tariffarie")
         ordering = ["-active", "name"]
-        
+
+
+class UsageProfile(models.Model):
+    """
+    Modello per i profili di utilizzo delle colonnine di ricarica.
+    Utilizzato per calcolare i ricavi attesi in base ai parametri di utilizzo.
+    """
+    LOCATION_TYPES = [
+        ('city_center', _('Centro città')),
+        ('suburban', _('Periferia/Residenziale')),
+        ('commercial', _('Area commerciale')),
+        ('highway', _('Autostrada/Superstrada')),
+        ('rural', _('Area rurale')),
+    ]
+    
+    name = models.CharField(_('Nome profilo'), max_length=100)
+    description = models.TextField(_('Descrizione'), blank=True)
+    
+    # Parametri di utilizzo
+    daily_usage_hours = models.FloatField(_('Ore di utilizzo giornaliere'), default=8.0)
+    avg_session_kwh = models.FloatField(_('kWh medi per sessione'), default=15.0)
+    utilization_rate = models.FloatField(_('Tasso di utilizzo'), default=0.5)
+    suggested_price_kwh = models.FloatField(_('Prezzo suggerito per kWh'), default=0.45)
+    location_type = models.CharField(_('Tipo di posizione'), max_length=20, choices=LOCATION_TYPES, default='city_center')
+    
+    created_at = models.DateTimeField(_('Data creazione'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('Ultima modifica'), auto_now=True)
+    
+    class Meta:
+        verbose_name = _('Profilo di utilizzo')
+        verbose_name_plural = _('Profili di utilizzo')
+    
+    def __str__(self):
+        return f"{self.name} ({self.get_location_type_display()})"       
+
 class StationUsageProfile(models.Model):
     name = models.CharField(_("Nome profilo"), max_length=100)
     description = models.TextField(_("Descrizione"), blank=True)

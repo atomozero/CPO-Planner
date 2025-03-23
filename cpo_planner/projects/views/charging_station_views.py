@@ -17,6 +17,11 @@ from ..forms.charging_station_forms import ChargingStationForm, ChargerForm, Cha
 from cpo_core.models.subproject import Charger, SubProject as CoreSubProject
 from cpo_core.models.charging_station import ChargingStationPhoto
 
+# Aggiungi queste importazioni all'inizio del file, se non sono già presenti
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET
+from infrastructure.models import UsageProfile
+
 class ChargingStationDetailView(LoginRequiredMixin, DetailView):
     model = ChargingStation
     template_name = 'projects/charging_station_detail.html'
@@ -467,3 +472,32 @@ class ChargingStationPhotoDeleteView(LoginRequiredMixin, DeleteView):
         else:
             # Fallback
             return reverse_lazy('cpo_core:dashboard')
+
+
+@require_GET
+def usage_profile_detail(request, profile_id):
+    """API endpoint per ottenere i dettagli di un profilo di utilizzo"""
+    try:
+        profile = get_object_or_404(UsageProfile, pk=profile_id)
+        
+        # Crea un dizionario con i dati del profilo
+        profile_data = {
+            'id': profile.id,
+            'name': profile.name,
+            'daily_usage_hours': float(profile.daily_usage_hours),
+            'avg_session_kwh': float(profile.avg_session_kwh),
+            'utilization_rate': float(profile.utilization_rate),
+            'suggested_price_kwh': float(profile.suggested_price_kwh),
+            'location_type': profile.location_type,
+            # Campi aggiuntivi che potrebbero essere utili
+            'description': profile.description,
+            'created_at': profile.created_at.isoformat() if hasattr(profile, 'created_at') else None,
+            'updated_at': profile.updated_at.isoformat() if hasattr(profile, 'updated_at') else None
+        }
+        
+        return JsonResponse(profile_data)
+    except Exception as e:
+        return JsonResponse({
+            'error': str(e),
+            'message': 'Si è verificato un errore nel recupero dei dati del profilo.'
+        }, status=500)

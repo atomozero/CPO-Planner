@@ -741,81 +741,155 @@ $(document).ready(function() {
         return totalBudget;
     }
     
-    // Funzione per calcolare i ricavi attesi in base al profilo di consumo
-    function calculateExpectedRevenue() {
-        // Ottieni il profilo di consumo selezionato
-        let profileId = $('#id_usage_profile').val();
-        let power = parseFloat(formatNumber($('#id_power_kw').val())) || 0;
-        let numConnectors = parseInt($('#id_num_connectors').val()) || 1;
-        let numChargers = parseInt($('#id_num_chargers').val()) || 1;
-        
-        // Se non è selezionato un profilo, impossibile calcolare i ricavi
-        if (!profileId) {
-            $('#id_expected_revenue').val('0.00');
-            $('#id_roi').val('0.00');
-            console.log("Nessun profilo di consumo selezionato, ricavi non calcolabili");
-            return 0;
-        }
-        
-        // Mappa dei profili di consumo e relativi fattori di ricavo di base per kW
-        // Questi valori andrebbero ottimizzati in base ai dati reali
-        const profileFactors = {
-            "1": 3000, // Parcheggio centrale - base per kW
-            "2": 2500, // Parcheggio periferico
-            "3": 4000, // Centro commerciale
-            "4": 3500, // Strada urbana
-            "5": 4500  // Autostrada/superstrada
-            // Aggiungi altri profili secondo necessità
-        };
-        
-        // Fattori di utilizzo basati sul tipo di connettore
-        const connectorUtilization = {
-            "1": 0.5,  // Tipo 1
-            "2": 1.0,  // Tipo 2 (standard)
-            "3": 1.2,  // CCS
-            "4": 0.6,  // CHAdeMO
-            "5": 0.5   // Altro
-        };
-        
-        // Calcola ricavi stimati in base al profilo, potenza e numero di connettori/colonnine
-        let baseFactor = profileFactors[profileId] || 2500; // Valore di default se profilo non trovato
-        
-        // Considera potenza, numero connettori e colonnine
-        let powerFactor = Math.log(power + 1) * 3; // Formula logaritmica per evitare crescita lineare
-        let connectorsEffect = Math.sqrt(numConnectors); // Effetto diminuito all'aumentare dei connettori
-        
-        let estimatedRevenue = baseFactor * powerFactor * connectorsEffect * numChargers;
-        
-        // Considera i giorni di indisponibilità e pioggia
-        let marketDay = $('#id_weekly_market_day').val() ? 52 : 0;
-        let festivalDays = parseInt($('#id_local_festival_days').val()) || 0;
-        let rainyDays = parseInt($('#id_rainy_days').val()) || 0;
-        
-        // Calcola il fattore di disponibilità
-        let unavailableDays = marketDay + festivalDays;
-        let availableDays = 365 - unavailableDays;
-        let rainyImpact = rainyDays * 0.9; // I giorni di pioggia riducono i ricavi del 90%
-        
-        let availabilityFactor = (availableDays - rainyImpact) / 365;
-        estimatedRevenue *= availabilityFactor;
-        
-        console.log("Calcolo ricavi: profilo=" + profileId + 
-                    ", power=" + power + 
-                    ", numConnectors=" + numConnectors + 
-                    ", numChargers=" + numChargers +
-                    ", giorni indisponibili=" + unavailableDays +
-                    ", giorni pioggia=" + rainyDays +
-                    ", fattore disponibilità=" + availabilityFactor.toFixed(4) +
-                    ", ricavi stimati=" + estimatedRevenue.toFixed(2));
-        
-        // Imposta il valore dei ricavi attesi
-        $('#id_expected_revenue').val(estimatedRevenue.toFixed(2));
-        
-        // Calcola e imposta il ROI
-        calculateROI(estimatedRevenue);
-        
-        return estimatedRevenue;
+    // Funzione per calcolare i ricavi attesi basandosi sul profilo di utilizzo selezionato
+function calculateExpectedRevenue() {
+    // Ottieni il profilo di utilizzo selezionato
+    let profileId = $('#id_usage_profile').val();
+    let power = parseFloat(formatNumber($('#id_power_kw').val())) || 0;
+    let numConnectors = parseInt($('#id_num_connectors').val()) || 1;
+    let numChargers = parseInt($('#id_num_chargers').val()) || 1;
+    
+    // Se non è selezionato un profilo, impossibile calcolare i ricavi
+    if (!profileId) {
+        $('#id_expected_revenue').val('0.00');
+        $('#id_roi').val('0.00');
+        console.log("Nessun profilo di utilizzo selezionato, ricavi non calcolabili");
+        return 0;
     }
+    
+    // Ottieni i dati del profilo tramite una chiamata AJAX
+    $.ajax({
+        url: `/api/usage-profiles/${profileId}/`,
+        method: 'GET',
+        dataType: 'json',
+        success: function(profileData) {
+            // Utilizza i dati reali del profilo per il calcolo
+            console.log("Dati profilo ricevuti:", profileData);
+            
+            // Calcola i ricavi in base ai dati del profilo
+            let baseDailyUsageHours = profileData.daily_usage_hours || 5;
+            let avgSessionKwh = profileData.avg_session_kwh || 15;
+            let usageRate = profileData.utilization_rate || 0.5; // Tasso di utilizzo (0-1)
+            let pricePerKwh = profileData.suggested_price_kwh || 0.45; // €/kWh
+            
+            // Fattore di posizione dal profilo
+            let locationFactor = 1.0;
+            switch(profileData.location_type) {
+                case 'city_center': locationFactor = 1.2; break;
+                case 'commercial': locationFactor = 1.5; break;
+                case 'suburban': locationFactor = 0.9; break;
+                case 'highway': locationFactor = 1.8; break;
+                default: locationFactor = 1.0;
+            }
+            
+            // Calcola sessioni di ricarica giornaliere per connettore
+            let sessionsPerDayPerConnector = baseDailyUsageHours / (avgSessionKwh / power) * usageRate;
+            
+            // Moltiplica per il numero di connettori e colonnine
+            let totalDailySessions = sessionsPerDayPerConnector * numConnectors * numChargers;
+            
+            // Calcola kWh giornalieri consumati
+            let dailyKwh = totalDailySessions * avgSessionKwh;
+            
+            // Calcola ricavi giornalieri
+            let dailyRevenue = dailyKwh * pricePerKwh * locationFactor;
+            
+            // Considera i giorni di indisponibilità e pioggia
+            let marketDay = $('#id_weekly_market_day').val() ? 52 : 0;
+            let festivalDays = parseInt($('#id_local_festival_days').val()) || 0;
+            let rainyDays = parseInt($('#id_rainy_days').val()) || 0;
+            
+            // Calcola il fattore di disponibilità
+            let unavailableDays = marketDay + festivalDays;
+            let availableDays = 365 - unavailableDays;
+            let rainyImpact = rainyDays * 0.1; // I giorni di pioggia riducono i ricavi del 10%
+            
+            let availabilityFactor = (availableDays - rainyImpact) / 365;
+            
+            // Calcola ricavi annuali
+            let annualRevenue = dailyRevenue * 365 * availabilityFactor;
+            
+            console.log("Calcolo ricavi:", {
+                profilo: profileId,
+                power: power,
+                numConnectors: numConnectors,
+                numChargers: numChargers,
+                oreUtilizzo: baseDailyUsageHours,
+                kwhPerSessione: avgSessionKwh,
+                tassoUtilizzo: usageRate,
+                fattorePosizione: locationFactor,
+                sessioniGiornaliere: totalDailySessions,
+                kwhGiornalieri: dailyKwh,
+                ricaviGiornalieri: dailyRevenue,
+                giorniIndisponibili: unavailableDays,
+                giorniPioggia: rainyDays,
+                fattoreDisponibilità: availabilityFactor.toFixed(4),
+                ricaviAnnuali: annualRevenue.toFixed(2)
+            });
+            
+            // Imposta il valore dei ricavi attesi
+            $('#id_expected_revenue').val(annualRevenue.toFixed(2));
+            
+            // Calcola e imposta il ROI
+            calculateROI(annualRevenue);
+        },
+        error: function(xhr, status, error) {
+            console.error("Errore nel recupero dati profilo:", error);
+            
+            // In caso di errore, usa un calcolo di fallback
+            fallbackRevenueCalculation(profileId, power, numConnectors, numChargers);
+        }
+    });
+}
+
+// Funzione di fallback in caso di errore nel recupero dati profilo
+function fallbackRevenueCalculation(profileId, power, numConnectors, numChargers) {
+    // Mappa base dei profili di utilizzo, usata solo come fallback
+    const profileFactors = {
+        "1": 3000, // Parcheggio centrale - base per kW
+        "2": 2500, // Parcheggio periferico
+        "3": 4000, // Centro commerciale
+        "4": 3500, // Strada urbana
+        "5": 4500  // Autostrada/superstrada
+    };
+    
+    // Calcola ricavi stimati con il metodo precedente (fallback)
+    let baseFactor = profileFactors[profileId] || 2500; // Valore di default se profilo non trovato
+    
+    // Considera potenza, numero connettori e colonnine
+    let powerFactor = Math.log(power + 1) * 3; // Formula logaritmica per evitare crescita lineare
+    let connectorsEffect = Math.sqrt(numConnectors); // Effetto diminuito all'aumentare dei connettori
+    
+    let estimatedRevenue = baseFactor * powerFactor * connectorsEffect * numChargers;
+    
+    // Considera i giorni di indisponibilità e pioggia
+    let marketDay = $('#id_weekly_market_day').val() ? 52 : 0;
+    let festivalDays = parseInt($('#id_local_festival_days').val()) || 0;
+    let rainyDays = parseInt($('#id_rainy_days').val()) || 0;
+    
+    // Calcola il fattore di disponibilità
+    let unavailableDays = marketDay + festivalDays;
+    let availableDays = 365 - unavailableDays;
+    let rainyImpact = rainyDays * 0.1; // I giorni di pioggia riducono i ricavi del 10%
+    
+    let availabilityFactor = (availableDays - rainyImpact) / 365;
+    estimatedRevenue *= availabilityFactor;
+    
+    console.log("Calcolo fallback ricavi: profilo=" + profileId + 
+                ", power=" + power + 
+                ", numConnectors=" + numConnectors + 
+                ", numChargers=" + numChargers +
+                ", giorni indisponibili=" + unavailableDays +
+                ", giorni pioggia=" + rainyDays +
+                ", fattore disponibilità=" + availabilityFactor.toFixed(4) +
+                ", ricavi stimati=" + estimatedRevenue.toFixed(2));
+    
+    // Imposta il valore dei ricavi attesi
+    $('#id_expected_revenue').val(estimatedRevenue.toFixed(2));
+    
+    // Calcola e imposta il ROI
+    calculateROI(estimatedRevenue);
+}
     
     // Funzione per calcolare il ROI
     function calculateROI(revenue) {

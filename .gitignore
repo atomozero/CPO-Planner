@@ -25,3 +25,4 @@ media
 core/migrations/0001_initial.py
 financial/migrations/0001_initial.py
 /cpo_core/migrations
+/infrastructure/migrations

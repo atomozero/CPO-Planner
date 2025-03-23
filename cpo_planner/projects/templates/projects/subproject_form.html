@@ -759,7 +759,7 @@ function calculateExpectedRevenue() {
     
     // Ottieni i dati del profilo tramite una chiamata AJAX
     $.ajax({
-        url: `/api/usage-profiles/${profileId}/`,
+        url: `/projects/api/usage-profiles/${profileId}/`,
         method: 'GET',
         dataType: 'json',
         success: function(profileData) {
@@ -802,7 +802,7 @@ function calculateExpectedRevenue() {
             // Calcola il fattore di disponibilità
             let unavailableDays = marketDay + festivalDays;
             let availableDays = 365 - unavailableDays;
-            let rainyImpact = rainyDays * 0.1; // I giorni di pioggia riducono i ricavi del 10%
+            let rainyImpact = rainyDays * 0.9; // I giorni di pioggia riducono i ricavi del 90%
             
             let availabilityFactor = (availableDays - rainyImpact) / 365;
             
@@ -1050,6 +1050,216 @@ function fallbackRevenueCalculation(profileId, power, numConnectors, numChargers
     calculateExpectedRevenue();
     // Esegui la validazione dei giorni all'avvio
     validateUnavailableDays();
+});
+
+// Aggiungi questo in fondo al file subproject_form.html, dopo le altre funzioni JavaScript
+// Il test viene attivato quando si seleziona un profilo
+
+// Variabile globale per memorizzare i dettagli del calcolo frontend
+let frontendCalculation = {};
+
+// Override della funzione calculateExpectedRevenue per tracciare i valori
+const originalCalculateExpectedRevenue = calculateExpectedRevenue;
+calculateExpectedRevenue = function() {
+    // Ottieni il profilo di utilizzo selezionato
+    let profileId = $('#id_usage_profile').val();
+    let power = parseFloat(formatNumber($('#id_power_kw').val())) || 0;
+    let numConnectors = parseInt($('#id_num_connectors').val()) || 1;
+    let numChargers = parseInt($('#id_num_chargers').val()) || 1;
+    
+    // Se non è selezionato un profilo, impossibile calcolare i ricavi
+    if (!profileId) {
+        $('#id_expected_revenue').val('0.00');
+        $('#id_roi').val('0.00');
+        console.log("Nessun profilo di utilizzo selezionato, ricavi non calcolabili");
+        return 0;
+    }
+    
+    // Ottieni i dati del profilo tramite una chiamata AJAX
+    $.ajax({
+        url: `/projects/api/usage-profiles/${profileId}/`,
+        method: 'GET',
+        dataType: 'json',
+        success: function(profileData) {
+            console.log("Dati profilo ricevuti:", profileData);
+            
+            // Calcola i ricavi in base ai dati del profilo
+            let baseDailyUsageHours = profileData.daily_usage_hours || 5;
+            let avgSessionKwh = profileData.avg_session_kwh || 15;
+            let usageRate = profileData.utilization_rate || 0.5; // Tasso di utilizzo (0-1)
+            let pricePerKwh = profileData.suggested_price_kwh || 0.45; // €/kWh
+            
+            // Fattore di posizione dal profilo
+            let locationFactor = 1.0;
+            switch(profileData.location_type) {
+                case 'city_center': locationFactor = 1.2; break;
+                case 'commercial': locationFactor = 1.5; break;
+                case 'suburban': locationFactor = 0.9; break;
+                case 'highway': locationFactor = 1.8; break;
+                default: locationFactor = 1.0;
+            }
+            
+            // Calcola sessioni di ricarica giornaliere per connettore
+            let sessionsPerDayPerConnector = baseDailyUsageHours / (avgSessionKwh / power) * usageRate;
+            
+            // Moltiplica per il numero di connettori e colonnine
+            let totalDailySessions = sessionsPerDayPerConnector * numConnectors * numChargers;
+            
+            // Calcola kWh giornalieri consumati
+            let dailyKwh = totalDailySessions * avgSessionKwh;
+            
+            // Calcola ricavi giornalieri
+            let dailyRevenue = dailyKwh * pricePerKwh * locationFactor;
+            
+            // Considera i giorni di indisponibilità e pioggia
+            let marketDay = $('#id_weekly_market_day').val() ? 52 : 0;
+            let festivalDays = parseInt($('#id_local_festival_days').val()) || 0;
+            let rainyDays = parseInt($('#id_rainy_days').val()) || 0;
+            
+            // Calcola il fattore di disponibilità
+            let unavailableDays = marketDay + festivalDays;
+            let availableDays = 365 - unavailableDays;
+            let rainyImpact = rainyDays * 0.1; // I giorni di pioggia riducono i ricavi del 10%
+            
+            let availabilityFactor = (availableDays - rainyImpact) / 365;
+            
+            // Calcola ricavi annuali
+            let annualRevenue = dailyRevenue * 365 * availabilityFactor;
+            
+            // Memorizza i dettagli del calcolo
+            frontendCalculation = {
+                profile: {
+                    id: profileId,
+                    name: profileData.name || 'N/A',
+                    daily_usage_hours: baseDailyUsageHours,
+                    avg_session_kwh: avgSessionKwh,
+                    utilization_rate: usageRate,
+                    price_per_kwh: pricePerKwh,
+                    location_type: profileData.location_type,
+                    location_factor: locationFactor
+                },
+                station: {
+                    power: power,
+                    num_connectors: numConnectors,
+                    num_chargers: numChargers,
+                    market_day: marketDay > 0,
+                    festival_days: festivalDays,
+                    rainy_days: rainyDays
+                },
+                calculation: {
+                    sessions_per_day_per_connector: parseFloat(sessionsPerDayPerConnector.toFixed(2)),
+                    total_daily_sessions: parseFloat(totalDailySessions.toFixed(2)),
+                    daily_kwh: parseFloat(dailyKwh.toFixed(2)),
+                    daily_revenue: parseFloat(dailyRevenue.toFixed(2)),
+                    unavailable_days: unavailableDays,
+                    rainy_impact: parseFloat(rainyImpact.toFixed(2)),
+                    availability_factor: parseFloat(availabilityFactor.toFixed(4)),
+                    annual_revenue: parseFloat(annualRevenue.toFixed(2))
+                }
+            };
+            
+            console.log("Calcolo ricavi frontend completato:", frontendCalculation);
+            
+            // Imposta il valore dei ricavi attesi
+            $('#id_expected_revenue').val(annualRevenue.toFixed(2));
+            
+            // Calcola e imposta il ROI
+            calculateROI(annualRevenue);
+            
+            // Avvia il confronto con il calcolo backend
+            compareWithBackendCalculation(profileId, power, numConnectors, numChargers, 
+                marketDay > 0, festivalDays, rainyDays);
+        },
+        error: function(xhr, status, error) {
+            console.error("Errore nel recupero dati profilo:", error);
+            
+            // In caso di errore, usa un calcolo di fallback
+            fallbackRevenueCalculation(profileId, power, numConnectors, numChargers);
+        }
+    });
+};
+
+// Funzione per confrontare i calcoli frontend e backend
+function compareWithBackendCalculation(profileId, power, numConnectors, numChargers, marketDay, festivalDays, rainyDays) {
+    // Ottieni il valore calcolato dal frontend
+    let frontendRevenue = parseFloat($('#id_expected_revenue').val()) || 0;
+    
+    // Chiama l'API backend per lo stesso calcolo
+    $.ajax({
+        url: `/projects/api/test-revenue-calculation/`,  // URL CORRETTO con prefisso /projects/
+        method: 'GET',
+        data: {
+            profile_id: profileId,
+            power: power,
+            connectors: numConnectors,
+            chargers: numChargers,
+            market_day: marketDay ? 'true' : '',
+            festival_days: festivalDays,
+            rainy_days: rainyDays
+        },
+        success: function(response) {
+            if (response.success) {
+                let backendRevenue = response.calculation.annual_revenue;
+                let difference = Math.abs(frontendRevenue - backendRevenue);
+                let percentDiff = (difference / backendRevenue) * 100;
+                
+                // Mostra il confronto
+                console.log("%c=== CONFRONTO CALCOLO RICAVI ATTESI ===", "background:#3498db; color:white; font-size:14px; padding:5px;");
+                console.log(`Frontend: ${frontendRevenue.toFixed(2)} €`);
+                console.log(`Backend: ${backendRevenue.toFixed(2)} €`);
+                console.log(`Differenza: ${difference.toFixed(2)} € (${percentDiff.toFixed(2)}%)`);
+                
+                if (percentDiff > 1) {
+                    console.warn(`⚠️ Differenza significativa nel calcolo dei ricavi attesi!`);
+                    console.log("Calcolo Frontend:", frontendCalculation);
+                    console.log("Calcolo Backend:", response.calculation);
+                } else {
+                    console.log("%c✅ I calcoli sono coerenti (differenza < 1%)", "color:green; font-weight:bold;");
+                }
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error("Errore nel test di confronto calcolo:", error);
+        }
+    });
+}
+
+// Aggiungi un handler sul cambio del profilo per attivare il test
+$('#id_usage_profile').change(function() {
+    // Il test verrà attivato dalla funzione calculateExpectedRevenue
+});
+
+
+// Aggiungi un pulsante di debug per verificare il calcolo
+$(document).ready(function() {
+    // Aggiungi un pulsante di debug accanto al campo dei ricavi attesi
+    $('#id_expected_revenue').after(
+        '<button type="button" id="debug_calculation" class="btn btn-sm btn-info ml-2">' +
+        '<i class="fas fa-bug"></i> Verifica Calcolo</button>'
+    );
+    
+    // Handler per il pulsante di debug
+    $('#debug_calculation').click(function() {
+        let profileId = $('#id_usage_profile').val();
+        if (!profileId) {
+            alert("Seleziona prima un profilo di utilizzo");
+            return;
+        }
+        
+        console.log("Verifica calcolo per profilo ID:", profileId);
+        
+        // Parametri attuali
+        let power = parseFloat(formatNumber($('#id_power_kw').val())) || 0;
+        let numConnectors = parseInt($('#id_num_connectors').val()) || 1;
+        let numChargers = parseInt($('#id_num_chargers').val()) || 1;
+        let marketDay = $('#id_weekly_market_day').val() ? true : false;
+        let festivalDays = parseInt($('#id_local_festival_days').val()) || 0;
+        let rainyDays = parseInt($('#id_rainy_days').val()) || 0;
+        
+        // Esegui esplicitamente la verifica
+        compareWithBackendCalculation(profileId, power, numConnectors, numChargers, 
+            marketDay, festivalDays, rainyDays);
+    });
 });
 </script>
 {% endblock %}

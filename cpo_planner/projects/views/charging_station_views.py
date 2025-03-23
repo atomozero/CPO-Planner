@@ -473,7 +473,6 @@ class ChargingStationPhotoDeleteView(LoginRequiredMixin, DeleteView):
             # Fallback
             return reverse_lazy('cpo_core:dashboard')
 
-
 @require_GET
 def usage_profile_detail(request, profile_id):
     """API endpoint per ottenere i dettagli di un profilo di utilizzo"""

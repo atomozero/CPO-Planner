@@ -635,8 +635,6 @@ $(document).ready(function() {
                 
                 console.log("Form fields present:", fields);
                 
-                // Utilizziamo la funzione formatNumber definita globalmente per convertire i valori numerici
-                
                 // Preleva i dati dal template e popola i campi
                 if (fields.brand) $('#id_charger_brand').val(templateData.brand);
                 if (fields.model) $('#id_charger_model').val(templateData.model);
@@ -704,6 +702,9 @@ $(document).ready(function() {
                 
                 // Ricalcola il budget
                 calculateBudget();
+                
+                // Ricalcola i ricavi attesi e il ROI
+                calculateExpectedRevenue();
             }
         } catch (error) {
             console.error("Error handling template selection:", error);
@@ -740,13 +741,114 @@ $(document).ready(function() {
         return totalBudget;
     }
     
-    // Calcola il budget ogni volta che un campo di costo cambia
-    $('input[id^="id_"][id$="_cost"]').on('input', calculateBudget);
+    // Funzione per calcolare i ricavi attesi in base al profilo di consumo
+    function calculateExpectedRevenue() {
+        // Ottieni il profilo di consumo selezionato
+        let profileId = $('#id_usage_profile').val();
+        let power = parseFloat(formatNumber($('#id_power_kw').val())) || 0;
+        let numConnectors = parseInt($('#id_num_connectors').val()) || 1;
+        let numChargers = parseInt($('#id_num_chargers').val()) || 1;
+        
+        // Se non è selezionato un profilo, impossibile calcolare i ricavi
+        if (!profileId) {
+            $('#id_expected_revenue').val('0.00');
+            $('#id_roi').val('0.00');
+            console.log("Nessun profilo di consumo selezionato, ricavi non calcolabili");
+            return 0;
+        }
+        
+        // Mappa dei profili di consumo e relativi fattori di ricavo di base per kW
+        // Questi valori andrebbero ottimizzati in base ai dati reali
+        const profileFactors = {
+            "1": 3000, // Parcheggio centrale - base per kW
+            "2": 2500, // Parcheggio periferico
+            "3": 4000, // Centro commerciale
+            "4": 3500, // Strada urbana
+            "5": 4500  // Autostrada/superstrada
+            // Aggiungi altri profili secondo necessità
+        };
+        
+        // Fattori di utilizzo basati sul tipo di connettore
+        const connectorUtilization = {
+            "1": 0.8,  // Tipo 1
+            "2": 1.0,  // Tipo 2 (standard)
+            "3": 1.2,  // CCS
+            "4": 1.1,  // CHAdeMO
+            "5": 0.7   // Altro
+        };
+        
+        // Calcola ricavi stimati in base al profilo, potenza e numero di connettori/colonnine
+        let baseFactor = profileFactors[profileId] || 2500; // Valore di default se profilo non trovato
+        
+        // Considera potenza, numero connettori e colonnine
+        let powerFactor = Math.log(power + 1) * 3; // Formula logaritmica per evitare crescita lineare
+        let connectorsEffect = Math.sqrt(numConnectors); // Effetto diminuito all'aumentare dei connettori
+        
+        let estimatedRevenue = baseFactor * powerFactor * connectorsEffect * numChargers;
+        
+        // Considera i giorni di indisponibilità e pioggia
+        let marketDay = $('#id_weekly_market_day').val() ? 52 : 0;
+        let festivalDays = parseInt($('#id_local_festival_days').val()) || 0;
+        let rainyDays = parseInt($('#id_rainy_days').val()) || 0;
+        
+        // Calcola il fattore di disponibilità
+        let unavailableDays = marketDay + festivalDays;
+        let availableDays = 365 - unavailableDays;
+        let rainyImpact = rainyDays * 0.3; // I giorni di pioggia riducono i ricavi del 30%
+        
+        let availabilityFactor = (availableDays - rainyImpact) / 365;
+        estimatedRevenue *= availabilityFactor;
+        
+        console.log("Calcolo ricavi: profilo=" + profileId + 
+                    ", power=" + power + 
+                    ", numConnectors=" + numConnectors + 
+                    ", numChargers=" + numChargers +
+                    ", giorni indisponibili=" + unavailableDays +
+                    ", giorni pioggia=" + rainyDays +
+                    ", fattore disponibilità=" + availabilityFactor.toFixed(4) +
+                    ", ricavi stimati=" + estimatedRevenue.toFixed(2));
+        
+        // Imposta il valore dei ricavi attesi
+        $('#id_expected_revenue').val(estimatedRevenue.toFixed(2));
+        
+        // Calcola e imposta il ROI
+        calculateROI(estimatedRevenue);
+        
+        return estimatedRevenue;
+    }
     
-    // Applica il budget calcolato al campo budget
+    // Funzione per calcolare il ROI
+    function calculateROI(revenue) {
+        let budget = parseFloat($('#id_budget').val()) || 1; // Evita divisione per zero
+        if (budget <= 0) {
+            budget = calculateBudget(); // Calcola il budget se non è stato ancora impostato
+            if (budget <= 0) budget = 1; // Evita ancora divisione per zero
+        }
+        
+        let roi = (revenue / budget) * 100;
+        $('#id_roi').val(roi.toFixed(2));
+        
+        console.log("ROI calcolato: " + roi.toFixed(2) + "% (ricavi: " + revenue.toFixed(2) + ", budget: " + budget.toFixed(2) + ")");
+        
+        return roi;
+    }
+    
+    // Calcola il budget ogni volta che un campo di costo cambia
+    $('input[id^="id_"][id$="_cost"]').on('input', function() {
+        calculateBudget();
+        // Aggiorna anche il ROI quando cambiano i costi
+        let revenue = parseFloat($('#id_expected_revenue').val()) || 0;
+        calculateROI(revenue);
+    });
+    
+    // Applica il budget calcolato al campo budget e aggiorna il ROI
     $('#apply_calculated_budget').click(function() {
         let budget = calculateBudget();
         $('#id_budget').val(budget.toFixed(2));
+        
+        // Dopo aver aggiornato il budget, ricalcola il ROI
+        let revenue = parseFloat($('#id_expected_revenue').val()) || 0;
+        calculateROI(revenue);
         
         // Debug: mostra che il budget è stato applicato
         console.log("Budget applicato al campo:", budget.toFixed(2));
@@ -772,11 +874,12 @@ $(document).ready(function() {
         
         return powerRequested;
     }
-
+    
     // Ricalcola la potenza richiesta quando la potenza o il numero di colonnine cambia
     $('#id_power_kw, #id_num_chargers').on('input', function() {
         calculateRequestedPower();
         calculateBudget();
+        calculateExpectedRevenue(); // Aggiorna anche i ricavi attesi
     });
     
     // Calcolo automatico costo allacciamento quando si modifica manualmente la potenza richiesta
@@ -790,6 +893,21 @@ $(document).ready(function() {
         calculateBudget();
     });
     
+    // Aggiorna ricavi attesi quando cambiano i parametri rilevanti
+    $('#id_usage_profile').change(function() {
+        calculateExpectedRevenue();
+    });
+    
+    // Aggiorna i ricavi quando cambiano i giorni di indisponibilità o pioggia
+    $('#id_weekly_market_day, #id_local_festival_days, #id_rainy_days').on('change input', function() {
+        calculateExpectedRevenue();
+    });
+    
+    // Aggiorna i ricavi quando cambiano i parametri tecnici della colonnina
+    $('#id_num_connectors, #id_connector_types').on('change input', function() {
+        calculateExpectedRevenue();
+    });
+    
     // Gestisci il checkbox per usare la data di completamento del progetto
     $('#id_use_project_completion_date').change(function() {
         if($(this).is(':checked')) {
@@ -801,8 +919,9 @@ $(document).ready(function() {
         }
     });
     
-    // Calcola il budget iniziale
+    // Calcola il budget e i ricavi attesi iniziali
     calculateBudget();
+    calculateExpectedRevenue();
 });
 </script>
 {% endblock %}

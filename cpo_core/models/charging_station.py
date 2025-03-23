@@ -99,7 +99,7 @@ class ChargingStation(models.Model):
         Parameters:
         -----------
         include_availability : bool
-            Se True, considera i giorni di indisponibilità (mercato settimanale, feste locali).
+            Se True, considera i giorni di indisponibilità (mercato settimanale, feste locali, giorni di pioggia).
         include_seasonality : bool
             Se True, considera i fattori stagionali nell'utilizzo (estate +20%, inverno -20%).
             
@@ -123,24 +123,22 @@ class ChargingStation(models.Model):
         
         # Applica fattore disponibilità se richiesto
         if include_availability and hasattr(self, 'subproject') and self.subproject:
-            # Giorni di indisponibilità
+            # Usa il metodo calculate_availability_factor che include i giorni di pioggia
+            availability_factor = self.subproject.calculate_availability_factor()
+            annual_revenue *= Decimal(str(availability_factor))
+            
+            # Debug info
             unavailable_days = 0
             if self.subproject.weekly_market_day is not None:
                 unavailable_days += 52  # 52 settimane
             if self.subproject.local_festival_days:
                 unavailable_days += self.subproject.local_festival_days
                 
-            # Fattore disponibilità
-            total_days = 365
-            available_days = total_days - unavailable_days
-            # Assicuriamo che tutti i valori siano Decimal per evitare errori di tipo
-            availability_factor = Decimal(str(available_days)) / Decimal(str(total_days)) if total_days > 0 else Decimal('1.0')
-            annual_revenue *= availability_factor
+            rainy_days = self.subproject.rainy_days or 0
             
-            # Debug info
-            if unavailable_days > 0:
-                print(f"DEBUG - Calcolo ricavi: giorni indisponibili={unavailable_days}, "
-                      f"fattore disponibilità={availability_factor:.4f}, ricavi={annual_revenue:.2f}")
+            print(f"DEBUG - Calcolo ricavi: giorni indisponibili={unavailable_days}, "
+                f"giorni pioggia={rainy_days}, fattore disponibilità={availability_factor:.4f}, "
+                f"ricavi={annual_revenue:.2f}")
         
         # Applica fattori stagionali se richiesto
         if include_seasonality:

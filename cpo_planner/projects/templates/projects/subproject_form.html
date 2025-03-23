@@ -60,57 +60,34 @@
                 </div>
             </div>
             
-            <!-- Stato e dati finanziari -->
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="id_status" class="form-label">Stato</label>
-                    <select name="status" id="id_status" class="form-control">
-                        {% for value, label in form.fields.status.choices %}
-                        <option value="{{ value }}" {% if form.instance.status == value %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                    {% if form.status.errors %}
-                    <div class="invalid-feedback d-block">
-                        {{ form.status.errors }}
-                    </div>
-                    {% endif %}
-                </div>
-                
-                <div class="col-md-6 mb-3">
-                    <label for="id_budget" class="form-label">Budget (€)</label>
-                    <input type="number" name="budget" id="id_budget" value="{{ form.instance.budget|default:'0' }}" class="form-control" step="0.01" min="0" readonly>
-                    {% if form.budget.errors %}
-                    <div class="invalid-feedback d-block">
-                        {{ form.budget.errors }}
-                    </div>
-                    {% endif %}
-                    <small class="form-text text-muted">Calcolato automaticamente come somma di tutti i costi</small>
-                </div>
-                
-                <!-- Aggiunto campo per ricavi attesi -->
-                <div class="col-md-6 mb-3">
-                    <label for="id_expected_revenue" class="form-label">Ricavi Attesi (€)</label>
-                    <input type="number" name="expected_revenue" id="id_expected_revenue" value="{{ form.instance.expected_revenue|default:'0' }}" class="form-control" step="0.01" min="0" readonly>
-                    {% if form.expected_revenue.errors %}
-                    <div class="invalid-feedback d-block">
-                        {{ form.expected_revenue.errors }}
-                    </div>
-                    {% endif %}
-                    <small class="form-text text-muted">Calcolato automaticamente in base al profilo di consumo</small>
-                </div>
-                
-                <!-- Aggiunto campo ROI -->
-                <div class="col-md-6 mb-3">
-                    <label for="id_roi" class="form-label">ROI (%)</label>
-                    <input type="number" name="roi" id="id_roi" value="{{ form.instance.roi|default:'0' }}" class="form-control" step="0.01" readonly>
-                    {% if form.roi.errors %}
-                    <div class="invalid-feedback d-block">
-                        {{ form.roi.errors }}
-                    </div>
-                    {% endif %}
-                    <small class="form-text text-muted">Calcolato automaticamente in base ai ricavi attesi e al budget</small>
-                </div>
-            </div>
+          <!-- Stato, Descrizione e dati finanziari -->
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <label for="id_status" class="form-label">Stato</label>
+        <select name="status" id="id_status" class="form-control">
+            {% for value, label in form.fields.status.choices %}
+            <option value="{{ value }}" {% if form.instance.status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        {% if form.status.errors %}
+        <div class="invalid-feedback d-block">
+            {{ form.status.errors }}
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-6 mb-3">
+        <label for="id_description" class="form-label">Descrizione</label>
+        <textarea name="description" id="id_description" class="form-control" rows="1">{{ form.instance.description|default:'' }}</textarea>
+        {% if form.description.errors %}
+        <div class="invalid-feedback d-block">
+            {{ form.description.errors }}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+
                         
             <!-- Nuova Sezione Posizione con indirizzo e comune invertiti -->
             <div class="card mb-4">
@@ -440,114 +417,132 @@
             </div>
             
             <!-- Dettaglio Costi -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h6 class="m-0 font-weight-bold text-primary">Dettaglio Costi</h6>
+<div class="card mb-4">
+    <div class="card-header">
+        <h6 class="m-0 font-weight-bold text-primary">Dettaglio Costi</h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="id_equipment_cost" class="form-label">Costo Colonnina (€)</label>
+                {{ form.equipment_cost }}
+                {% if form.equipment_cost.errors %}
+                <div class="invalid-feedback d-block">
+                    {{ form.equipment_cost.errors }}
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="id_equipment_cost" class="form-label">Costo Colonnina (€)</label>
-                            {{ form.equipment_cost }}
-                            {% if form.equipment_cost.errors %}
-                            <div class="invalid-feedback d-block">
-                                {{ form.equipment_cost.errors }}
-                            </div>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label for="id_installation_cost" class="form-label">Costo Installazione (€)</label>
-                            {{ form.installation_cost }}
-                            {% if form.installation_cost.errors %}
-                            <div class="invalid-feedback d-block">
-                                {{ form.installation_cost.errors }}
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="id_connection_cost" class="form-label">Costo Allaccio Rete (€)</label>
-                            {{ form.connection_cost }}
-                            {% if form.connection_cost.errors %}
-                            <div class="invalid-feedback d-block">
-                                {{ form.connection_cost.errors }}
-                            </div>
-                            {% endif %}
-                            <small class="form-text text-muted">Calcolato automaticamente se si compila il campo "Potenza Richiesta" (80€/kW)</small>
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label for="id_permit_cost" class="form-label">Costo Permessi (€)</label>
-                            {{ form.permit_cost }}
-                            {% if form.permit_cost.errors %}
-                            <div class="invalid-feedback d-block">
-                                {{ form.permit_cost.errors }}
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="id_civil_works_cost" class="form-label">Costo Opere Civili (€)</label>
-                            {{ form.civil_works_cost }}
-                            {% if form.civil_works_cost.errors %}
-                            <div class="invalid-feedback d-block">
-                                {{ form.civil_works_cost.errors }}
-                            </div>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label for="id_other_costs" class="form-label">Altri Costi (€)</label>
-                            {{ form.other_costs }}
-                            {% if form.other_costs.errors %}
-                            <div class="invalid-feedback d-block">
-                                {{ form.other_costs.errors }}
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-12 mb-3">
-                            <label class="form-label fw-bold">Budget Totale (Calcolato)</label>
-                            <div class="input-group">
-                                <span class="input-group-text">€</span>
-                                <input type="text" id="calculated_budget" class="form-control" readonly>
-                                <button type="button" id="apply_calculated_budget" class="btn btn-success">
-                                    <i class="fas fa-calculator"></i> Calcola Budget Totale
-                                </button>
-                            </div>
-                            <small class="form-text text-muted">Somma calcolata di tutti i costi dettagliati inseriti. Clicca il pulsante "Calcola Budget Totale" prima di salvare.</small>
-                        </div>
-                    </div>
-                    
-                    <!-- Immagini della stazione -->
-                    <div class="row mt-4">
-                        <div class="col-12 mb-3">
-                            <h5 class="mb-3">Immagini della stazione</h5>
-                            <p class="text-muted small">Le immagini della stazione potranno essere aggiunte dopo la creazione nella pagina di dettaglio.</p>
-                        </div>
-                    </div>
-                </div>
+                {% endif %}
             </div>
             
-            <!-- Descrizione -->
-            <div class="row">
-                <div class="col-12 mb-3">
-                    <label for="id_description" class="form-label">Descrizione</label>
-                    {{ form.description }}
-                    {% if form.description.errors %}
-                    <div class="invalid-feedback d-block">
-                        {{ form.description.errors }}
-                    </div>
-                    {% endif %}
+            <div class="col-md-6 mb-3">
+                <label for="id_installation_cost" class="form-label">Costo Installazione (€)</label>
+                {{ form.installation_cost }}
+                {% if form.installation_cost.errors %}
+                <div class="invalid-feedback d-block">
+                    {{ form.installation_cost.errors }}
                 </div>
+                {% endif %}
             </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="id_connection_cost" class="form-label">Costo Allaccio Rete (€)</label>
+                {{ form.connection_cost }}
+                {% if form.connection_cost.errors %}
+                <div class="invalid-feedback d-block">
+                    {{ form.connection_cost.errors }}
+                </div>
+                {% endif %}
+                <small class="form-text text-muted">Calcolato automaticamente se si compila il campo "Potenza Richiesta" (80€/kW)</small>
+            </div>
+            
+            <div class="col-md-6 mb-3">
+                <label for="id_permit_cost" class="form-label">Costo Permessi (€)</label>
+                {{ form.permit_cost }}
+                {% if form.permit_cost.errors %}
+                <div class="invalid-feedback d-block">
+                    {{ form.permit_cost.errors }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="id_modem_4g_cost" class="form-label">Costo Modem 4G (€)</label>
+                {{ form.modem_4g_cost }}
+                {% if form.modem_4g_cost.errors %}
+                <div class="invalid-feedback d-block">
+                    {{ form.modem_4g_cost.errors }}
+                </div>
+                {% endif %}
+                <small class="form-text text-muted">Importato automaticamente dal template della colonnina se disponibile</small>
+            </div>
+            
+            <div class="col-md-6 mb-3">
+                <label for="id_other_costs" class="form-label">Altri Costi (€)</label>
+                {{ form.other_costs }}
+                {% if form.other_costs.errors %}
+                <div class="invalid-feedback d-block">
+                    {{ form.other_costs.errors }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-12 mb-3">
+                <label class="form-label fw-bold">Budget Totale (Calcolato)</label>
+                <div class="input-group">
+                    <span class="input-group-text">€</span>
+                    <input type="text" id="calculated_budget" class="form-control" readonly>
+                    <button type="button" id="apply_calculated_budget" class="btn btn-success">
+                        <i class="fas fa-calculator"></i> Calcola Budget Totale
+                    </button>
+                </div>
+                <small class="form-text text-muted">Somma calcolata di tutti i costi dettagliati inseriti. Clicca il pulsante "Calcola Budget Totale" prima di salvare.</small>
+            </div>
+        </div>
+
+<!-- Dati finanziari in una nuova riga -->
+<div class="row">
+    <div class="col-md-4 mb-3">
+        <label for="id_budget" class="form-label">Budget (€)</label>
+        <input type="number" name="budget" id="id_budget" value="{{ form.instance.budget|default:'0' }}" class="form-control" step="0.01" min="0" readonly>
+        {% if form.budget.errors %}
+        <div class="invalid-feedback d-block">
+            {{ form.budget.errors }}
+        </div>
+        {% endif %}
+        <small class="form-text text-muted">Calcolato automaticamente come somma di tutti i costi</small>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <label for="id_expected_revenue" class="form-label">Ricavi Attesi (€)</label>
+        <input type="number" name="expected_revenue" id="id_expected_revenue" value="{{ form.instance.expected_revenue|default:'0' }}" class="form-control" step="0.01" min="0" readonly>
+        {% if form.expected_revenue.errors %}
+        <div class="invalid-feedback d-block">
+            {{ form.expected_revenue.errors }}
+        </div>
+        {% endif %}
+        <small class="form-text text-muted">Calcolato automaticamente in base al profilo di consumo</small>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <label for="id_roi" class="form-label">ROI (%)</label>
+        <input type="number" name="roi" id="id_roi" value="{{ form.instance.roi|default:'0' }}" class="form-control" step="0.01" readonly>
+        {% if form.roi.errors %}
+        <div class="invalid-feedback d-block">
+            {{ form.roi.errors }}
+        </div>
+        {% endif %}
+        <small class="form-text text-muted">Calcolato automaticamente in base ai ricavi attesi e al budget</small>
+    </div>
+</div>
+
+    </div>
+</div>
+            
             
             <!-- Informazioni relative al progetto -->
             <input type="hidden" name="project" value="{{ project.id }}">
@@ -634,6 +629,7 @@ $(document).ready(function() {
                     installation: $('#id_installation_cost').length,
                     groundArea: $('#id_ground_area_sqm').length,
                     powerRequested: $('#id_power_requested').length,
+                    modem4gCost: $('#id_modem_4g_cost').length,  // Aggiunto campo per il modem 4G
                     otherCosts: $('#id_other_costs').length
                 };
                 
@@ -651,6 +647,16 @@ $(document).ready(function() {
                 // Compila i costi
                 if (fields.purchase) $('#id_equipment_cost').val(formatNumber(templateData.purchase));
                 if (fields.installation) $('#id_installation_cost').val(formatNumber(templateData.installation));
+                
+                // Imposta il costo del modem 4G
+                if (fields.modem4gCost) {
+                    console.log("Setting modem 4G cost:", templateData.modem);
+                    if (templateData.has4g === 'True' || templateData.has4g === true) {
+                        $('#id_modem_4g_cost').val(formatNumber(templateData.modem));
+                    } else {
+                        $('#id_modem_4g_cost').val('0.00');
+                    }
+                }
                 
                 // Imposta la potenza richiesta
                 if (fields.powerRequested) {
@@ -683,15 +689,12 @@ $(document).ready(function() {
                 // Imposta altri costi basati sui dati del template
                 let otherCosts = 0;
                 
-                // Aggiungi costo del modem 4G se applicabile
-                if (templateData.has4g === 'True' || templateData.has4g === true) {
-                    otherCosts += parseFloat(templateData.modem) || 0;
-                }
-                
-                // Aggiungi costo manutenzione annuale
+                // Aggiungi costo della manutenzione annuale e SIM
                 let maintenanceCost = parseFloat(templateData.maintenance) || 0;
-                if (maintenanceCost > 0) {
-                    otherCosts += maintenanceCost;
+                let simCost = parseFloat(templateData.sim) || 0;
+                
+                if (maintenanceCost > 0 || simCost > 0) {
+                    otherCosts += maintenanceCost + simCost;
                 }
                 
                 // Imposta altri costi se ci sono valori aggiuntivi
@@ -717,9 +720,9 @@ $(document).ready(function() {
         let totalBudget = 0;
         let costDetails = {};
 
-        // Aggiungi tutti i campi di costo
+        // Aggiungi tutti i campi di costo - Aggiornato per usare modem_4g_cost invece di civil_works_cost
         ['equipment_cost', 'installation_cost', 'connection_cost', 
-         'permit_cost', 'civil_works_cost', 'other_costs'].forEach(function(field) {
+         'permit_cost', 'modem_4g_cost', 'other_costs'].forEach(function(field) {
             // Converti eventuali valori in formato italiano prima di parsare
             let rawValue = $('#id_' + field).val();
             let formattedValue = formatNumber(rawValue);

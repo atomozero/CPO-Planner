@@ -50,7 +50,7 @@ class SubProjectForm(forms.ModelForm):
             
             # Costi dettagliati
             'equipment_cost', 'installation_cost', 'connection_cost',
-            'permit_cost', 'civil_works_cost', 'other_costs',
+            'permit_cost', 'modem_4g_cost', 'other_costs',
             
             # Finanziari e stato
             'budget', 'expected_revenue', 'roi', 'status'
@@ -74,7 +74,7 @@ class SubProjectForm(forms.ModelForm):
             'installation_cost': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
             'connection_cost': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
             'permit_cost': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
-            'civil_works_cost': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'modem_4g_cost': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
             'other_costs': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
         }
         
@@ -122,7 +122,7 @@ class SubProjectForm(forms.ModelForm):
             self.initial['installation_cost'] = instance.installation_cost
             self.initial['connection_cost'] = instance.connection_cost
             self.initial['permit_cost'] = instance.permit_cost
-            self.initial['civil_works_cost'] = instance.civil_works_cost
+            self.initial['modem_4g_cost'] = instance.modem_4g_cost
             self.initial['other_costs'] = instance.other_costs
             
             # Imposta valori di coordinate anche con stringformat per assicurarsi che il formato sia corretto

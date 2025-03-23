@@ -141,7 +141,7 @@ class SubProject(models.Model):
     installation_cost = models.DecimalField(_("Costo Installazione"), max_digits=10, decimal_places=2, null=True, blank=True)
     connection_cost = models.DecimalField(_("Costo Allaccio Rete"), max_digits=10, decimal_places=2, null=True, blank=True)
     permit_cost = models.DecimalField(_("Costo Permessi"), max_digits=10, decimal_places=2, null=True, blank=True)
-    civil_works_cost = models.DecimalField(_("Costo Opere Civili"), max_digits=10, decimal_places=2, null=True, blank=True)
+    modem_4g_cost = models.DecimalField(_("Costo Modem 4G"), max_digits=10, decimal_places=2, null=True, blank=True)
     other_costs = models.DecimalField(_("Altri Costi"), max_digits=10, decimal_places=2, null=True, blank=True)
     
     # Personale
@@ -204,7 +204,7 @@ class SubProject(models.Model):
             'installation_cost': self.installation_cost, 
             'connection_cost': self.connection_cost,
             'permit_cost': self.permit_cost,
-            'civil_works_cost': self.civil_works_cost,
+            'modem_4g_cost': self.modem_4g_cost,
             'other_costs': self.other_costs
         })
     
@@ -233,7 +233,7 @@ class SubProject(models.Model):
             self.installation_cost or 0, 
             self.connection_cost or 0,
             self.permit_cost or 0,
-            self.civil_works_cost or 0,
+            self.modem_4g_cost or 0,
             self.other_costs or 0
         ]))
         
@@ -244,7 +244,7 @@ class SubProject(models.Model):
             'installation_cost': self.installation_cost, 
             'connection_cost': self.connection_cost,
             'permit_cost': self.permit_cost,
-            'civil_works_cost': self.civil_works_cost,
+            'modem_4g_cost': self.modem_4g_cost,
             'other_costs': self.other_costs
         })
         if total_cost > 0:

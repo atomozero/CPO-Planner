@@ -215,20 +215,23 @@ class RunImportView(LoginRequiredMixin, View):
 
 class MunicipalityListView(LoginRequiredMixin, ListView):
     model = Municipality
-    context_object_name = 'municipality_list'  # Questo nome corrisponde a quello usato nel template
+    context_object_name = 'municipality_list'
     template_name = 'infrastructure/municipality_list.html'
 
     def get_queryset(self):
-        # Mostra tutti i comuni nel database
-        return Municipality.objects.all()
+        # Ottieni gli ID dei comuni coinvolti nei sottoprogetti
+        municipality_ids = SubProject.objects.values_list('municipality_id', flat=True).distinct()
+        
+        # Restituisci solo i comuni che hanno sottoprogetti associati
+        return Municipality.objects.filter(id__in=municipality_ids)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        # Ottieni l'elenco completo di comuni
+        # Ottieni l'elenco filtrato di comuni
         municipalities = context['municipality_list']
         
-        # Calcola la popolazione totale solo dei comuni con progetti
+        # Calcola la popolazione totale dei comuni nei progetti
         total_population = municipalities.aggregate(Sum('population'))['population__sum'] or 0
         context['total_population'] = total_population
         
@@ -236,7 +239,7 @@ class MunicipalityListView(LoginRequiredMixin, ListView):
         municipality_data = {}
         for mun in municipalities:
             # Conta i sottoprogetti per questo comune
-            subprojects = SubProject.objects.filter(municipality=mun)
+            subprojects = SubProject.objects.filter(municipality_id=mun.id)
             subproject_count = subprojects.count()
             
             # Conta le colonnine collegate ai sottoprogetti di questo comune
@@ -253,7 +256,7 @@ class MunicipalityListView(LoginRequiredMixin, ListView):
         # Aggiungi questi dati al contesto
         context['municipality_data'] = municipality_data
         
-        # Conta progetti attivi - tutti i progetti creati
+        # Conta progetti attivi
         active_projects = Project.objects.count()
         context['active_projects'] = active_projects
         
@@ -276,7 +279,7 @@ class MunicipalityListView(LoginRequiredMixin, ListView):
                     'count': region['count']
                 })
         
-        # Top 5 comuni per stazioni/colonnine (basato sui dati reali)
+        # Top 5 comuni per stazioni/colonnine
         context['top_municipalities'] = []
         
         # Crea una lista di comuni ordinata per numero di colonnine/stazioni
@@ -292,18 +295,8 @@ class MunicipalityListView(LoginRequiredMixin, ListView):
         top_mun_list.sort(key=lambda x: x['total_stations'], reverse=True)
         context['top_municipalities'] = top_mun_list[:5]
         
-        # Se non ci sono abbastanza comuni, aggiungi alcuni di esempio
-        if len(context['top_municipalities']) < 5:
-            dummy_names = ['Venezia', 'Padova', 'Treviso', 'Vicenza', 'Verona']
-            for i in range(5 - len(context['top_municipalities'])):
-                if i < len(dummy_names):
-                    context['top_municipalities'].append({
-                        'name': dummy_names[i],
-                        'total_stations': 1
-                    })
-            
         return context
-    
+
 class MunicipalityDetailView(LoginRequiredMixin, DetailView):
     model = Municipality
     context_object_name = 'municipality'
@@ -426,8 +419,8 @@ class MunicipalityUpdateView(LoginRequiredMixin, UpdateView):
                 # Ottieni estensione originale del file
                 filename, extension = os.path.splitext(logo.name)
                 # Crea un nome file sicuro
-                safe_filename = f"municipality_2530_{slugify(filename)}{extension}"  # ID hardcoded per debug
-                
+                safe_filename = f"municipality_{form.instance.id}_{slugify(filename)}{extension}"
+
                 # Percorso completo dove salvare il file
                 upload_dir = os.path.join(settings.MEDIA_ROOT, "municipality_logos")
                 if not os.path.exists(upload_dir):

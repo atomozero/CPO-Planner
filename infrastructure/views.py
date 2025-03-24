@@ -10,8 +10,6 @@ from datetime import datetime, timedelta
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-# Importa dai modelli consolidati
-from cpo_core.models.municipality import Municipality 
 # Mantieni i modelli specifici dell'infrastruttura fino alla consolidazione completa
 from .models import (
     ChargingProject, ChargingStation, ProjectTask,
@@ -41,6 +39,11 @@ from weasyprint import HTML, CSS
 from weasyprint.text.fonts import FontConfiguration
 
 from django.conf import settings
+
+# Viste per i Comuni
+from infrastructure.models import Municipality
+from cpo_core.models import Project, SubProject
+from cpo_core.models.subproject import Charger
 
 class ChargingStationTemplatePrintPDFView(LoginRequiredMixin, DetailView):
     model = ChargingStationTemplate
@@ -112,17 +115,14 @@ class ChargingStationTemplatePrintPDFView(LoginRequiredMixin, DetailView):
         return response
     
 def municipality_autocomplete(request):
+    """Fornisce funzionalità di autocompletamento per i comuni"""
     query = request.GET.get('q', '')
     municipality_id = request.GET.get('id')
-    
-    # Importa sia i modelli vecchi che nuovi
-    from infrastructure.models import Municipality as OldMunicipality
     
     # Se viene fornito un ID specifico, restituisci i dettagli di quel comune
     if municipality_id:
         try:
-            # Cerca prima nell'app infrastructure (modello vecchio)
-            m = OldMunicipality.objects.get(pk=municipality_id)
+            m = Municipality.objects.get(pk=municipality_id)
             results = [{
                 'id': m.id, 
                 'text': f"{m.name} ({m.province})", 
@@ -130,53 +130,27 @@ def municipality_autocomplete(request):
                 'logo_url': m.logo.url if m.logo else None
             }]
             return JsonResponse({'results': results})
-        except OldMunicipality.DoesNotExist:
-            # Se non trovato, prova nel modello consolidato
-            try:
-                m = Municipality.objects.get(pk=municipality_id)
-                results = [{
-                    'id': m.id, 
-                    'text': f"{m.name} ({m.province})", 
-                    'population': m.population,
-                    'logo_url': m.logo.url if m.logo else None
-                }]
-                return JsonResponse({'results': results})
-            except Municipality.DoesNotExist:
-                return JsonResponse({'results': []})
+        except Municipality.DoesNotExist:
+            return JsonResponse({'results': []})
     
     # Altrimenti esegui la ricerca per nome
     if len(query) < 2:
         return JsonResponse({'results': []})
     
-    # Cerca comuni che iniziano con la stringa di ricerca nell'app infrastructure (modello vecchio)
-    municipalities = OldMunicipality.objects.filter(
+    # Cerca comuni che iniziano con la stringa di ricerca
+    municipalities = Municipality.objects.filter(
         name__istartswith=query
     ).values('id', 'name', 'province', 'population')[:10]
     
     results = []
     for m in municipalities:
-        municipality = OldMunicipality.objects.get(pk=m['id'])
+        municipality = Municipality.objects.get(pk=m['id'])
         results.append({
             'id': m['id'], 
             'text': f"{m['name']} ({m['province']})", 
             'population': m['population'],
             'logo_url': municipality.logo.url if municipality.logo else None
         })
-    
-    # Se non trovi nulla nel modello vecchio, prova nel modello consolidato
-    if not results:
-        municipalities = Municipality.objects.filter(
-            name__istartswith=query
-        ).values('id', 'name', 'province', 'population')[:10]
-        
-        for m in municipalities:
-            municipality = Municipality.objects.get(pk=m['id'])
-            results.append({
-                'id': m['id'], 
-                'text': f"{m['name']} ({m['province']})", 
-                'population': m['population'],
-                'logo_url': municipality.logo.url if municipality.logo else None
-            })
     
     return JsonResponse({'results': results})
 
@@ -238,10 +212,6 @@ class RunImportView(LoginRequiredMixin, View):
                 'message': f"Errore nell'importazione: {e}",
                 'redirect_url': reverse('infrastructure:municipality-list')
             })
-
-# Viste per i Comuni
-from cpo_core.models import Municipality, Project, SubProject
-from cpo_core.models.subproject import Charger
 
 class MunicipalityListView(LoginRequiredMixin, ListView):
     model = Municipality
@@ -382,7 +352,6 @@ class MunicipalityCreateView(LoginRequiredMixin, CreateView):
                 from django.utils.text import slugify
                 import logging
                 from django.conf import settings
-                from cpo_core.models.municipality import Municipality as CoreMunicipality
                 
                 logger = logging.getLogger(__name__)
                 logger.info(f"Ricevuto file logo: {logo.name}, size: {logo.size}")
@@ -407,16 +376,11 @@ class MunicipalityCreateView(LoginRequiredMixin, CreateView):
                 # Imposta il percorso relativo nel database
                 rel_path = f"municipality_logos/{safe_filename}"
                 
-                # Aggiorna il modello principale nel database
-                core_municipality = CoreMunicipality.objects.get(id=form.instance.id)
-                core_municipality.logo = rel_path
-                core_municipality.save()
-                
-                # Aggiorna anche l'istanza corrente
+                # Aggiorna l'istanza corrente
                 form.instance.logo = rel_path
                 form.instance.save()
                 
-                logger.info(f"Dopo il salvataggio: {core_municipality.logo}")
+                logger.info(f"Dopo il salvataggio: {form.instance.logo}")
             except Exception as e:
                 import traceback
                 logger.error(f"Errore nel salvataggio del logo: {e}")
@@ -534,7 +498,6 @@ def municipality_upload_logo(request, pk):
     import logging
     from django.utils.text import slugify
     from django.conf import settings
-    from cpo_core.models.municipality import Municipality as CoreMunicipality
     
     logger = logging.getLogger(__name__)
     
@@ -543,7 +506,7 @@ def municipality_upload_logo(request, pk):
     
     try:
         # Ottieni il comune
-        municipality = CoreMunicipality.objects.get(id=pk)
+        municipality = Municipality.objects.get(id=pk)
         
         # Verifica se c'è un file
         if 'logo' not in request.FILES:
@@ -590,7 +553,7 @@ def municipality_upload_logo(request, pk):
                 'error': 'File non trovato dopo il salvataggio'
             }, status=500)
             
-    except CoreMunicipality.DoesNotExist:
+    except Municipality.DoesNotExist:
         return JsonResponse({'error': 'Comune non trovato'}, status=404)
     except Exception as e:
         import traceback
@@ -609,7 +572,6 @@ def municipality_test_upload(request, municipality_id):
 @login_required
 def update_municipality_coordinates(request, pk):
     """Aggiorna le coordinate di un comune via AJAX"""
-    from cpo_core.models.municipality import Municipality as CoreMunicipality
     import json
     
     if request.method != 'POST' or not request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -631,7 +593,7 @@ def update_municipality_coordinates(request, pk):
             return JsonResponse({'success': False, 'error': 'Formato coordinate non valido'}, status=400)
         
         # Ottieni il comune
-        municipality = CoreMunicipality.objects.get(id=pk)
+        municipality = Municipality.objects.get(id=pk)
         
         # Aggiorna le coordinate
         municipality.latitude = latitude
@@ -640,14 +602,14 @@ def update_municipality_coordinates(request, pk):
         
         return JsonResponse({'success': True})
     
-    except CoreMunicipality.DoesNotExist:
+    except Municipality.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Comune non trovato'}, status=404)
     except Exception as e:
         import traceback
         print(f"Errore nell'aggiornamento delle coordinate: {e}")
         print(traceback.format_exc())
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
+    
 # Viste per i Progetti
 class ChargingProjectListView(LoginRequiredMixin, ListView):
     model = ChargingProject
@@ -938,13 +900,12 @@ class GlobalSettingsUpdateView(LoginRequiredMixin, UpdateView):
         messages.success(self.request, _("Impostazioni globali aggiornate con successo!"))
         return super().form_valid(form)
 
-# Dashboard per la configurazione tecnica
 def dashboard(request):
     """Dashboard principale dell'infrastruttura"""
     import json
     from datetime import datetime, timedelta
     import random
-    from cpo_core.models import Project, SubProject, Municipality
+    from cpo_core.models import Project, SubProject
     from cpo_core.models.subproject import Charger
     from decimal import Decimal
     
@@ -1025,46 +986,56 @@ def dashboard(request):
             'status': 'active'  # Default status for display
         })
     
-    # Aggiungi comunque un punto per Mirano, che è il comune dei nostri sottoprogetti
-    # Questo garantisce che la mappa mostri sempre almeno un punto
+    # Cerca di ottenere comuni specifici per mostrare punti sulla mappa
     try:
-        mirano = Municipality.objects.get(name='Mirano')
-        # Ottieni i sottoprogetti di Mirano
-        mirano_subprojects = SubProject.objects.filter(municipality=mirano)
+        # Cerca comuni con progetti
+        municipalities_with_subprojects = Municipality.objects.filter(
+            id__in=SubProject.objects.values_list('municipality_id', flat=True)
+        )
         
-        # Se ci sono sottoprogetti, visualizzali sulla mappa
-        if mirano_subprojects.exists():
-            for sp in mirano_subprojects:
-                # Usa le coordinate proposte se quelle approvate non ci sono
-                lat = sp.latitude_approved if sp.latitude_approved else (sp.latitude_proposed if sp.latitude_proposed else 45.494)
-                lng = sp.longitude_approved if sp.longitude_approved else (sp.longitude_proposed if sp.longitude_proposed else 12.111)
+        # Se ci sono comuni con progetti, visualizzali sulla mappa
+        if municipalities_with_subprojects.exists():
+            for mun in municipalities_with_subprojects[:5]:  # Limitiamo a 5 per non sovraccaricare
+                # Ottieni i sottoprogetti di questo comune
+                mun_subprojects = SubProject.objects.filter(municipality=mun)
                 
+                for sp in mun_subprojects:
+                    # Usa le coordinate proposte se quelle approvate non ci sono
+                    lat = sp.latitude_approved if sp.latitude_approved else (sp.latitude_proposed if sp.latitude_proposed else None)
+                    lng = sp.longitude_approved if sp.longitude_approved else (sp.longitude_proposed if sp.longitude_proposed else None)
+                    
+                    if lat and lng:
+                        stations_with_coords.append({
+                            'id': sp.id,
+                            'code': sp.name,
+                            'name': sp.name,
+                            'project': {'name': sp.project.name} if sp.project else {'name': f'Progetto {mun.name}'},
+                            'latitude': lat,
+                            'longitude': lng,
+                            'power_kw': sp.power_kw or 50,
+                            'location': sp.address or f'Indirizzo in {mun.name}',
+                            'status': 'active'
+                        })
+        
+        # Se non ci sono punti, aggiungi un punto di esempio (solo se non ci sono altri punti)
+        if not stations_with_coords:
+            # Ottieni un comune qualsiasi per un punto di esempio
+            sample_municipality = Municipality.objects.order_by('?').first()
+            if sample_municipality:
                 stations_with_coords.append({
-                    'id': sp.id,
-                    'code': sp.name,
-                    'name': sp.name,
-                    'project': {'name': sp.project.name} if sp.project else {'name': 'Progetto Mirano'},
-                    'latitude': lat,
-                    'longitude': lng,
-                    'power_kw': sp.power_kw or 50,
-                    'location': sp.address or 'Piazza Martiri, Mirano',
+                    'id': 1,
+                    'code': f'{sample_municipality.name[:3].upper()}-001',
+                    'name': f'Stazione {sample_municipality.name}',
+                    'project': {'name': f'Progetto {sample_municipality.name}'},
+                    'latitude': 45.0,  # Coordinate di esempio (centrate in Italia)
+                    'longitude': 12.0,
+                    'power_kw': 50,
+                    'location': f'Centro di {sample_municipality.name}',
                     'status': 'active'
                 })
-        else:
-            # Se non ci sono sottoprogetti, aggiungi un punto predefinito
-            stations_with_coords.append({
-                'id': 1,
-                'code': 'MIR-001',
-                'name': 'Stazione Mirano',
-                'project': {'name': 'Progetto Mirano'},
-                'latitude': 45.494,  # Coordinate di Mirano
-                'longitude': 12.111,
-                'power_kw': 50,
-                'location': 'Piazza Martiri, Mirano',
-                'status': 'active'
-            })
-    except Municipality.DoesNotExist:
-        pass
+    except Exception as e:
+        # In caso di errore, non blocchiamo il rendering della dashboard
+        print(f"Errore nel caricamento delle stazioni per la mappa: {e}")
     
     # Dati crescita mensile (ultimi 12 mesi)
     today = datetime.now()

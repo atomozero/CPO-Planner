@@ -305,9 +305,9 @@ class MunicipalityDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        # Ottieni i sottoprogetti associati a questo comune
+        # Ottieni i sottoprogetti associati a questo comune usando l'ID del comune
         from cpo_core.models.subproject import SubProject
-        subprojects = SubProject.objects.filter(municipality=self.object)
+        subprojects = SubProject.objects.filter(municipality_id=self.object.id)
         
         # Ottieni i progetti associati a questi sottoprogetti
         from cpo_core.models.project import Project

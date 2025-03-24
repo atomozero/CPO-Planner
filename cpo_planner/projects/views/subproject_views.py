@@ -262,7 +262,7 @@ class SubProjectUpdateView(LoginRequiredMixin, UpdateView):
             'installation_cost': self.object.installation_cost,
             'connection_cost': self.object.connection_cost,
             'permit_cost': self.object.permit_cost,
-            'civil_works_cost': self.object.civil_works_cost,
+            'civil_works_cost': getattr(self.object, 'civil_works_cost', None),
             'other_costs': self.object.other_costs,
         }
         print("DEBUG - Valori del subproject:", debug_info)

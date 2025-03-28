@@ -2,7 +2,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.translation import gettext_lazy as _
-from .project import Project
+from cpo_core.models.project import Project
 from .charging_station import ChargingStation
 
 class FinancialParameters(models.Model):

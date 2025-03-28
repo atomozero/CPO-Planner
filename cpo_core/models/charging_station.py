@@ -9,6 +9,7 @@ class ChargingStation(models.Model):
     # Identificazione di base
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     subproject = models.ForeignKey('SubProject', on_delete=models.CASCADE, related_name='charging_stations', verbose_name=_('Sotto-Progetto'))
+    # Il comune viene ereditato dal subproject e non deve essere modificato direttamente
     name = models.CharField(_("Nome Stazione"), max_length=255)
     identifier = models.CharField(_("Identificatore Stazione"), max_length=50, unique=True, default="CS-000000")
     

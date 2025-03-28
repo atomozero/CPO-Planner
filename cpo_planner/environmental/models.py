@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db.models import Sum, Avg, F
-from cpo_planner.projects.models.project import Project
+from cpo_core.models.project import Project
 from cpo_planner.projects.models.municipality import Municipality
 from cpo_planner.projects.models.charging_station import ChargingStation
 

@@ -25,7 +25,7 @@ class ProjectDocumentInline(admin.TabularInline):
     model = ProjectDocument
     extra = 0
 
-@admin.register(Project)
+#@admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
     list_display = ('name', 'region', 'start_date', 'expected_completion_date', 'status')
     list_filter = ('status', 'region')

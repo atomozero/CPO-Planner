@@ -62,7 +62,29 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
         return context
     
     def form_valid(self, form):
-        self.object = form.save()
+        # Debug: stampa il valore di municipality prima del salvataggio
+        municipality = form.cleaned_data.get('municipality')
+        print(f"DEBUG: ProjectCreateView - municipality selezionato: {municipality} (ID: {municipality.id if municipality else 'None'})")
+
+        # Salva l'oggetto normalmente
+        with transaction.atomic():
+            self.object = form.save()
+            
+            # Se il municipio è impostato, forza la sincronizzazione manualmente
+            if municipality:
+                print(f"DEBUG: Forzatura sincronizzazione municipality per nuovo progetto {self.object.id}")
+                # Assicurati che il campo municipality sia stato impostato correttamente
+                self.object.refresh_from_db()
+                if self.object.municipality is None:
+                    print(f"DEBUG: Municipio non impostato, lo impostiamo manualmente: {municipality.id}")
+                    self.object.municipality = municipality
+                    self.object.save(update_fields=['municipality'])
+                self.object.sync_municipalities()
+
+        # Verifica che il municipio sia stato aggiornato correttamente
+        self.object.refresh_from_db()
+        print(f"DEBUG: Dopo salvataggio - municipality: {self.object.municipality} (ID: {self.object.municipality_id if self.object.municipality else 'None'})")
+        
         messages.success(self.request, _('Progetto creato con successo!'))
         return super(CreateView, self).form_valid(form)
 
@@ -71,17 +93,43 @@ class ProjectUpdateView(LoginRequiredMixin, UpdateView):
     form_class = ProjectForm
     template_name = 'projects/project_form.html'
     
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['title'] = _('Modifica Progetto')
-        return context
-    
     def get_success_url(self):
         return reverse_lazy('projects:project_detail', kwargs={'pk': self.object.pk})
     
     def form_valid(self, form):
+        # Debug: stampa il valore di municipality prima del salvataggio
+        municipality = form.cleaned_data.get('municipality')
+        print(f"DEBUG: ProjectUpdateView - municipality selezionato: {municipality} (ID: {municipality.id if municipality else 'None'})")
+        
+        # Controlla se il municipio è cambiato rispetto al valore salvato nel database
+        has_changed = False
+        if self.object.pk:
+            original_municipality_id = Project.objects.filter(pk=self.object.pk).values_list('municipality_id', flat=True).first()
+            new_municipality_id = municipality.id if municipality else None
+            has_changed = original_municipality_id != new_municipality_id
+            print(f"DEBUG: Municipality changed? {has_changed} (Original: {original_municipality_id}, New: {new_municipality_id})")
+        
+        # Salva l'oggetto normalmente
+        with transaction.atomic():
+            self.object = form.save()
+            
+            # Se il municipio è cambiato, forza la sincronizzazione manualmente
+            if has_changed and municipality:
+                print(f"DEBUG: Forzatura sincronizzazione municipality per progetto {self.object.id}")
+                self.object.sync_municipalities()
+        
+        # Verifica che il municipio sia stato aggiornato correttamente
+        self.object.refresh_from_db()
+        print(f"DEBUG: Dopo salvataggio - municipality: {self.object.municipality} (ID: {self.object.municipality_id if self.object.municipality else 'None'})")
+        
+        # Verifica subproject
+        from cpo_core.models.subproject import SubProject
+        subprojects = SubProject.objects.filter(project=self.object)
+        for sp in subprojects:
+            print(f"DEBUG: Subproject {sp.id} ({sp.name}) - municipality: {sp.municipality} (ID: {sp.municipality_id})")
+        
         messages.success(self.request, _('Progetto aggiornato con successo!'))
-        return super().form_valid(form)
+        return super(UpdateView, self).form_valid(form)
 
 class ProjectDeleteView(LoginRequiredMixin, DeleteView):
     model = Project
@@ -96,18 +144,31 @@ class ProjectDeleteView(LoginRequiredMixin, DeleteView):
             project_id = self.object.id
             project_name = self.object.name
             
-            # Bypassa il sistema di eliminazione in cascata di Django
-            # ed esegui direttamente la query SQL
-            from django.db import connection
-            with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM projects_project WHERE id = %s", [project_id])
+            # Elimina prima tutti i sottoprogetti associati
+            from cpo_core.models.subproject import SubProject
+            from cpo_core.models.charging_station import ChargingStation, ChargingStationPhoto
+            from django.db import transaction
+            
+            with transaction.atomic():
+                # Trova tutti i sottoprogetti associati
+                subprojects = SubProject.objects.filter(project_id=project_id)
+                
+                # Per ogni sottoprogetto, elimina tutte le stazioni di ricarica e le foto associate
+                for subproject in subprojects:
+                    # Elimina le foto delle stazioni di ricarica associate
+                    ChargingStationPhoto.objects.filter(subproject=subproject).delete()
+                    
+                    # Elimina le stazioni di ricarica associate
+                    ChargingStation.objects.filter(subproject=subproject).delete()
+                
+                # Elimina tutti i sottoprogetti
+                subprojects.delete()
+                
+                # Infine, elimina il progetto principale
+                self.object.delete()
             
             messages.success(self.request, _(f'Progetto "{project_name}" eliminato con successo!'))
             return redirect('projects:project_list')
         except Exception as e:
             messages.error(self.request, _('Errore durante l\'eliminazione: {}').format(str(e)))
             return redirect('projects:project_list')
-            
-    def delete(self, request, *args, **kwargs):
-        # Questo metodo è deprecato ma lo manteniamo per compatibilità
-        return self.form_valid(None)

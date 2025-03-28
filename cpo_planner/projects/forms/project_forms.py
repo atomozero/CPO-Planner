@@ -3,13 +3,14 @@ from django import forms
 from django.utils.translation import gettext_lazy as _
 # Importa il modello consolidato
 from cpo_core.models.project import Project
+from cpo_core.models.municipality import Municipality
 from datetime import date
 
 class ProjectForm(forms.ModelForm):
     class Meta:
         model = Project
         fields = [
-            'name', 'description', 'region', 'start_date', 
+            'name', 'description', 'region', 'municipality', 'start_date', 
             'expected_completion_date', 'total_budget', 
             'total_expected_revenue', 'status', 'photovoltaic_integration',
             'logo'
@@ -18,13 +19,24 @@ class ProjectForm(forms.ModelForm):
             'start_date': forms.DateInput(attrs={'type': 'date'}),
             'expected_completion_date': forms.DateInput(attrs={'type': 'date'}),
             'description': forms.Textarea(attrs={'rows': 4}),
-            'logo': forms.FileInput(attrs={'class': 'form-control'})
+            'logo': forms.FileInput(attrs={'class': 'form-control'}),
+            'municipality': forms.Select(attrs={'class': 'form-control select2'})
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Rendi region opzionale per test
         self.fields['region'].required = False
+        
+        # Configura il campo municipality
+        self.fields['municipality'].queryset = Municipality.objects.all().order_by('name')
+        self.fields['municipality'].required = False
+        self.fields['municipality'].label = _("Comune principale")
+        self.fields['municipality'].help_text = _("Seleziona il comune principale del progetto. I sottoprogetti erediteranno questo comune.")
+        
+        # Debug: mostra l'ID del comune selezionato nel form
+        if self.instance and self.instance.pk and self.instance.municipality:
+            print(f"DEBUG ProjectForm: Comune attuale per progetto {self.instance.id}: {self.instance.municipality.id} - {self.instance.municipality.name}")
         
         # Imposta valori predefiniti
         if not self.instance.pk:  # Solo per nuove istanze

@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils.translation import gettext_lazy as _
 
-from ..models.project import Project
+from cpo_core.models.project import Project
 from ..models.charging_station import ChargingStation
 from ..models.timeline import ProjectTimeline, StationTimeline
 from ..forms.timeline_forms import ProjectTimelineForm, StationTimelineForm

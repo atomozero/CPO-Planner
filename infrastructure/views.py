@@ -302,6 +302,53 @@ class MunicipalityDetailView(LoginRequiredMixin, DetailView):
     context_object_name = 'municipality'
     template_name = 'infrastructure/municipality_detail.html'
     
+    def get_object(self, queryset=None):
+        """Override get_object to handle cases where the municipality might not exist in infrastructure app"""
+        try:
+            # Prima tentiamo di ottenere il comune dall'app infrastruttura usando il queryset predefinito
+            return super().get_object(queryset)
+        except Municipality.DoesNotExist:
+            # Se non lo troviamo, proviamo a ottenerlo dal modello cpo_core
+            print(f"DEBUG: Infrastructure Municipality with ID {self.kwargs.get('pk')} not found, trying cpo_core model")
+            from cpo_core.models.municipality import Municipality as CoreMunicipality
+            
+            try:
+                # Troviamo il comune nel modello del core
+                core_municipality = CoreMunicipality.objects.get(pk=self.kwargs.get('pk'))
+                print(f"DEBUG: Found municipality in cpo_core: {core_municipality.name}")
+                
+                # Creiamo o aggiorniamo il comune equivalente nell'app infrastructure
+                try:
+                    # Tenta di creare un nuovo oggetto Municipality nell'app infrastructure
+                    infrastructure_municipality, created = Municipality.objects.update_or_create(
+                        id=core_municipality.id,
+                        defaults={
+                            'name': core_municipality.name,
+                            'province': core_municipality.province,
+                            'region': core_municipality.region if hasattr(core_municipality, 'region') else 'Regione Generica',
+                            'population': core_municipality.population if hasattr(core_municipality, 'population') else 0,
+                            'latitude': core_municipality.latitude if hasattr(core_municipality, 'latitude') else None, 
+                            'longitude': core_municipality.longitude if hasattr(core_municipality, 'longitude') else None
+                        }
+                    )
+                    
+                    if created:
+                        print(f"DEBUG: Created new Municipality in infrastructure app with ID {infrastructure_municipality.id}")
+                    else:
+                        print(f"DEBUG: Updated existing Municipality in infrastructure app with ID {infrastructure_municipality.id}")
+                    
+                    # Restituisci l'oggetto creato o aggiornato
+                    return infrastructure_municipality
+                except Exception as e:
+                    print(f"DEBUG: Error creating/updating infrastructure Municipality: {e}")
+                    # Se non riusciamo a creare/aggiornare, restituiamo l'oggetto core da visualizzare
+                    return core_municipality
+            except CoreMunicipality.DoesNotExist:
+                print(f"DEBUG: Municipality with ID {self.kwargs.get('pk')} not found in both apps")
+                print(f"DEBUG: Available municipalities in cpo_core: {list(CoreMunicipality.objects.values_list('id', 'name'))}")
+                print(f"DEBUG: Available municipalities in infrastructure: {list(Municipality.objects.values_list('id', 'name'))}")
+                raise Municipality.DoesNotExist("Trovato nessun Comune corrispondente alla query")
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         

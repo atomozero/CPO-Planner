@@ -12,7 +12,7 @@ from django.template.loader import render_to_string
 from django.conf import settings
 import os
 
-from ..models.project import Project
+from cpo_core.models.project import Project
 from ..models.charging_station import ChargingStation
 from ..models.financial import FinancialParameters, FinancialAnalysis
 from ..forms.financial import FinancialParametersForm

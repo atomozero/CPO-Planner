@@ -162,6 +162,12 @@ class SubProjectForm(forms.ModelForm):
             "è ridotto del 30% rispetto a un giorno normale."
         )
         
-        # Nascondi il campo municipality dal form, verrà popolato automaticamente nella view
+        # Gestione campo municipality nel form
         if 'municipality' in self.fields:
-            del self.fields['municipality']
+            # Per i nuovi sottoprogetti, nascondi il campo municipality
+            if not self.instance.pk:
+                del self.fields['municipality']
+            # Per sottoprogetti esistenti, disabilita il campo municipality ma mostralo
+            else:
+                self.fields['municipality'].disabled = True
+                self.fields['municipality'].help_text = _('Il comune viene ereditato dal progetto principale e non può essere modificato qui.')

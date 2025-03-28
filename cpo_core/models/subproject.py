@@ -78,6 +78,15 @@ class SubProject(models.Model):
     project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='subprojects', verbose_name=_('Progetto Principale'))
     municipality = models.ForeignKey('Municipality', on_delete=models.CASCADE, related_name='subprojects', verbose_name=_('Comune'))
     
+    # Aggiungiamo questo metodo per verificare la sincronizzazione col progetto principale
+    def validate_municipality_alignment(self):
+        """Verifica che il municipality sia allineato con quello del progetto principale"""
+        if self.project and self.project.municipality:
+            if self.municipality_id != self.project.municipality_id:
+                print(f"ERRORE: Il sottoprogetto {self.id} ha municipio {self.municipality_id} ma il progetto ha municipio {self.project.municipality_id}")
+                return False
+        return True
+    
     # Informazioni di base
     name = models.CharField(_("Nome Sottoprogetto"), max_length=255)
     description = models.TextField(_("Descrizione"), blank=True, null=True)
@@ -198,6 +207,12 @@ class SubProject(models.Model):
         return availability_factor
     
     def save(self, *args, **kwargs):
+        # Verifica che il comune sia allineato con quello del progetto principale
+        if self.project and self.project.municipality and not kwargs.get('skip_municipality_check', False):
+            if self.municipality_id != self.project.municipality_id:
+                print(f"DEBUG - SubProject save - Allineamento municipio da {self.municipality_id} a {self.project.municipality_id}")
+                self.municipality = self.project.municipality
+        
         # Debug: mostra i valori dei costi prima del salvataggio
         print("DEBUG - SubProject save - Prima del calcolo budget:", {
             'equipment_cost': self.equipment_cost,

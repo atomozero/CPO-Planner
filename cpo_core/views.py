@@ -627,8 +627,30 @@ class ProjectUpdateView(LoginRequiredMixin, UpdateView):
         return reverse_lazy('project_detail', kwargs={'pk': self.object.pk})
     
     def form_valid(self, form):
-        messages.success(self.request, 'Progetto aggiornato con successo.')
-        return super().form_valid(form)
+        # Debug: stampa tutti i dati del form
+        print(f"DEBUG: Form data: {form.cleaned_data}")
+        
+        # Debug: stampa il valore di municipality prima del salvataggio
+        municipality = form.cleaned_data.get('municipality')
+        print(f"DEBUG: ProjectUpdateView - municipality selezionato: {municipality} (ID: {municipality.id if municipality else 'None'})")
+        
+        # Salva l'oggetto
+        self.object = form.save()
+        
+        # Debug: stampa l'oggetto dopo il salvataggio
+        print(f"DEBUG: Progetto salvato: {self.object}")
+        print(f"DEBUG: Municipality dopo salvataggio: {self.object.municipality}")
+        
+        # Chiama esplicitamente sync_municipalities
+        if self.object.municipality:
+            print(f"DEBUG: Sincronizzazione comuni - municipality: {self.object.municipality} (ID: {self.object.municipality.id})")
+            result = self.object.sync_municipalities()
+            print(f"DEBUG: Risultato sincronizzazione: {result}")
+        else:
+            print("DEBUG: Nessun comune da sincronizzare")
+        
+        messages.success(self.request, _('Progetto aggiornato con successo!'))
+        return super(UpdateView, self).form_valid(form)
 
 class ProjectDeleteView(LoginRequiredMixin, DeleteView):
     model = Project

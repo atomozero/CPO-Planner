@@ -1,0 +1,446 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ municipality.name }} | CPO Planner{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<style>
+    #map {
+        height: 500px;
+        width: 100%;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    #automaticMap {
+        height: 500px;
+        width: 100%;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        display: none;
+    }
+    .charging-station-marker {
+        background: none;
+        border: none;
+    }
+    .municipality-marker {
+        text-align: center;
+    }
+    .municipality-marker i {
+        font-size: 24px;
+        color: #e74a3b;
+        text-shadow: 0 0 3px rgba(255,255,255,0.8);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- CSRF Token per richieste AJAX -->
+{% csrf_token %}
+
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center">
+        {% if municipality.logo %}
+        <div class="mr-3">
+            <img src="/media/{{ municipality.logo }}" alt="Logo {{ municipality.name }}" class="img-thumbnail" style="max-height: 80px; max-width: 80px;">
+        </div>
+        {% endif %}
+        <h1 class="h3 mb-0 text-gray-800">Comune: {{ municipality.name }}</h1>
+    </div>
+    <div>
+        <a href="{% url 'infrastructure:municipality-test-upload' municipality.id %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm mr-2">
+            <i class="fas fa-upload fa-sm text-white-50 mr-2"></i>Carica Logo
+        </a>
+        <a href="{% url 'infrastructure:municipality-update' municipality.id %}" class="d-none d-sm-inline-block btn btn-sm btn-warning shadow-sm mr-2">
+            <i class="fas fa-edit fa-sm text-white-50 mr-2"></i>Modifica
+        </a>
+        <a href="{% url 'infrastructure:municipality-delete' municipality.id %}" class="d-none d-sm-inline-block btn btn-sm btn-danger shadow-sm mr-2">
+            <i class="fas fa-trash fa-sm text-white-50 mr-2"></i>Elimina
+        </a>
+        <a href="{% url 'infrastructure:municipality-list' %}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50 mr-2"></i>Torna alla lista
+        </a>
+    </div>
+</div>
+
+<!-- Content Row -->
+<div class="row">
+    <!-- Informazioni generali -->
+    <div class="col-xl-6 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Informazioni Generali</h6>
+            </div>
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-gray-800 font-weight-bold">Nome:</div>
+                            <div class="col-sm-8">{{ municipality.name }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-gray-800 font-weight-bold">Provincia:</div>
+                            <div class="col-sm-8">{{ municipality.province }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-gray-800 font-weight-bold">Regione:</div>
+                            <div class="col-sm-8">{{ municipality.region }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-gray-800 font-weight-bold">Popolazione:</div>
+                            <div class="col-sm-8">{{ municipality.population|default:"N/D" }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-gray-800 font-weight-bold">Superficie (km²):</div>
+                            <div class="col-sm-8">{{ municipality.area_sqkm|default:"N/D" }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiche -->
+    <div class="col-xl-6 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-success">Statistiche</h6>
+            </div>
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="row mb-3">
+                            <div class="col-sm-6 text-gray-800 font-weight-bold">Numero di Progetti:</div>
+                            <div class="col-sm-6">{{ projects|length }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-6 text-gray-800 font-weight-bold">Totale Stazioni di Ricarica:</div>
+                            <div class="col-sm-6">{{ subprojects|length }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-6 text-gray-800 font-weight-bold">Densità Stazioni:</div>
+                            <div class="col-sm-6">
+                                {% if municipality.population and municipality.population > 0 %}
+                                    {{ subprojects|length|floatformat:4|stringformat:'f'|slice:'1:' }} per 1000 abitanti
+                                {% else %}
+                                    N/D
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Progetti nel Comune -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Progetti nel Comune</h6>
+    </div>
+    <div class="card-body">
+        {% if projects %}
+        <div class="table-responsive">
+            <table class="table table-bordered" id="projectsTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Data Inizio</th>
+                        <th>Data Fine</th>
+                        <th>Stato</th>
+                        <th>Stazioni</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for project in projects %}
+                    <tr>
+                        <td><a href="{% url 'projects:project_detail' project.id %}">{{ project.name }}</a></td>
+                        <td>{{ project.start_date|date:"d/m/Y" }}</td>
+                        <td>{{ project.expected_completion_date|date:"d/m/Y" }}</td>
+                        <td>
+                            <span class="badge badge-{% if project.status == 'planning' %}info{% elif project.status == 'in_progress' %}primary{% elif project.status == 'completed' %}success{% else %}warning{% endif %}">
+                                {{ project.get_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ subprojects|length }}</td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'projects:project_detail' project.id %}" class="btn btn-info btn-sm" title="Dettaglio">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'projects:project_update' project.id %}" class="btn btn-warning btn-sm" title="Modifica">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            Nessun progetto registrato in questo comune.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Mappa del Comune -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">Mappa del Comune</h6>
+        {% if not municipality.latitude or not municipality.longitude %}
+        <button id="findCoordinatesBtn" class="btn btn-sm btn-primary">
+            <i class="fas fa-search-location mr-1"></i> Cerca Coordinate
+        </button>
+        {% else %}
+        <div class="small text-muted">
+            <i class="fas fa-map-marker-alt mr-1"></i> 
+            Coordinate: {{ municipality.latitude|floatformat:6 }}, {{ municipality.longitude|floatformat:6 }}
+        </div>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        {% if municipality.latitude and municipality.longitude %}
+        <!-- Se ci sono coordinate, mostra la mappa -->
+        <div id="map"></div>
+        {% else %}
+        <!-- Altrimenti mostra l'interfaccia di ricerca -->
+        <div id="coordinateSearchResults" class="mb-3" style="display: none;">
+            <div class="alert alert-info">
+                <div id="searchingMsg">
+                    <i class="fas fa-spinner fa-spin mr-2"></i> Ricerca coordinate in corso...
+                </div>
+                <div id="foundCoordinates" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Coordinate trovate:</strong> <span id="foundLat"></span>, <span id="foundLng"></span>
+                        </div>
+                        <button id="saveCoordinatesBtn" class="btn btn-sm btn-success">
+                            <i class="fas fa-save mr-1"></i> Salva
+                        </button>
+                    </div>
+                </div>
+                <div id="notFoundCoordinates" style="display: none;">
+                    <i class="fas fa-exclamation-triangle mr-2"></i> 
+                    <strong>Nessuna coordinata trovata</strong> - Prova a cercare manualmente su Google Maps o inserisci le coordinate a mano.
+                </div>
+            </div>
+        </div>
+        
+        <div id="mapPlaceholder" class="text-center py-4">
+            <i class="fas fa-map-marked-alt fa-5x text-gray-300 mb-3"></i>
+            <p>Utilizza il pulsante "Cerca Coordinate" per trovare automaticamente le coordinate del comune.</p>
+            
+            <div class="mt-4">
+                <a href="https://www.google.com/maps/search/{{ municipality.name }}+{{ municipality.province }}+Italia" target="_blank" class="btn btn-primary">
+                    <i class="fas fa-search mr-1"></i> Cerca su Google Maps
+                </a>
+            </div>
+        </div>
+        
+        <div id="automaticMap"></div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+// Funzione per verificare che le mappe vengano inizializzate correttamente
+function initializeMap() {
+    console.log("Inizializzazione mappa");
+    {% if municipality.latitude and municipality.longitude %}
+    try {
+        // Corregge il problema con i separatori decimali italiani (virgola)
+        var latStr = "{{ municipality.latitude }}".replace(',', '.');
+        var lngStr = "{{ municipality.longitude }}".replace(',', '.');
+        var lat = parseFloat(latStr);
+        var lng = parseFloat(lngStr);
+        
+        console.log("Coordinate corrette:", lat, lng);
+        
+        // Verifica che le coordinate siano valide
+        if (isNaN(lat) || isNaN(lng)) {
+            console.error("Coordinate non valide:", latStr, lngStr);
+            return;
+        }
+        
+        // Inizializza la mappa con le coordinate corrette
+        var map = L.map('map').setView([lat, lng], 13);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Marker del comune
+        var municipalityIcon = L.divIcon({
+            className: 'municipality-marker',
+            html: '<i class="fas fa-city"></i>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+        
+        var municipalityMarker = L.marker([lat, lng], {
+            icon: municipalityIcon
+        }).addTo(map);
+        
+        municipalityMarker.bindPopup(
+            "<div style='text-align:center'>" +
+            "<strong>{{ municipality.name }}</strong><br>" +
+            "Provincia: {{ municipality.province }}<br>" +
+            "Popolazione: {{ municipality.population|default:'N/D' }}" +
+            "</div>"
+        ).openPopup();
+        
+        // Cerchio per evidenziare l'area
+        L.circle([lat, lng], {
+            color: '#4e73df',
+            fillColor: '#4e73df',
+            fillOpacity: 0.1,
+            radius: 1000
+        }).addTo(map);
+        
+        console.log("Mappa inizializzata con successo");
+    } catch (error) {
+        console.error("Errore nell'inizializzazione della mappa:", error);
+    }
+    {% endif %}
+}
+
+$(document).ready(function() {
+    // Inizializza DataTables
+    if (document.getElementById('projectsTable')) {
+        $('#projectsTable').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Italian.json"
+            }
+        });
+    }
+    
+    // Inizializza la mappa se ci sono coordinate
+    initializeMap();
+    
+    // CASO 1: Comune senza coordinate - ricerca automatica
+    var findCoordinatesBtn = document.getElementById('findCoordinatesBtn');
+    if (findCoordinatesBtn) {
+        findCoordinatesBtn.addEventListener('click', function() {
+            console.log("Pulsante cerca coordinate cliccato");
+            
+            var municipalityId = {{ municipality.id }};
+            var municipalityName = "{{ municipality.name }}";
+            var municipalityProvince = "{{ municipality.province }}";
+            
+            // Mostra il blocco di ricerca
+            document.getElementById('coordinateSearchResults').style.display = 'block';
+            document.getElementById('searchingMsg').style.display = 'block';
+            document.getElementById('foundCoordinates').style.display = 'none';
+            document.getElementById('notFoundCoordinates').style.display = 'none';
+            
+            // Costruisci la query di ricerca
+            var query = encodeURIComponent(municipalityName + ", " + municipalityProvince + ", Italia");
+            var url = "https://nominatim.openstreetmap.org/search?format=json&q=" + query + "&limit=1&addressdetails=1";
+            
+            fetch(url)
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    console.log("Risultati ricerca:", data);
+                    
+                    if (data && data.length > 0 && data[0].lat && data[0].lon) {
+                        var lat = parseFloat(data[0].lat);
+                        var lng = parseFloat(data[0].lon);
+                        
+                        console.log("Coordinate trovate:", lat, lng);
+                        
+                        // Memorizza le coordinate trovate
+                        window.foundLat = lat;
+                        window.foundLng = lng;
+                        
+                        // Aggiorna l'interfaccia
+                        document.getElementById('foundLat').textContent = lat.toFixed(6);
+                        document.getElementById('foundLng').textContent = lng.toFixed(6);
+                        document.getElementById('searchingMsg').style.display = 'none';
+                        document.getElementById('foundCoordinates').style.display = 'block';
+                        
+                        // Nascondi il placeholder
+                        document.getElementById('mapPlaceholder').style.display = 'none';
+                        
+                        // Mostra e inizializza la mappa
+                        var mapDiv = document.getElementById('automaticMap');
+                        mapDiv.style.display = 'block';
+                        
+                        var map = L.map('automaticMap').setView([lat, lng], 13);
+                        
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        }).addTo(map);
+                        
+                        // Marker del comune
+                        var marker = L.marker([lat, lng]).addTo(map);
+                        marker.bindPopup("<strong>{{ municipality.name }}</strong>").openPopup();
+                        
+                        // Cerchio per evidenziare l'area
+                        L.circle([lat, lng], {
+                            color: '#4e73df',
+                            fillColor: '#4e73df',
+                            fillOpacity: 0.1,
+                            radius: 1000
+                        }).addTo(map);
+                        
+                        // Configura l'handler per il salvataggio
+                        var saveBtn = document.getElementById('saveCoordinatesBtn');
+                        saveBtn.addEventListener('click', function() {
+                            this.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Salvataggio...';
+                            this.disabled = true;
+                            
+                            var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                            var formData = new FormData();
+                            formData.append('latitude', window.foundLat);
+                            formData.append('longitude', window.foundLng);
+                            formData.append('csrfmiddlewaretoken', csrfToken);
+                            
+                            fetch('/infrastructure/municipalities/' + municipalityId + '/update-coordinates/', {
+                                method: 'POST',
+                                body: formData,
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            })
+                            .then(function(response) { return response.json(); })
+                            .then(function(data) {
+                                if (data.success) {
+                                    alert('Coordinate salvate con successo! La pagina verrà ricaricata.');
+                                    window.location.reload();
+                                } else {
+                                    alert('Errore nel salvataggio: ' + (data.error || 'Si è verificato un errore'));
+                                    saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Riprova';
+                                    saveBtn.disabled = false;
+                                }
+                            })
+                            .catch(function(error) {
+                                console.error('Errore:', error);
+                                alert('Si è verificato un errore. Riprova.');
+                                saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Riprova';
+                                saveBtn.disabled = false;
+                            });
+                        });
+                    } else {
+                        console.log("Nessuna coordinata trovata");
+                        document.getElementById('searchingMsg').style.display = 'none';
+                        document.getElementById('notFoundCoordinates').style.display = 'block';
+                    }
+                })
+                .catch(function(error) {
+                    console.error("Errore nella ricerca:", error);
+                    document.getElementById('searchingMsg').style.display = 'none';
+                    document.getElementById('notFoundCoordinates').style.display = 'block';
+                });
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -75,7 +75,17 @@ class ChargingStationCreateView(LoginRequiredMixin, CreateView):
         return context
     
     def form_valid(self, form):
-        form.instance.sub_project_id = self.kwargs.get('subproject_id')
+        # Imposta il riferimento al sottoprogetto
+        subproject_id = self.kwargs.get('subproject_id')
+        form.instance.sub_project_id = subproject_id
+        
+        # Ottieni il sottoprogetto
+        subproject = get_object_or_404(SubProject, pk=subproject_id)
+        
+        # Assicura che la stazione di ricarica usi lo stesso comune del sottoprogetto
+        # In realtà questo non è necessario specificarlo esplicitamente dato che la stazione
+        # di ricarica si riferisce solo al sottoprogetto e non ha un campo comune proprio
+        
         messages.success(self.request, _('Stazione di ricarica creata con successo!'))
         return super().form_valid(form)
     

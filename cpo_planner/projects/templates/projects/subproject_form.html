@@ -133,7 +133,7 @@
             <input type="text" id="id_municipality_display" class="form-control" value="Comune non disponibile" readonly>
         {% endif %}
         
-        <input type="hidden" name="municipality" id="id_municipality" value="{{ project.municipality.id|default:form.instance.municipality.id }}">
+        <input type="hidden" name="municipality" id="id_municipality" value="{{ project.municipality.id }}">
         <small class="form-text text-muted">Comune associato al progetto principale</small>
     </div>
 </div>

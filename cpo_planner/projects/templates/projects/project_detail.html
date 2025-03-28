@@ -61,15 +61,21 @@
                             <tr>
                                 <th>Comune</th>
                                 <td>
+                                    {% if project.municipality %}
+                                    <a href="{% url 'infrastructure:municipality-detail' project.municipality.id %}" class="text-primary">
+                                      {{ project.municipality.name }}
+                                    </a>
+                                  {% else %}
                                     {% for subproject in subprojects %}
-                                        {% if forloop.first %}
-                                            <a href="{% url 'infrastructure:municipality-detail' subproject.municipality.id %}" class="text-primary">
-                                                {{ project.region }}
-                                            </a>
-                                        {% endif %}
+                                      {% if forloop.first and subproject.municipality %}
+                                        <a href="{% url 'infrastructure:municipality-detail' subproject.municipality.id %}" class="text-primary">
+                                          {{ subproject.municipality.name }}
+                                        </a>
+                                      {% endif %}
                                     {% empty %}
-                                        {{ project.region }}
+                                      Nessun sottoprogetto disponibile
                                     {% endfor %}
+                                  {% endif %}
                                 </td>
                             </tr>
                             <tr>

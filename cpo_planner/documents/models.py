@@ -215,7 +215,7 @@ class DocumentTask(models.Model):
 class ProjectDocument(models.Model):
     """Documento specifico per i progetti"""
     # Usiamo il nome della app e del modello
-    project = models.ForeignKey('cpo_core.Project', on_delete=models.CASCADE, related_name='documents')
+    project = models.ForeignKey('cpo_core.Project', on_delete=models.CASCADE, related_name='doc_documents')
     title = models.CharField(_('Titolo'), max_length=255)
     file = models.FileField(_('File'), upload_to='project_documents/')
     created_at = models.DateTimeField(_('Data Creazione'), auto_now_add=True)

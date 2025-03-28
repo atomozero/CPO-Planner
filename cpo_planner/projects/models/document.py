@@ -24,7 +24,7 @@ class ProjectDocument(models.Model):
     project = models.ForeignKey(
         'Project', 
         on_delete=models.CASCADE, 
-        related_name='documents',
+        related_name='proj_documents',
         verbose_name=_('Progetto')
     )
     

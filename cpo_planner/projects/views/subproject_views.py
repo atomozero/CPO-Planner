@@ -116,37 +116,13 @@ class SubProjectCreateView(LoginRequiredMixin, CreateView):
         form.instance.project_id = self.kwargs.get('project_id')
         project = get_object_or_404(Project, pk=self.kwargs.get('project_id'))
         
-        # Imposta il comune del sottoprogetto uguale a quello specificato nel progetto
-        municipality = None
-        
-        # Prova a trovare il comune basandosi sulla regione del progetto
-        if project.region:
-            municipality = Municipality.objects.filter(name=project.region).first()
-        
-        # Se non è stato trovato un comune basandosi sulla regione, cerca un comune associato al progetto
-        if not municipality and hasattr(project, 'municipality') and project.municipality:
-            municipality = project.municipality
-        
-        # Se ancora non abbiamo un comune, cerca di creare un comune generico
-        if not municipality:
-            # Opzione 1: usa il primo comune disponibile nel database
-            municipality = Municipality.objects.first()
-            
-            # Opzione 2: crea un nuovo comune con il nome della regione o un nome generico
-            if not municipality:
-                name = project.region or "Comune Generico"
-                municipality = Municipality.objects.create(
-                    name=name,
-                    province="Provincia Generica",
-                    region="Regione Generica"
-                )
-        
-        # Assegna il comune trovato o creato
-        if municipality:
-            form.instance.municipality = municipality
+        # Imposta esplicitamente il comune dal progetto, senza condizioni
+        if hasattr(project, 'municipality') and project.municipality:
+            form.instance.municipality = project.municipality
+            print(f"DEBUG - SubProjectCreateView - Assegnato municipio {project.municipality.id} ({project.municipality.name}) dal progetto {project.id}")
         else:
-            # Se proprio non c'è modo di trovare o creare un comune, segnala l'errore
-            messages.error(self.request, "Impossibile trovare o creare un comune. Verificare le impostazioni del progetto.")
+            # Se il progetto non ha un comune, mostra un messaggio d'errore
+            messages.error(self.request, "Il progetto non ha un comune assegnato. Assegnare un comune al progetto prima di creare stazioni.")
             return self.form_invalid(form)
         
         messages.success(self.request, _('Stazione di ricarica creata con successo!'))
@@ -180,11 +156,15 @@ class SubProjectUpdateView(LoginRequiredMixin, UpdateView):
         # Ottieni il progetto associato al sottoprogetto
         project = self.object.project
         
-        # Imposta il comune del sottoprogetto uguale a quello specificato nel progetto
-        if project.region:
-            municipality = Municipality.objects.filter(name=project.region).first()
-            if municipality:
-                form.instance.municipality = municipality
+        # Imposta il comune del sottoprogetto sempre uguale a quello specificato nel progetto
+        if hasattr(project, 'municipality') and project.municipality:
+            form.instance.municipality = project.municipality
+            print(f"DEBUG - SubProjectUpdateView - Municipio {project.municipality.id} ({project.municipality.name}) dal progetto {project.id}")
+        else:
+            # Se il progetto non ha un comune per qualche motivo, mantieni il comune corrente del sottoprogetto
+            # Non cambiarlo a meno che non sia esplicitamente nel form
+            if 'municipality' in form.changed_data and form.cleaned_data.get('municipality'):
+                print(f"DEBUG - SubProjectUpdateView - Municipio modificato manualmente a {form.cleaned_data.get('municipality').id}")
         
         # Debug: mostra i valori dei campi economici prima del salvataggio
         print("DEBUG - SubProjectUpdateView form_valid - Valori del form:", {

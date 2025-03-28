@@ -1,5 +1,6 @@
 # cpo_planner/projects/models/__init__.py
 from .project import Project
+
 from .subproject import SubProject
 from .municipality import Municipality
 from .charging_station import ChargingStation

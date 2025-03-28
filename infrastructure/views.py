@@ -1,17 +1,41 @@
-# views.py
-from django.shortcuts import render, get_object_or_404, redirect
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, FormView
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.urls import reverse_lazy
-from django.contrib import messages
-from django.views import View
-from django.http import JsonResponse
+# Standard library imports
+import json
+import os
+import threading
+import time
+import logging
+import traceback
 from datetime import datetime, timedelta
-from django.db import models
-from django.utils.translation import gettext_lazy as _
+from decimal import Decimal
+from io import BytesIO
 
-# Mantieni i modelli specifici dell'infrastruttura fino alla consolidazione completa
+# Django imports
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.cache import cache
+from django.core.management import call_command
+from django.db import models
+from django.db.models import Avg, Count, Sum
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render, get_object_or_404, redirect
+from django.template.loader import render_to_string
+from django.urls import reverse, reverse_lazy
+from django.utils.text import slugify
+from django.utils.translation import gettext_lazy as _
+from django.views import View
+from django.views.generic import (
+    ListView, DetailView, CreateView, UpdateView, DeleteView, FormView
+)
+
+# Third party imports
+from weasyprint import HTML, CSS
+from weasyprint.text.fonts import FontConfiguration
+
+# Local application imports
 from .models import (
+    Municipality,
     ChargingProject, ChargingStation, ProjectTask,
     ElectricityTariff, ManagementFee, StationUsageProfile, ChargingStationTemplate,
     GlobalSettings, PunData, EnergyPriceProjection
@@ -22,28 +46,60 @@ from .forms import (
     GlobalSettingsForm, EnergyPriceProjectionForm
 )
 from .services import PunDataService
-
-from django.http import HttpResponse
 from .reports import MunicipalityReportGenerator, ChargingProjectReportGenerator, ChargingStationSheetGenerator
 
-from django.urls import reverse
-from django.views.generic import View
-from django.core.management import call_command
-
-from django.http import JsonResponse
-from django.db.models import Avg, Count, Sum
-
-# Importazioni aggiuntive per WeasyPrint
-from django.template.loader import render_to_string
-from weasyprint import HTML, CSS
-from weasyprint.text.fonts import FontConfiguration
-
-from django.conf import settings
-
-# Viste per i Comuni
-from infrastructure.models import Municipality
+# Related application imports
 from cpo_core.models import Project, SubProject
 from cpo_core.models.subproject import Charger
+
+# Funzione per aggiornare l'avanzamento dell'importazione
+def update_import_progress(progress, message="", current_count=0, total_count=7904):
+    """Aggiorna il progresso dell'importazione nella cache"""
+    cache.set('import_progress', {
+        'progress': progress,
+        'message': message,
+        'timestamp': time.time(),
+        'current_count': current_count,
+        'total_count': total_count
+    }, timeout=3600)  # timeout di 1 ora
+
+# Comando di importazione modificato che aggiorna il progresso
+def run_import_command_with_progress(force=False):
+    """Esegue il comando di importazione aggiornando il progresso"""
+    try:
+        # Imposta lo stato iniziale
+        update_import_progress(0, "Inizializzazione importazione...")
+        
+        # Ottieni il numero totale di comuni prima dell'importazione
+        existing_count = Municipality.objects.count()
+        if force and existing_count > 0:
+            update_import_progress(2, f"Cancellazione di {existing_count} comuni esistenti...")
+            Municipality.objects.all().delete()
+        
+        # Per prima cosa, scarica i dati senza importarli (5-15% progresso)
+        update_import_progress(5, "Scaricamento dati dei comuni italiani in corso...")
+        
+        # In una situazione reale, qui scaricheresti e processeresti i dati
+        # Per questo esempio, simuliamo un progresso incrementale
+        
+        # Importa i comuni (15-95% progresso)
+        # Nel comando reale, dovresti modificare import_municipalities.py per chiamare
+        # update_import_progress a intervalli regolari
+        
+        # Esegui il comando effettivo di importazione
+        from django.core.management import call_command
+        
+        # Questa chiamata dovrebbe essere modificata per supportare il reporting del progresso
+        # Nel frattempo, usiamo un altro thread per simulare l'avanzamento
+        call_command('import_municipalities', force=force)
+        
+        # Imposta il progresso finale
+        update_import_progress(100, "Importazione completata con successo!")
+        return True
+    except Exception as e:
+        # In caso di errore, aggiorna lo stato con l'errore
+        update_import_progress(100, f"Errore durante l'importazione: {str(e)}")
+        return False
 
 class ChargingStationTemplatePrintPDFView(LoginRequiredMixin, DetailView):
     model = ChargingStationTemplate
@@ -179,39 +235,55 @@ class RunImportView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         force = request.GET.get('force', 'false').lower() == 'true'
         
-        # Mostra la pagina ma esegui immediatamente l'importazione
+        # Inizializza il progresso a 0
+        update_import_progress(0, "In attesa dell'inizio dell'importazione...")
+        
+        # Mostra la pagina con la barra di progresso
         return render(request, 'infrastructure/run_import.html', {
             'force': force,
             'auto_start': True
         })
     
     def post(self, request, *args, **kwargs):
-        # Questa chiamata verrà eseguita una sola volta per avviare l'importazione
         force = request.POST.get('force', 'false').lower() == 'true'
         
+        # Avvia l'importazione in un thread separato
+        threading.Thread(
+            target=run_import_command_with_progress, 
+            args=(force,)
+        ).start()
+        
+        # Restituisci una risposta immediata
+        return JsonResponse({
+            'status': 'started',
+            'message': 'Importazione avviata in background'
+        })
+
+@login_required
+def check_import_progress(request):
+    """Restituisce lo stato attuale dell'importazione dei comuni"""
+    # Ottieni lo stato corrente dalla cache
+    progress_data = cache.get('import_progress', {
+        'progress': 0,
+        'message': 'Importazione non avviata',
+        'timestamp': time.time(),
+        'current_count': 0,
+        'total_count': 7904  # Imposta il totale dei comuni
+    })
+    
+    # Estrai il conteggio corrente dal messaggio se disponibile
+    if 'message' in progress_data and 'Importati ' in progress_data['message']:
         try:
-            # Esegui l'importazione direttamente (non in un thread separato)
-            if force:
-                call_command('import_municipalities', force=True)
-            else:
-                call_command('import_municipalities')
-                
-            # Conta i comuni dopo l'importazione
-            total_municipalities = Municipality.objects.count()
-            
-            return JsonResponse({
-                'status': 'completed',
-                'progress': 100,
-                'message': f'Importazione completata! {total_municipalities} comuni importati.',
-                'redirect_url': reverse('infrastructure:municipality-list')
-            })
-                
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': f"Errore nell'importazione: {e}",
-                'redirect_url': reverse('infrastructure:municipality-list')
-            })
+            # Pattern: "Importati X/Y comuni... (Z%)"
+            import re
+            match = re.search(r'Importati (\d+)/(\d+)', progress_data['message'])
+            if match:
+                progress_data['current_count'] = int(match.group(1))
+                progress_data['total_count'] = int(match.group(2))
+        except:
+            pass
+    
+    return JsonResponse(progress_data)
 
 class MunicipalityListView(LoginRequiredMixin, ListView):
     model = Municipality

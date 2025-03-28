@@ -32,10 +32,26 @@
                         </p>
                     </div>
                     
-                    <div class="progress mb-4" style="height: 25px;" id="import-container">
-                        <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
-                             role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
-                            0%
+                    <!-- Prima barra di progresso: Avanzamento complessivo -->
+                    <div class="mb-3">
+                        <label class="font-weight-bold">Avanzamento complessivo</label>
+                        <div class="progress mb-2" style="height: 25px;">
+                            <div id="overall-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
+                                 role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                0%
+                            </div>
+                        </div>
+                        <small class="text-muted">Include inizializzazione, download ed elaborazione dati</small>
+                    </div>
+                    
+                    <!-- Seconda barra di progresso: Importazione comuni -->
+                    <div class="mb-4">
+                        <label class="font-weight-bold">Importazione comuni nel database</label>
+                        <div class="progress" style="height: 25px;">
+                            <div id="import-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
+                                 role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                0%
+                            </div>
                         </div>
                     </div>
                     
@@ -65,16 +81,47 @@
         // Visualizza progress bar indeterminata all'inizio
         var importFinished = false;
         var force = {% if force %}true{% else %}false{% endif %};
+        var pollingInterval = null;
         
-        // Funzione per aggiornare la progress bar
-        function updateProgressBar(progress, message) {
-            $('#progress-bar').css('width', progress + '%').attr('aria-valuenow', progress).text(progress + '%');
-            $('#status-message').text(message);
+        // Funzione per aggiornare le barre di progresso
+        function updateProgressBars(data) {
+            // Recupera i conteggi o utilizza valori di default
+            let currentCount = data.current_count || 0;
+            let totalCount = data.total_count || 1;
+            let overallPercentage = data.progress || 0;
+            
+            // Calcola la percentuale di comuni importati
+            let importPercentage = Math.floor((currentCount / totalCount) * 100);
+            
+            // Aggiorna la barra di progresso complessiva
+            $('#overall-progress-bar')
+                .css('width', overallPercentage + '%')
+                .attr('aria-valuenow', overallPercentage)
+                .text(overallPercentage + '%');
+            
+            // Aggiorna la barra di progresso dell'importazione
+            $('#import-progress-bar')
+                .css('width', importPercentage + '%')
+                .attr('aria-valuenow', importPercentage)
+                .text(importPercentage + '%');
+            
+            // Aggiorna il messaggio di stato
+            if (data.message) {
+                $('#status-message').text(data.message);
+            } else {
+                // Crea un messaggio di fallback se non è fornito
+                $('#status-message').text(`Importati ${currentCount}/${totalCount} comuni... (${importPercentage}%)`);
+            }
         }
         
         // Funzione per completare l'importazione
         function completeImport(success, message) {
             importFinished = true;
+            
+            // Ferma il polling
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+            }
             
             if (success) {
                 $('#loader-icon').addClass('d-none');
@@ -82,12 +129,18 @@
                 $('#import-title').text('Importazione completata!');
                 $('#complete-btn').removeClass('d-none');
                 $('#cancel-btn').addClass('d-none');
-                $('#progress-bar').removeClass('progress-bar-animated').addClass('bg-success');
+                $('#overall-progress-bar').removeClass('progress-bar-animated').addClass('bg-success');
+                $('#import-progress-bar').removeClass('progress-bar-animated').addClass('bg-success');
+                
+                // Imposta entrambe le barre al 100%
+                $('#overall-progress-bar').css('width', '100%').attr('aria-valuenow', 100).text('100%');
+                $('#import-progress-bar').css('width', '100%').attr('aria-valuenow', 100).text('100%');
             } else {
                 $('#loader-icon').addClass('d-none');
                 $('#error-icon').removeClass('d-none');
                 $('#import-title').text('Errore nell\'importazione');
-                $('#progress-bar').removeClass('progress-bar-animated').addClass('bg-danger');
+                $('#overall-progress-bar').removeClass('progress-bar-animated').addClass('bg-danger');
+                $('#import-progress-bar').removeClass('progress-bar-animated').addClass('bg-danger');
             }
             
             $('#import-message').text(message);
@@ -95,7 +148,13 @@
         
         // Funzione per avviare l'importazione completa
         function startImport() {
-            updateProgressBar(0, 'Importazione avviata... questo processo potrebbe richiedere alcuni minuti.');
+            // Inizializza le barre con 0%
+            updateProgressBars({
+                progress: 0,
+                current_count: 0,
+                total_count: 1,
+                message: 'Importazione avviata... questo processo potrebbe richiedere alcuni minuti.'
+            });
             
             $.ajax({
                 url: '{% url "infrastructure:run_import" %}',
@@ -106,16 +165,18 @@
                 },
                 dataType: 'json',
                 success: function(data) {
-                    if (data.status === 'completed') {
-                        updateProgressBar(100, data.message);
+                    if (data.status === 'started') {
+                        // L'importazione è stata avviata, inizia il polling per verificare lo stato
+                        startProgressPolling();
+                    } else if (data.status === 'completed') {
+                        updateProgressBars({
+                            progress: 100,
+                            current_count: data.total_count || 1,
+                            total_count: data.total_count || 1,
+                            message: data.message
+                        });
                         completeImport(true, data.message);
-                        
-                        // Redirezione automatica dopo 3 secondi
-                        setTimeout(function() {
-                            window.location.href = data.redirect_url;
-                        }, 3000);
                     } else if (data.status === 'error') {
-                        updateProgressBar(100, data.message);
                         completeImport(false, data.message);
                     }
                 },
@@ -125,12 +186,53 @@
             });
         }
         
+        // Funzione per verificare periodicamente lo stato dell'importazione
+        function startProgressPolling() {
+            // Verifica lo stato subito una volta
+            checkProgress();
+            
+            // Poi imposta un intervallo per controllare periodicamente
+            pollingInterval = setInterval(function() {
+                checkProgress();
+            }, 2000);  // Controlla ogni 2 secondi
+        }
+        
+        // Funzione per verificare lo stato attuale dell'importazione
+        function checkProgress() {
+            $.ajax({
+                url: '{% url "infrastructure:check_import_progress" %}',
+                type: 'GET',
+                dataType: 'json',
+                success: function(data) {
+                    // Aggiorna le barre di progresso con i dati ricevuti
+                    updateProgressBars(data);
+                    
+                    // Se il progresso è 100%, l'importazione è completata
+                    if (data.progress >= 100) {
+                        var isError = data.message && data.message.toLowerCase().includes('errore');
+                        completeImport(!isError, data.message || 'Importazione completata!');
+                        
+                        // Redirezione automatica dopo 3 secondi in caso di successo
+                        if (!isError) {
+                            setTimeout(function() {
+                                window.location.href = '{% url "infrastructure:municipality-list" %}';
+                            }, 3000);
+                        }
+                    }
+                },
+                error: function() {
+                    // In caso di errore nel polling, non bloccare tutto
+                    console.error('Errore durante il controllo dello stato dell\'importazione');
+                }
+            });
+        }
+        
         {% if auto_start %}
         // Avvia l'importazione automaticamente
         startImport();
         {% else %}
         // Aggiungi un pulsante per avviare l'importazione manualmente
-        $('#import-container').prepend('<div class="text-center mb-4"><button id="start-import-btn" class="btn btn-primary">Avvia Importazione</button></div>');
+        $('.progress').before('<div class="text-center mb-4"><button id="start-import-btn" class="btn btn-primary">Avvia Importazione</button></div>');
         $('#start-import-btn').on('click', function() {
             $(this).prop('disabled', true).text('Importazione in corso...');
             startImport();

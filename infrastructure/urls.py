@@ -20,7 +20,8 @@ urlpatterns = [
     path('municipalities/import/', views.ImportMunicipalitiesView.as_view(), name='import_municipalities'),
     path('municipalities/run-import/', views.RunImportView.as_view(), name='run_import'),
     path('api/municipalities/autocomplete/', views.municipality_autocomplete, name='municipality-autocomplete'),
-    
+    path('municipalities/check-import-progress/', views.check_import_progress, name='check_import_progress'),
+
     # Progetti
     path('projects/', views.ChargingProjectListView.as_view(), name='project-list'),
     path('projects/<int:pk>/', views.ChargingProjectDetailView.as_view(), name='project-detail'),

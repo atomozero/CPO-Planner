@@ -3,7 +3,7 @@ from decimal import Decimal
 from cpo_core.models.charging_station import ChargingStation
 from cpo_core.models.project import Project
 from cpo_core.models.subproject import SubProject
-from cpo_core.models.municipality import Municipality
+from infrastructure.models import Municipality
 from cpo_core.models.organization import Organization
 
 class ChargingStationCalculationTest(TestCase):

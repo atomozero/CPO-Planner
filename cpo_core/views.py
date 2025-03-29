@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 
 from .models.organization import Organization
 from .models.project import Project
-from .models.municipality import Municipality
+from infrastructure.models import Municipality
 from .models.subproject import SubProject
 from .models.charging_station import ChargingStation, SolarInstallation
 from .models.financial import FinancialProjection, YearlyProjection

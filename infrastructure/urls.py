@@ -21,6 +21,8 @@ urlpatterns = [
     path('municipalities/run-import/', views.RunImportView.as_view(), name='run_import'),
     path('api/municipalities/autocomplete/', views.municipality_autocomplete, name='municipality-autocomplete'),
     path('municipalities/check-import-progress/', views.check_import_progress, name='check_import_progress'),
+    # Nuovo endpoint per i dettagli del comune in formato JSON
+    path('municipalities/<int:municipality_id>/details/', views.municipality_details, name='municipality-details'),
 
     # Progetti
     path('projects/', views.ChargingProjectListView.as_view(), name='project-list'),
@@ -45,42 +47,42 @@ urlpatterns = [
     path('projects/<int:pk>/report/', views.generate_project_report, name='project-report'),
     path('stations/<int:pk>/sheet/', views.generate_station_sheet, name='station-sheet'),
     
-    # Technical Data Management Routes
+    # Rotte per la gestione dei dati tecnici
     path('tech-config/', views.tech_config_dashboard, name='tech-config'),
     path('global-settings/', views.GlobalSettingsView.as_view(), name='global-settings'),
     path('global-settings/<int:pk>/', views.GlobalSettingsUpdateView.as_view(), name='global-settings-update'),
     
-    # Electricity Tariff Routes
+    # Rotte per le tariffe elettriche
     path('tariffs/', views.ElectricityTariffListView.as_view(), name='tariff-list'),
     path('tariffs/<int:pk>/', views.ElectricityTariffDetailView.as_view(), name='tariff-detail'),
     path('tariffs/add/', views.ElectricityTariffCreateView.as_view(), name='tariff-create'),
     path('tariffs/add-pun/', views.PunTariffCreateView.as_view(), name='pun-tariff-create'),
     path('tariffs/<int:pk>/edit/', views.ElectricityTariffUpdateView.as_view(), name='tariff-update'),
     
-    # PUN Data Routes
+    # Rotte per i dati PUN
     path('pun-data/', views.PunDataListView.as_view(), name='pun-data-list'),
     path('pun-data/download/', views.PunDataDownloadView.as_view(), name='pun-data-download'),
     path('energy-projections/', views.EnergyPriceProjectionListView.as_view(), name='energy-projection-list'),
     
-    # Management Fee Routes
+    # Rotte per i costi di gestione
     path('fees/', views.ManagementFeeListView.as_view(), name='fee-list'),
     path('fees/<int:pk>/', views.ManagementFeeDetailView.as_view(), name='fee-detail'),
     path('fees/add/', views.ManagementFeeCreateView.as_view(), name='fee-create'),
     path('fees/<int:pk>/edit/', views.ManagementFeeUpdateView.as_view(), name='fee-update'),
     
-    # Station Usage Profile Routes
+    # Rotte per i profili di utilizzo delle stazioni
     path('profiles/', views.StationUsageProfileListView.as_view(), name='profile-list'),
     path('profiles/<int:pk>/', views.StationUsageProfileDetailView.as_view(), name='profile-detail'),
     path('profiles/add/', views.StationUsageProfileCreateView.as_view(), name='profile-create'),
     path('profiles/<int:pk>/edit/', views.StationUsageProfileUpdateView.as_view(), name='profile-update'),
     
-    # Charging Station Template Routes
+    # Rotte per i template delle stazioni di ricarica
     path('templates/', views.ChargingStationTemplateListView.as_view(), name='template-list'),
     path('templates/<int:pk>/', views.ChargingStationTemplateDetailView.as_view(), name='template-detail'),
     path('templates/add/', views.ChargingStationTemplateCreateView.as_view(), name='template-create'),
     path('templates/<int:pk>/edit/', views.ChargingStationTemplateUpdateView.as_view(), name='template-update'),
     path('templates/<int:pk>/pdf/', views.ChargingStationTemplatePrintPDFView.as_view(), name='template-print-pdf'),
-    # Quick create station from template
+    # Creazione rapida di stazioni da template
     path('templates/<int:template_id>/create-station/', views.station_from_template, name='station-from-template'),
     path('templates/<int:template_id>/create-station/<int:project_id>/', views.station_from_template, name='project-station-from-template'),
 ]

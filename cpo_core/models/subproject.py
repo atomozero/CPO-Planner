@@ -76,8 +76,10 @@ class SubProject(models.Model):
     """Sotto-progetto per un comune specifico"""
     # Relazioni
     project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='subprojects', verbose_name=_('Progetto Principale'))
-    municipality = models.ForeignKey('Municipality', on_delete=models.CASCADE, related_name='subprojects', verbose_name=_('Comune'))
-    
+    # Modifica del riferimento al comune - ora usa il modello Municipality di Infrastructure
+    municipality = models.ForeignKey('infrastructure.Municipality', on_delete=models.CASCADE, 
+                               related_name='core_subprojects', 
+                               verbose_name=_('Comune'))
     # Aggiungiamo questo metodo per verificare la sincronizzazione col progetto principale
     def validate_municipality_alignment(self):
         """Verifica che il municipality sia allineato con quello del progetto principale"""

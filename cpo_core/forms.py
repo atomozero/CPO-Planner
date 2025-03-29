@@ -1,13 +1,15 @@
 from django import forms
 from django.core.validators import MinValueValidator, MaxValueValidator
 from .models import (
-    Organization, Project, Municipality, SubProject, ChargingStation, 
+    Organization, Project, SubProject, ChargingStation, 
     FinancialProjection, YearlyProjection, SolarInstallation
 )
+from infrastructure.models import Municipality
+
 # Importa modelli consolidati
 from .models.organization import Organization
 from .models.project import Project
-from .models.municipality import Municipality 
+from infrastructure.models import Municipality
 from .models.subproject import SubProject
 from .models.charging_station import ChargingStation, SolarInstallation
 from .models.financial import FinancialProjection, YearlyProjection
@@ -102,19 +104,15 @@ class MunicipalityForm(forms.ModelForm):
     class Meta:
         model = Municipality
         fields = [
-            'name', 'province', 'region', 'population', 'area_sqkm',
-            'contact_name', 'contact_email', 'contact_phone', 'notes'
+            'name', 'province', 'region', 'population', 'ev_adoption_rate', 'logo'
         ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'province': forms.TextInput(attrs={'class': 'form-control'}),
             'region': forms.TextInput(attrs={'class': 'form-control'}),
             'population': forms.NumberInput(attrs={'class': 'form-control'}),
-            'area_sqkm': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'contact_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'contact_email': forms.EmailInput(attrs={'class': 'form-control'}),
-            'contact_phone': forms.TextInput(attrs={'class': 'form-control'}),
-            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'ev_adoption_rate': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'logo': forms.FileInput(attrs={'class': 'form-control'}),
         }
 
 class SubProjectForm(forms.ModelForm):

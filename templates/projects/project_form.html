@@ -3,20 +3,95 @@
 {% block title %}{% if form.instance.pk %}Modifica{% else %}Nuovo{% endif %} Progetto | CPO Planner{% endblock %}
 
 {% block extra_css %}
-<!-- Aggiungi Select2 CSS -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css">
 <style>
-    .select2-container--default .select2-selection--single {
-        height: calc(1.5em + 0.75rem + 2px);
-        padding: 0.375rem 0.75rem;
-        border: 1px solid #d1d3e2;
-        border-radius: 0.35rem;
+    /* Stili dettaglio comune */
+    .comune-card {
+        background-color: #f8f9fc;
+        border-radius: 0.5rem;
+        border-left: 4px solid #4e73df;
+        box-shadow: 0 0.15rem 0.5rem rgba(78, 115, 223, 0.1);
+        margin-top: 0.75rem;
+        padding: 1rem;
     }
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: calc(1.5em + 0.75rem + 2px);
+    .comune-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        padding-bottom: 0.5rem;
     }
-    .select2-container--default .select2-selection--single .select2-selection__rendered {
-        line-height: calc(1.5em + 0.25rem);
+    .comune-name { color: #4e73df; font-size: 1.25rem; font-weight: 600; margin: 0; }
+    .comune-id {
+        display: inline-block;
+        background-color: #eaecf4;
+        border-radius: 1rem;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.75rem;
+        color: #6e707e;
+        font-weight: 600;
+    }
+    .comune-info-list { list-style: none; padding: 0; margin: 0; }
+    .comune-info-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        padding: 0.375rem 0;
+        border-bottom: 1px dashed rgba(0,0,0,0.05);
+    }
+    .comune-info-item:last-child { margin-bottom: 0; border-bottom: none; }
+    .comune-info-icon {
+        width: 2rem;
+        height: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #eaecf4;
+        color: #4e73df;
+        border-radius: 50%;
+        margin-right: 0.75rem;
+        flex-shrink: 0;
+    }
+    .comune-info-icon i { font-size: 0.875rem; }
+    .comune-info-content { display: flex; flex-direction: column; flex-grow: 1; }
+    .comune-info-label {
+        font-size: 0.75rem;
+        color: #858796;
+        text-transform: uppercase;
+        font-weight: 600;
+        margin-bottom: 0.125rem;
+    }
+    .comune-info-value { font-size: 0.95rem; color: #333; font-weight: 500; }
+    .provincia-regione { display: flex; align-items: center; }
+    .provincia-regione-divider { margin: 0 0.5rem; color: #858796; font-size: 0.75rem; }
+    
+    /* Stile messaggio di errore */
+    .error-message {
+        color: #e74a3b;
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
+    }
+    
+    /* Stili per autocomplete */
+    .ui-autocomplete {
+        max-height: 250px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        z-index: 9999 !important;
+    }
+    .ui-autocomplete .ui-menu-item-wrapper {
+        padding: 6px 10px;
+    }
+    .ui-autocomplete .ui-menu-item-wrapper.ui-state-active {
+        background-color: #4e73df;
+        border: none;
+        color: white;
+    }
+    
+    /* Nascondi il select originale */
+    .d-none {
+        display: none;
     }
 </style>
 {% endblock %}
@@ -28,9 +103,14 @@
         <h1 class="h3 mb-0 text-gray-800">{% if form.instance.pk %}Modifica{% else %}Nuovo{% endif %} Progetto</h1>
     </div>
     
-    <form method="post" class="mt-3" enctype="multipart/form-data"> <!-- Verifica che enctype sia corretto -->
+    <form method="post" class="mt-3" enctype="multipart/form-data" id="project-form">
         {% csrf_token %}
-        {{ form.errors }}
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+            {{ form.non_field_errors }}
+        </div>
+        {% endif %}
+        
         <div class="card mb-4 shadow">
             <div class="card-header py-3">
                 <h6 class="m-0 font-weight-bold text-primary">Informazioni Generali</h6>
@@ -41,28 +121,35 @@
                         <label for="id_name" class="form-label">Nome Progetto</label>
                         <input type="text" name="name" id="id_name" value="{{ form.name.value|default:'' }}" class="form-control" required>
                         {% if form.name.errors %}
-                        <div class="invalid-feedback d-block">
-                            {{ form.name.errors }}
-                        </div>
+                        <div class="invalid-feedback d-block">{{ form.name.errors }}</div>
                         {% endif %}
                     </div>
                     
                     <div class="col-md-6 mb-3">
                         <label for="id_municipality_autocomplete" class="form-label">Comune</label>
-                        <select id="id_municipality_autocomplete" class="form-control municipality-autocomplete" style="width: 100%">
-                            {% if form.instance.region %}
-                            <option value="{{ form.instance.region }}" selected>{{ form.instance.region }}</option>
-                            {% endif %}
+                        <input type="text" id="id_municipality_autocomplete" class="form-control" 
+                               placeholder="Inizia a digitare il nome del comune...">
+                        <select name="municipality" id="id_municipality" class="form-control d-none">
+                            <option value="">Seleziona un comune</option>
+                            {% for municipality in form.fields.municipality.queryset %}
+                            <option value="{{ municipality.id }}" {% if form.municipality.value == municipality.id %}selected{% endif %}>
+                                {{ municipality.name }}
+                            </option>
+                            {% endfor %}
                         </select>
-                        <input type="hidden" name="region" id="id_region" value="{{ form.region.value|default:'' }}">
-                        {% if form.errors.region %}
-                        <div class="invalid-feedback d-block">{{ form.errors.region }}</div>
+                        {% if form.municipality.errors %}
+                        <div class="error-message">{{ form.municipality.errors }}</div>
                         {% endif %}
                         <div id="municipality-details" class="mt-2"></div>
-                        {% if form.region.errors %}
-                        <div class="invalid-feedback d-block">
-                            {{ form.region.errors }}
-                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label for="id_description" class="form-label">Descrizione</label>
+                        <textarea name="description" id="id_description" class="form-control" rows="3">{{ form.description.value|default:'' }}</textarea>
+                        {% if form.description.errors %}
+                        <div class="invalid-feedback d-block">{{ form.description.errors }}</div>
                         {% endif %}
                     </div>
                 </div>
@@ -70,12 +157,8 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="id_logo" class="form-label">Logo Progetto</label>
-                        
-                        <!-- Uso diretto del form field in modalità Bootstrap -->
                         {{ form.logo }}
-                        
                         <div class="form-text">Scegli un'immagine per il logo del progetto</div>
-                        
                         {% if form.instance.logo %}
                         <div class="mt-2">
                             <img src="{{ form.instance.logo.url }}" alt="Logo Attuale" class="img-thumbnail" style="max-height: 100px;">
@@ -83,9 +166,7 @@
                         </div>
                         {% endif %}
                         {% if form.logo.errors %}
-                        <div class="invalid-feedback d-block">
-                            {{ form.logo.errors }}
-                        </div>
+                        <div class="invalid-feedback d-block">{{ form.logo.errors }}</div>
                         {% endif %}
                     </div>
                 </div>
@@ -95,9 +176,7 @@
                         <label for="id_start_date" class="form-label">Data di inizio</label>
                         <input type="date" name="start_date" id="id_start_date" value="{{ form.instance.start_date|date:'Y-m-d' }}" class="form-control">
                         {% if form.start_date.errors %}
-                        <div class="invalid-feedback d-block">
-                            {{ form.start_date.errors }}
-                        </div>
+                        <div class="invalid-feedback d-block">{{ form.start_date.errors }}</div>
                         {% endif %}
                     </div>
                     
@@ -105,9 +184,7 @@
                         <label for="id_expected_completion_date" class="form-label">Data di completamento stimata</label>
                         <input type="date" name="expected_completion_date" id="id_expected_completion_date" value="{{ form.instance.expected_completion_date|date:'Y-m-d' }}" class="form-control">
                         {% if form.expected_completion_date.errors %}
-                        <div class="invalid-feedback d-block">
-                            {{ form.expected_completion_date.errors }}
-                        </div>
+                        <div class="invalid-feedback d-block">{{ form.expected_completion_date.errors }}</div>
                         {% endif %}
                     </div>
                 </div>
@@ -121,9 +198,7 @@
                             {% endfor %}
                         </select>
                         {% if form.status.errors %}
-                        <div class="invalid-feedback d-block">
-                            {{ form.status.errors }}
-                        </div>
+                        <div class="invalid-feedback d-block">{{ form.status.errors }}</div>
                         {% endif %}
                     </div>
                 </div>
@@ -131,6 +206,7 @@
         </div>
         
         <!-- Campi nascosti -->
+        <input type="hidden" name="region" id="id_region" value="{{ form.region.value|default:'Veneto' }}">
         <input type="hidden" name="total_budget" id="id_total_budget" value="0">
         <input type="hidden" name="total_expected_revenue" id="id_total_expected_revenue" value="0">
         <input type="hidden" name="photovoltaic_integration" id="id_photovoltaic_integration" value="false">
@@ -140,8 +216,6 @@
             Le informazioni finanziarie e l'integrazione fotovoltaica verranno gestite a livello di singola stazione di ricarica.
         </div>
         
-        <!-- Rimosso sezione previsioni di mercato che non esiste nel modello -->
-        
         <div class="d-flex justify-content-between mb-4">
             <a href="{% url 'projects:project_list' %}" class="btn btn-secondary">Annulla</a>
             <button type="submit" class="btn btn-primary">Salva Progetto</button>
@@ -150,308 +224,178 @@
 </div>
 {% endblock %}
 
-
 {% block extra_js %}
-<!-- Aggiungi Select2 JS -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
 <script>
 $(document).ready(function() {
-    // Stile personalizzato per migliorare la leggibilità
-    $("<style>")
-        .prop("type", "text/css")
-        .html(`
-            /* Stile per il box informativo del comune */
-            .comune-card {
-                background-color: #f8f9fc;
-                border-radius: 0.5rem;
-                border-left: 4px solid #4e73df;
-                box-shadow: 0 0.15rem 0.5rem rgba(78, 115, 223, 0.1);
-                margin-top: 0.75rem;
-                padding: 1rem;
-                transition: all 0.2s ease-in-out;
-            }
-            
-            .comune-header {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                margin-bottom: 0.75rem;
-                border-bottom: 1px solid rgba(0,0,0,0.05);
-                padding-bottom: 0.5rem;
-            }
-            
-            .comune-name {
-                color: #4e73df;
-                font-size: 1.25rem;
-                font-weight: 600;
-                margin: 0;
-            }
-            
-            .comune-id {
-                display: inline-block;
-                background-color: #eaecf4;
-                border-radius: 1rem;
-                padding: 0.25rem 0.75rem;
-                font-size: 0.75rem;
-                color: #6e707e;
-                font-weight: 600;
-            }
-            
-            .comune-info-list {
-                list-style: none;
-                padding: 0;
-                margin: 0;
-            }
-            
-            .comune-info-item {
-                display: flex;
-                align-items: center;
-                margin-bottom: 0.5rem;
-                padding: 0.375rem 0;
-                border-bottom: 1px dashed rgba(0,0,0,0.05);
-            }
-            
-            .comune-info-item:last-child {
-                margin-bottom: 0;
-                border-bottom: none;
-            }
-            
-            .comune-info-icon {
-                width: 2rem;
-                height: 2rem;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                background-color: #eaecf4;
-                color: #4e73df;
-                border-radius: 50%;
-                margin-right: 0.75rem;
-                flex-shrink: 0;
-            }
-            
-            .comune-info-icon i {
-                font-size: 0.875rem;
-            }
-            
-            .comune-info-content {
-                display: flex;
-                flex-direction: column;
-                flex-grow: 1;
-            }
-            
-            .comune-info-label {
-                font-size: 0.75rem;
-                color: #858796;
-                text-transform: uppercase;
-                font-weight: 600;
-                margin-bottom: 0.125rem;
-            }
-            
-            .comune-info-value {
-                font-size: 0.95rem;
-                color: #333;
-                font-weight: 500;
-            }
-            
-            /* Stile per la combinazione di provincia e regione */
-            .provincia-regione {
-                display: flex;
-                align-items: center;
-            }
-            
-            .provincia-regione-divider {
-                margin: 0 0.5rem;
-                color: #858796;
-                font-size: 0.75rem;
-            }
-        `)
-        .appendTo("head");
-    
-    // Funzione per estrarre informazioni dal campo text
-    function extractInfoFromText(text) {
-        var result = {
-            comune: text,
-            provincia: null,
-            regione: "Veneto", // Impostiamo staticamente la regione
-            codice: null
-        };
-        
-        try {
-            // Cerca una stringa JSON tra parentesi graffe
-            var match = text.match(/\(([^)]+)\)/);
-            if (match && match[1]) {
-                // Estrai il testo tra parentesi e convertilo in oggetto
-                var jsonStr = match[1].replace(/'/g, '"');
-                
-                // Modifica la stringa per renderla un JSON valido
-                jsonStr = jsonStr.replace(/(\w+):/g, '"$1":');
-                
-                var data = JSON.parse(jsonStr);
-                
-                if (data.nome) {
-                    result.provincia = data.nome;
-                }
-                if (data.codice) {
-                    result.codice = data.codice;
-                }
-            }
-        } catch (e) {
-            console.error("Errore nell'estrazione delle informazioni:", e);
-        }
-        
-        return result;
-    }
-    
-    // Configura l'autocompletamento per i comuni
-    $('.municipality-autocomplete').select2({
-        placeholder: 'Inizia a digitare il nome di un comune...',
-        minimumInputLength: 2,
-        ajax: {
-            url: '{% url "infrastructure:municipality-autocomplete" %}',
-            dataType: 'json',
-            delay: 300,
-            data: function(params) {
-                return {
-                    q: params.term
-                };
-            },
-            processResults: function(data) {
-                // Modifica il testo visualizzato per mostrare solo il nome del comune
-                var results = data.results.map(function(item) {
-                    // Estrai informazioni dal testo
-                    var fullText = item.text;
-                    var info = extractInfoFromText(fullText);
-                    
-                    // Estrai solo il nome del comune (prima delle parentesi)
-                    var comuneName = fullText.split(' (')[0];
-                    
-                    return {
-                        id: item.id,
-                        text: comuneName,  // Mostra solo il nome senza parentesi
-                        population: item.population,
-                        provincia: info.provincia,
-                        regione: info.regione,
-                        logo_url: item.logo_url,
-                        rawText: fullText
-                    };
-                });
-                return {
-                    results: results
-                };
-            },
-            cache: true
-        },
-        // Personalizza il modo in cui i risultati sono mostrati nel dropdown
-        templateResult: function(item) {
-            if (!item.id) return item.text;
-            
-            var $result = $('<div class="select2-result-comune"></div>');
-            var $name = $('<span class="comune-name"></span>').text(item.text);
-            
-            if (item.population) {
-                var $population = $('<span class="comune-population ml-2 text-muted"></span>')
-                    .text('(' + item.population.toLocaleString() + ' abitanti)');
-                $result.append($name).append($population);
-            } else {
-                $result.append($name);
-            }
-            
-            return $result;
-        },
-        // Personalizza il modo in cui l'elemento selezionato è mostrato
-        templateSelection: function(item) {
-            return item.text; // Mostra solo il nome del comune quando selezionato
+    // Ottieni tutti i comuni dal select nascosto
+    var municipalityOptions = [];
+    $("#id_municipality option").each(function() {
+        if ($(this).val()) {
+            municipalityOptions.push({
+                id: $(this).val(),
+                name: $(this).text().trim()
+            });
         }
     });
     
-    // Quando viene selezionato un comune
-    $('.municipality-autocomplete').on('select2:select', function(e) {
-        var data = e.params.data;
-        
-        // Imposta il nome del comune nel campo regione
-        var comune = data.text; // Ora data.text contiene già solo il nome senza parentesi
-        $('#id_region').val(comune);
-        
-        // Rimuovi qualsiasi messaggio di errore
-        $('.invalid-feedback').hide();
-        
-        // Formatta il numero degli abitanti
-        var populationDisplay = data.population ? data.population.toLocaleString() : 'N/D';
-        
-        // Costruisci l'HTML con il nuovo design
-        var html = `
-            <div class="comune-card">
-                <div class="comune-header">
-                    <h5 class="comune-name">${comune}</h5>
-                    <span class="comune-id">ID: ${data.id}</span>
-                </div>
-                <ul class="comune-info-list">
-                    <li class="comune-info-item">
-                        <div class="comune-info-icon">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div class="comune-info-content">
-                            <span class="comune-info-label">Abitanti</span>
-                            <span class="comune-info-value">${populationDisplay}</span>
-                        </div>
-                    </li>`;
-        
-        // Aggiungi provincia e regione sulla stessa riga
-        if (data.provincia && data.regione) {
-            html += `
-                    <li class="comune-info-item">
-                        <div class="comune-info-icon">
-                            <i class="fas fa-map-marker-alt"></i>
-                        </div>
-                        <div class="comune-info-content">
-                            <span class="comune-info-label">Localizzazione</span>
-                            <div class="provincia-regione">
-                                <span class="comune-info-value">${data.provincia}</span>
-                                <span class="provincia-regione-divider">•</span>
-                                <span class="comune-info-value">${data.regione}</span>
-                            </div>
-                        </div>
-                    </li>`;
-        }
-        
-        html += `
-                </ul>
-            </div>`;
+    // Configura l'autocompletamento
+    $("#id_municipality_autocomplete").autocomplete({
+        source: function(request, response) {
+            var term = request.term.toLowerCase();
+            var results = municipalityOptions.filter(function(item) {
+                return item.name.toLowerCase().indexOf(term) >= 0;
+            }).slice(0, 20); // Limita a 20 risultati
             
-        $('#municipality-details').html(html);
-    });
+            response($.map(results, function(item) {
+                return {
+                    label: item.name,
+                    value: item.name,
+                    id: item.id
+                };
+            }));
+        },
+        minLength: 2,
+        select: function(event, ui) {
+            // Seleziona l'opzione corrispondente nel select nascosto
+            $("#id_municipality").val(ui.item.id).trigger('change');
+            
+            // Costruisci la card con i dati disponibili
+            buildMunicipalityCard({
+                id: ui.item.id,
+                name: ui.item.value
+            });
+            
+            return false;
+        }
+    }).autocomplete("instance")._renderItem = function(ul, item) {
+        // Personalizza il rendering degli elementi nella lista di suggerimenti
+        return $("<li>")
+            .append("<div><strong>" + item.label + "</strong></div>")
+            .appendTo(ul);
+    };
     
-    // Se c'è un valore iniziale (modifica di un progetto esistente)
-    var initialMunicipalityId = $('#id_municipality').val();
-    if (initialMunicipalityId) {
-        // Carica i dettagli del comune
-        $.ajax({
-            url: '{% url "infrastructure:municipality-autocomplete" %}',
-            data: {
-                id: initialMunicipalityId
-            },
-            success: function(data) {
-                if (data.results && data.results.length > 0) {
-                    // Prima di passare i dati all'evento, arricchiscili con le informazioni estratte dal testo
-                    var municipality = data.results[0];
-                    var info = extractInfoFromText(municipality.text);
-                    
-                    municipality.text = municipality.text.split(' (')[0]; // Rimuovi la parte tra parentesi
-                    municipality.provincia = info.provincia;
-                    municipality.regione = info.regione;
-                    municipality.rawText = municipality.text;
-                    
-                    // Simula l'evento di selezione con i dati elaborati
-                    $('.municipality-autocomplete').trigger({
-                        type: 'select2:select',
-                        params: {
-                            data: municipality
-                        }
-                    });
-                }
-            }
+    // Inizializza il campo input con il valore corrente del select
+    var currentId = $("#id_municipality").val();
+    if (currentId) {
+        var currentText = $("#id_municipality option:selected").text();
+        $("#id_municipality_autocomplete").val(currentText);
+        
+        // Costruisci la card con i dati disponibili
+        buildMunicipalityCard({
+            id: currentId,
+            name: currentText
         });
     }
+    
+    // Funzione per costruire la card dei dettagli del comune
+function buildMunicipalityCard(data) {
+    // Ottieni i dati dal database tramite una chiamata AJAX
+    $.ajax({
+        url: '/infrastructure/municipalities/' + data.id + '/details/',
+        type: 'GET',
+        success: function(response) {
+            console.log("Dati dettaglio comune:", response);
+            
+            // Estrai le informazioni dal response
+            var population = response.population || 'N/D';
+            
+            // Gestisci il caso in cui provincia e regione siano oggetti JSON
+            var province = 'N/D';
+            var region = 'Veneto';
+            
+            try {
+                if (response.province) {
+                    // Se è una stringa che contiene un JSON
+                    if (typeof response.province === 'string' && response.province.includes("'nome':")) {
+                        var provinceMatch = response.province.match(/'nome':\s*'([^']+)'/);
+                        if (provinceMatch && provinceMatch.length > 1) {
+                            province = provinceMatch[1];
+                        }
+                    } 
+                    // Se è un oggetto con proprietà 'nome'
+                    else if (response.province.nome) {
+                        province = response.province.nome;
+                    }
+                }
+                
+                if (response.region) {
+                    // Se è una stringa che contiene un JSON
+                    if (typeof response.region === 'string' && response.region.includes("'nome':")) {
+                        var regionMatch = response.region.match(/'nome':\s*'([^']+)'/);
+                        if (regionMatch && regionMatch.length > 1) {
+                            region = regionMatch[1];
+                        }
+                    } 
+                    // Se è un oggetto con proprietà 'nome'
+                    else if (response.region.nome) {
+                        region = response.region.nome;
+                    }
+                }
+            } catch (e) {
+                console.error("Errore nel parsing dei dati:", e);
+            }
+            
+            var html = `
+                <div class="comune-card">
+                    <div class="comune-header">
+                        <h5 class="comune-name">${data.name}</h5>
+                        <span class="comune-id">ID: ${data.id}</span>
+                    </div>
+                    <ul class="comune-info-list">
+                        <li class="comune-info-item">
+                            <div class="comune-info-icon">
+                                <i class="fas fa-info-circle"></i>
+                            </div>
+                            <div class="comune-info-content">
+                                <span class="comune-info-label">INFORMAZIONI COMUNE</span>
+                                <div class="comune-info-value">
+                                    <span><i class="fas fa-users mr-1"></i> ${population !== 'N/D' ? population.toLocaleString() : 'N/D'} abitanti</span>
+                                    <span class="mx-2">•</span>
+                                    <span><i class="fas fa-map-marker-alt mr-1"></i> ${province}, ${region}</span>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>`;
+            
+            $('#municipality-details').html(html);
+            
+            // Aggiorna anche il campo nascosto della regione
+            $('#id_region').val(region);
+        },
+        error: function() {
+            // In caso di errore, mostra la card con dati minimi
+            var html = `
+                <div class="comune-card">
+                    <div class="comune-header">
+                        <h5 class="comune-name">${data.name}</h5>
+                        <span class="comune-id">ID: ${data.id}</span>
+                    </div>
+                    <ul class="comune-info-list">
+                        <li class="comune-info-item">
+                            <div class="comune-info-icon">
+                                <i class="fas fa-info-circle"></i>
+                            </div>
+                            <div class="comune-info-content">
+                                <span class="comune-info-label">INFORMAZIONI COMUNE</span>
+                                <div class="comune-info-value">
+                                    <span><i class="fas fa-users mr-1"></i> N/D abitanti</span>
+                                    <span class="mx-2">•</span>
+                                    <span><i class="fas fa-map-marker-alt mr-1"></i> N/D, Veneto</span>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>`;
+            
+            $('#municipality-details').html(html);
+            
+            // Aggiorna anche il campo nascosto della regione
+            $('#id_region').val('Veneto');
+        }
+    });
+}
 });
 </script>
 {% endblock %}

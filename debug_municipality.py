@@ -12,7 +12,7 @@ django.setup()
 # Importa i modelli
 from cpo_core.models.project import Project
 from cpo_core.models.subproject import SubProject
-from cpo_core.models.municipality import Municipality
+from infrastructure.models import Municipality
 
 # Funzione di test per aggiornare il comune di un progetto
 def test_update_municipality(project_id, municipality_id):

@@ -6,7 +6,7 @@ from .views import (
     OrganizationUpdateView, OrganizationDeleteView,
     ProjectListView, ProjectDetailView, ProjectCreateView, 
     ProjectUpdateView, ProjectDeleteView,
-    MunicipalityListView, ChargingStationListView, MunicipalityCreateView
+    ChargingStationListView
 )
 
 app_name = 'cpo_core'
@@ -22,9 +22,6 @@ urlpatterns = [
     path('organizations/<int:pk>/edit/', OrganizationUpdateView.as_view(), name='organization_update'),
     path('organizations/<int:pk>/delete/', OrganizationDeleteView.as_view(), name='organization_delete'),
     
-    # Progetti (rimossi per evitare conflitti con cpo_planner.projects)
-    # Questi URL sono ora gestiti da cpo_planner.projects.urls
-    
     # Proiezioni finanziarie
     path('financial-overview/', views.financial_overview, name='financial_overview'),
     path('financial-project/<int:pk>/', views.project_financial_detail, name='project_financial_detail'),
@@ -32,10 +29,6 @@ urlpatterns = [
     path('financial-projection/<int:pk>/update/', views.financial_projection_update, name='financial_projection_update'),
     path('financial-roi-calculator/', views.roi_calculator, name='roi_calculator'),
     
-    # Comuni
-    path('municipalities/', MunicipalityListView.as_view(), name='municipality_list'),
-    path('municipalities/add/', MunicipalityCreateView.as_view(), name='municipality_create'),
-
     # Stazioni di ricarica
     path('stations/', ChargingStationListView.as_view(), name='station_list'),
     path('stations/<uuid:pk>/', views.ChargingStationDetailView.as_view(), name='charging_station_detail'),

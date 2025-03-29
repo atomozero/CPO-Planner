@@ -2,7 +2,6 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 from decimal import Decimal
-from cpo_core.models.municipality import Municipality
 
 class GlobalSettings(models.Model):
     """Impostazioni globali dell'applicazione"""

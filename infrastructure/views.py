@@ -210,6 +210,66 @@ def municipality_autocomplete(request):
     
     return JsonResponse({'results': results})
 
+@login_required
+def municipality_details(request, municipality_id):
+    """Restituisce i dettagli di un comune in formato JSON"""
+    try:
+        municipality = Municipality.objects.get(id=municipality_id)
+        
+        # Estrai la provincia dal campo province
+        province_name = "N/D"
+        if municipality.province:
+            # Se la provincia è un oggetto JSON
+            if isinstance(municipality.province, dict) and 'nome' in municipality.province:
+                province_name = municipality.province['nome']
+            # Se la provincia è una stringa che contiene un JSON
+            elif isinstance(municipality.province, str) and "{'nome'" in municipality.province:
+                try:
+                    import re
+                    match = re.search(r"'nome':\s*'([^']+)'", municipality.province)
+                    if match:
+                        province_name = match.group(1)
+                except:
+                    pass
+            # Altrimenti usa il valore così com'è
+            else:
+                province_name = municipality.province
+                
+        # Estrai la regione dal campo region
+        region_name = "Veneto"  # Default
+        if municipality.region:
+            # Se la regione è un oggetto JSON
+            if isinstance(municipality.region, dict) and 'nome' in municipality.region:
+                region_name = municipality.region['nome']
+            # Se la regione è una stringa che contiene un JSON
+            elif isinstance(municipality.region, str) and "{'nome'" in municipality.region:
+                try:
+                    import re
+                    match = re.search(r"'nome':\s*'([^']+)'", municipality.region)
+                    if match:
+                        region_name = match.group(1)
+                except:
+                    pass
+            # Altrimenti usa il valore così com'è
+            else:
+                region_name = municipality.region
+        
+        data = {
+            'id': municipality.id,
+            'name': municipality.name,
+            'population': municipality.population,
+            'province': province_name,
+            'region': region_name,
+            'logo_url': municipality.logo.url if municipality.logo else None
+        }
+        return JsonResponse(data)
+    except Municipality.DoesNotExist:
+        return JsonResponse({'error': 'Municipality not found'}, status=404)
+    except Exception as e:
+        print(f"Errore nel recupero dei dettagli del comune: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
 class ImportMunicipalitiesView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         # Mostra la pagina con il pulsante di importazione
@@ -373,53 +433,6 @@ class MunicipalityDetailView(LoginRequiredMixin, DetailView):
     model = Municipality
     context_object_name = 'municipality'
     template_name = 'infrastructure/municipality_detail.html'
-    
-    def get_object(self, queryset=None):
-        """Override get_object to handle cases where the municipality might not exist in infrastructure app"""
-        try:
-            # Prima tentiamo di ottenere il comune dall'app infrastruttura usando il queryset predefinito
-            return super().get_object(queryset)
-        except Municipality.DoesNotExist:
-            # Se non lo troviamo, proviamo a ottenerlo dal modello cpo_core
-            print(f"DEBUG: Infrastructure Municipality with ID {self.kwargs.get('pk')} not found, trying cpo_core model")
-            from cpo_core.models.municipality import Municipality as CoreMunicipality
-            
-            try:
-                # Troviamo il comune nel modello del core
-                core_municipality = CoreMunicipality.objects.get(pk=self.kwargs.get('pk'))
-                print(f"DEBUG: Found municipality in cpo_core: {core_municipality.name}")
-                
-                # Creiamo o aggiorniamo il comune equivalente nell'app infrastructure
-                try:
-                    # Tenta di creare un nuovo oggetto Municipality nell'app infrastructure
-                    infrastructure_municipality, created = Municipality.objects.update_or_create(
-                        id=core_municipality.id,
-                        defaults={
-                            'name': core_municipality.name,
-                            'province': core_municipality.province,
-                            'region': core_municipality.region if hasattr(core_municipality, 'region') else 'Regione Generica',
-                            'population': core_municipality.population if hasattr(core_municipality, 'population') else 0,
-                            'latitude': core_municipality.latitude if hasattr(core_municipality, 'latitude') else None, 
-                            'longitude': core_municipality.longitude if hasattr(core_municipality, 'longitude') else None
-                        }
-                    )
-                    
-                    if created:
-                        print(f"DEBUG: Created new Municipality in infrastructure app with ID {infrastructure_municipality.id}")
-                    else:
-                        print(f"DEBUG: Updated existing Municipality in infrastructure app with ID {infrastructure_municipality.id}")
-                    
-                    # Restituisci l'oggetto creato o aggiornato
-                    return infrastructure_municipality
-                except Exception as e:
-                    print(f"DEBUG: Error creating/updating infrastructure Municipality: {e}")
-                    # Se non riusciamo a creare/aggiornare, restituiamo l'oggetto core da visualizzare
-                    return core_municipality
-            except CoreMunicipality.DoesNotExist:
-                print(f"DEBUG: Municipality with ID {self.kwargs.get('pk')} not found in both apps")
-                print(f"DEBUG: Available municipalities in cpo_core: {list(CoreMunicipality.objects.values_list('id', 'name'))}")
-                print(f"DEBUG: Available municipalities in infrastructure: {list(Municipality.objects.values_list('id', 'name'))}")
-                raise Municipality.DoesNotExist("Trovato nessun Comune corrispondente alla query")
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

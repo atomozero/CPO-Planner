@@ -3,7 +3,8 @@ from django import forms
 from django.utils.translation import gettext_lazy as _
 # Importa il modello consolidato
 from cpo_core.models.project import Project
-from cpo_core.models.municipality import Municipality
+# Importa Municipality da infrastructure invece di cpo_core
+from infrastructure.models import Municipality
 from datetime import date
 
 class ProjectForm(forms.ModelForm):
@@ -20,7 +21,7 @@ class ProjectForm(forms.ModelForm):
             'expected_completion_date': forms.DateInput(attrs={'type': 'date'}),
             'description': forms.Textarea(attrs={'rows': 4}),
             'logo': forms.FileInput(attrs={'class': 'form-control'}),
-            'municipality': forms.Select(attrs={'class': 'form-control select2'})
+            'municipality': forms.Select(attrs={'class': 'form-control'})
         }
     
     def __init__(self, *args, **kwargs):
@@ -28,7 +29,8 @@ class ProjectForm(forms.ModelForm):
         # Rendi region opzionale per test
         self.fields['region'].required = False
         
-        # Configura il campo municipality
+        # Configura il campo municipality con il queryset da Infrastructure
+# Nel metodo __init__ o ovunque sia usato Comune
         self.fields['municipality'].queryset = Municipality.objects.all().order_by('name')
         self.fields['municipality'].required = False
         self.fields['municipality'].label = _("Comune principale")
@@ -52,7 +54,7 @@ class ProjectForm(forms.ModelForm):
         
         # Assicurati che la regione sia impostata
         if not cleaned_data.get('region'):
-            cleaned_data['region'] = 'Non specificata'
+            cleaned_data['region'] = 'Veneto'
             
         if not cleaned_data.get('start_date'):
             cleaned_data['start_date'] = date.today()

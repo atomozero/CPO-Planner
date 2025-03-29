@@ -19,11 +19,11 @@ class Project(models.Model):
     
     # Informazioni geografiche
     region = models.CharField(_("Regione"), max_length=100, default="Italia")
-    # Aggiunto riferimento diretto al comune principale del progetto
-    municipality = models.ForeignKey('Municipality', on_delete=models.SET_NULL, 
-                                    verbose_name=_("Comune principale"), 
-                                    null=True, blank=True,
-                                    related_name="projects")
+    # Modifica del riferimento al comune principale - ora usa il modello Municipality di Infrastructure
+    municipality = models.ForeignKey('infrastructure.Municipality', on_delete=models.SET_NULL, 
+                                   verbose_name=_("Comune principale"), 
+                                   null=True, blank=True,
+                                   related_name="core_projects")
     # Campo nascosto per debug
     _last_municipality_id = None # solo per tracciare i cambiamenti
     

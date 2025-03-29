@@ -3,7 +3,7 @@ from django import forms
 from django.utils.translation import gettext_lazy as _
 # Importa modelli consolidati
 from cpo_core.models.subproject import SubProject, StationImage
-from cpo_core.models.municipality import Municipality
+from infrastructure.models import Municipality
 from infrastructure.models import StationUsageProfile
 
 class SubProjectForm(forms.ModelForm):

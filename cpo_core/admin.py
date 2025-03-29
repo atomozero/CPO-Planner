@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models.organization import Organization
 from .models.project import Project
-from .models.municipality import Municipality
+#from .models.municipality import Municipality
 from .models.subproject import SubProject
 from .models.charging_station import ChargingStation, SolarInstallation
 
@@ -16,11 +16,11 @@ class ProjectAdmin(admin.ModelAdmin):
     list_filter = ('status', 'organization')
     search_fields = ('name', 'description')
 
-@admin.register(Municipality)
-class MunicipalityAdmin(admin.ModelAdmin):
-    list_display = ('name', 'province', 'region', 'population')
-    list_filter = ('province', 'region')
-    search_fields = ('name', 'province', 'region')
+#@admin.register(Municipality)
+#class MunicipalityAdmin(admin.ModelAdmin):
+#    list_display = ('name', 'province', 'region', 'population')
+#    list_filter = ('province', 'region')
+#    search_fields = ('name', 'province', 'region')
 
 @admin.register(SubProject)
 class SubProjectAdmin(admin.ModelAdmin):

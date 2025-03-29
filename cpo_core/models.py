@@ -13,7 +13,6 @@ import uuid
 # Importa i modelli consolidati
 from .models.organization import Organization
 from .models.project import Project
-from .models.municipality import Municipality
 from .models.subproject import SubProject
 from .models.charging_station import ChargingStation, SolarInstallation
 
@@ -294,24 +293,6 @@ class Project(models.Model):
     
     def __str__(self):
         return self.name
-
-class Municipality(models.Model):
-    """Comune in cui vengono installate le stazioni di ricarica"""
-    name = models.CharField(max_length=255)
-    province = models.CharField(max_length=100)
-    region = models.CharField(max_length=100)
-    population = models.PositiveIntegerField()
-    area_sqkm = models.DecimalField(max_digits=10, decimal_places=2)
-    contact_name = models.CharField(max_length=255, blank=True)
-    contact_email = models.EmailField(blank=True)
-    contact_phone = models.CharField(max_length=20, blank=True)
-    notes = models.TextField(blank=True)
-    
-    def __str__(self):
-        return f"{self.name} ({self.province})"
-    
-    class Meta:
-        verbose_name_plural = "Municipalities"
 
 class SubProject(models.Model):
     """Sotto-progetto per un comune specifico"""

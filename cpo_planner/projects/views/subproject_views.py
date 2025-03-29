@@ -9,7 +9,7 @@ from django.utils.translation import gettext_lazy as _
 # Importa dai modelli consolidati
 from cpo_core.models.project import Project
 from cpo_core.models.subproject import SubProject
-from cpo_core.models.municipality import Municipality
+from infrastructure.models import Municipality
 from ..forms.subproject_forms import SubProjectForm
 
 class SubProjectDetailView(LoginRequiredMixin, DetailView):

@@ -28,7 +28,7 @@ from django.conf import settings
 # Importa dai modelli corretti
 from cpo_core.models.project import Project
 from cpo_core.models.subproject import SubProject
-from cpo_core.models.municipality import Municipality
+from infrastructure.models import Municipality
 from cpo_planner.projects.models import ChargingStation
 from .models import (
     ProjectDocument, 

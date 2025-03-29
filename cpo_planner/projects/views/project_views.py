@@ -62,31 +62,56 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
         return context
     
     def form_valid(self, form):
-        # Debug: stampa il valore di municipality prima del salvataggio
-        municipality = form.cleaned_data.get('municipality')
-        print(f"DEBUG: ProjectCreateView - municipality selezionato: {municipality} (ID: {municipality.id if municipality else 'None'})")
-
-        # Salva l'oggetto normalmente
-        with transaction.atomic():
-            self.object = form.save()
+        try:
+            # Estrai il municipality dal form
+            municipality = form.cleaned_data.get('municipality')
             
-            # Se il municipio è impostato, forza la sincronizzazione manualmente
+            # Debug info
+            print(f"DEBUG: ProjectCreateView - municipality selezionato: {municipality} (ID: {municipality.id if hasattr(municipality, 'id') else 'None'})")
+            
+            # Rimuovi il campo municipality dal form
+            municipality_id = None
             if municipality:
+                if hasattr(municipality, 'id'):
+                    municipality_id = municipality.id
+                elif isinstance(municipality, int) or (isinstance(municipality, str) and municipality.isdigit()):
+                    municipality_id = int(municipality)
+                
+                # Rimuovi municipality per evitare problemi
+                form.cleaned_data.pop('municipality', None)
+            
+            # Salva il progetto senza municipality
+            self.object = form.save(commit=False)
+            
+            # Imposta direttamente municipality_id
+            if municipality_id:
+                print(f"DEBUG: Impostazione diretta municipality_id={municipality_id}")
+                self.object.municipality_id = municipality_id
+            
+            # Salva l'oggetto
+            self.object.save()
+            
+            # Salva i campi ManyToMany
+            form.save_m2m()
+            
+            # Debug dopo il salvataggio
+            print(f"DEBUG: Dopo salvataggio - municipality_id: {self.object.municipality_id}")
+            
+            # Se il municipio è stato impostato, forza la sincronizzazione
+            if self.object.municipality_id:
                 print(f"DEBUG: Forzatura sincronizzazione municipality per nuovo progetto {self.object.id}")
-                # Assicurati che il campo municipality sia stato impostato correttamente
                 self.object.refresh_from_db()
-                if self.object.municipality is None:
-                    print(f"DEBUG: Municipio non impostato, lo impostiamo manualmente: {municipality.id}")
-                    self.object.municipality = municipality
-                    self.object.save(update_fields=['municipality'])
                 self.object.sync_municipalities()
-
-        # Verifica che il municipio sia stato aggiornato correttamente
-        self.object.refresh_from_db()
-        print(f"DEBUG: Dopo salvataggio - municipality: {self.object.municipality} (ID: {self.object.municipality_id if self.object.municipality else 'None'})")
-        
-        messages.success(self.request, _('Progetto creato con successo!'))
-        return super(CreateView, self).form_valid(form)
+            
+            messages.success(self.request, _('Progetto creato con successo!'))
+            return redirect(self.get_success_url())
+            
+        except Exception as e:
+            import traceback
+            print(f"ERRORE nel salvataggio: {str(e)}")
+            print(traceback.format_exc())
+            messages.error(self.request, f"Errore durante il salvataggio: {str(e)}")
+            return self.form_invalid(form)
 
 class ProjectUpdateView(LoginRequiredMixin, UpdateView):
     model = Project

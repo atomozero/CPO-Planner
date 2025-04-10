@@ -44,7 +44,8 @@ INSTALLED_APPS = [
     'cpo_planner.reporting.apps.ReportingConfig',
     'cpo_planner.environmental',
     'cpo_planner.mapping',
-    'cpo_planner.projects.apps.ProjectsConfig',
+    # Re-enable projects app since it's referenced by other apps
+    'projects',
     'financial.apps.FinancialConfig',
     'station_planning.apps.StationPlanningConfig', 
     'solar_integration.apps.SolarIntegrationConfig',

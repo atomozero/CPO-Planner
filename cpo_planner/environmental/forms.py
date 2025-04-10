@@ -4,7 +4,10 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
-from cpo_planner.projects.models import Project, SubProject, ChargingStation
+from projects.models.project import Project
+from cpo_core.models.subproject import SubProject
+from cpo_core.models.charging_station import ChargingStation
+
 from .models import (
     EnvironmentalAnalysis, YearlyEnvironmentalData,
     EmissionFactor, VehicleType

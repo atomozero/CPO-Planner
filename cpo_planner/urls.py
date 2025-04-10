@@ -7,9 +7,8 @@ from django.shortcuts import redirect
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # Nota: messo la app cpo_planner.projects prima di cpo_core
-    # in modo che abbia la precedenza sul pattern /projects/
-    path('projects/', include('cpo_planner.projects.urls')),
+    # Abilita nuovamente projects per evitare dipendenze circolari
+    path('projects/', include('projects.urls')),
     path('', include('cpo_core.urls')),
     path('financial/', include('financial.urls')),
     path('documenti/', include('cpo_planner.documents.urls')),

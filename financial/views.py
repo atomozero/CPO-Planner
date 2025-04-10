@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.db.models import Sum, Avg, Count
 from django.utils import timezone  # Aggiungi questa importazione
 
-from cpo_core.models.project import Project
+from projects.models import Project
 from cpo_core.models.subproject import SubProject
 from cpo_core.models.charging_station import ChargingStation
 from .models import (

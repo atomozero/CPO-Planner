@@ -1,7 +1,10 @@
 # cpo_planner/reporting/services/bulk_operations.py
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
-from cpo_planner.projects.models import Project, SubProject, ChargingStation
+from projects.models.project import Project
+from cpo_core.models.subproject import SubProject
+from cpo_core.models.charging_station import ChargingStation
+
 
 def generate_bulk_reports(template_id, entity_type=None, entity_ids=None, created_by=None):
     """

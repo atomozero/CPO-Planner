@@ -2,7 +2,7 @@
 from django.db.models.signals import post_save, m2m_changed
 from django.dispatch import receiver
 from django.db import transaction
-from cpo_core.models.project import Project
+from projects.models import Project
 
 @receiver(post_save, sender=Project)
 def update_subprojects_municipality(sender, instance, created, **kwargs):

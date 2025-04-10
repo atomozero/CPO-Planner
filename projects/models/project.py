@@ -1,7 +1,4 @@
-# cpo_core/models/project.py
-"""
-Project model.
-"""
+# projects/models/project.py
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
@@ -17,10 +14,10 @@ class Project(models.Model):
     # Informazioni di base
     name = models.CharField(_("Nome Progetto"), max_length=255)
     description = models.TextField(_("Descrizione"), blank=True, null=True)
-    organization = models.ForeignKey('Organization', on_delete=models.CASCADE, 
-                                related_name='cpo_core_projects_linked', null=True, blank=True)
+    organization = models.ForeignKey('cpo_core.Organization', on_delete=models.CASCADE, 
+                                related_name='projects_app_projects', null=True, blank=True)
     project_manager = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, 
-                                    related_name='cpo_core_managed_projects')
+                                    related_name='projects_app_managed_projects')
     logo = models.ImageField(_("Logo Progetto"), upload_to=project_logo_path, blank=True, null=True)
     
     # Informazioni geografiche
@@ -29,7 +26,7 @@ class Project(models.Model):
     municipality = models.ForeignKey('infrastructure.Municipality', on_delete=models.SET_NULL, 
                                    verbose_name=_("Comune principale"), 
                                    null=True, blank=True,
-                                   related_name="cpo_core_projects")
+                                   related_name="project_app_projects")
     
     # Timeline
     start_date = models.DateField(_("Data Inizio Progetto"), null=True, blank=True)
@@ -73,7 +70,7 @@ class Project(models.Model):
     
     def calculate_total_metrics(self):
         """Calcola metriche totali del progetto basate sui sotto-progetti"""
-        from cpo_core.models.subproject import SubProject
+        from projects.models.subproject import SubProject
         
         sub_projects = SubProject.objects.filter(project=self)
                 
@@ -94,7 +91,7 @@ class Project(models.Model):
             return False
         
         # Aggiorna tutti i sottoprogetti associati
-        from cpo_core.models.subproject import SubProject
+        from projects.models.subproject import SubProject
         
         # Log informazioni di debug
         logger.debug(f"Aggiornamento sottoprogetti per progetto {self.id} al comune {self.municipality.id} ({self.municipality.name})")
@@ -135,6 +132,6 @@ class Project(models.Model):
         return f"{self.name} - {self.region}"
     
     class Meta:
-        app_label = 'cpo_core'
+        app_label = 'projects'
         verbose_name = _("Progetto")
         verbose_name_plural = _("Progetti")

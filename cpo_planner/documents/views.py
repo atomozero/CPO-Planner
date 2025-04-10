@@ -26,10 +26,10 @@ from django.core.exceptions import PermissionDenied
 from django.conf import settings
 
 # Importa dai modelli corretti
-from cpo_core.models.project import Project
+from projects.models import Project
 from cpo_core.models.subproject import SubProject
 from infrastructure.models import Municipality
-from cpo_planner.projects.models import ChargingStation
+from cpo_core.models.charging_station import ChargingStation
 from .models import (
     ProjectDocument, 
     DocumentTemplate,
@@ -784,7 +784,7 @@ class DocumentDeleteView(LoginRequiredMixin, View):
         """Trova il documento usando diversi modelli"""
         # Prima prova con il modello ProjectDocument da projects
         try:
-            from cpo_planner.projects.models.document import ProjectDocument as ProjectsProjectDocument
+            from projects.models.document import ProjectDocument as ProjectsProjectDocument
             return ProjectsProjectDocument.objects.get(pk=pk)
         except:
             try:
@@ -805,7 +805,7 @@ class DocumentDownloadView(LoginRequiredMixin, View):
         
         # Prima prova con il modello ProjectDocument
         try:
-            from cpo_planner.projects.models.document import ProjectDocument as ProjectsProjectDocument
+            from projects.models.document import ProjectDocument as ProjectsProjectDocument
             document = ProjectsProjectDocument.objects.get(pk=pk)
         except:
             try:
@@ -856,7 +856,7 @@ class DocumentPreviewView(LoginRequiredMixin, View):
         
         # Prima prova con il modello ProjectDocument da projects
         try:
-            from cpo_planner.projects.models.document import ProjectDocument as ProjectsProjectDocument
+            from projects.models.document import ProjectDocument as ProjectsProjectDocument
             document = ProjectsProjectDocument.objects.get(pk=pk)
         except:
             try:

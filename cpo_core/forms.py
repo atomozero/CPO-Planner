@@ -1,22 +1,17 @@
 from django import forms
 from django.core.validators import MinValueValidator, MaxValueValidator
-from .models import (
-    Organization, Project, SubProject, ChargingStation, 
-    FinancialProjection, YearlyProjection, SolarInstallation
-)
-from infrastructure.models import Municipality
 
-# Importa modelli consolidati
-from .models.organization import Organization
-from .models.project import Project
+# Importa i modelli dai nuovi percorsi (eliminando le importazioni duplicate)
 from infrastructure.models import Municipality
+from .models.organization import Organization
+from projects.models.project import Project  # Cambia questo per usare il nuovo modello Project
 from .models.subproject import SubProject
 from .models.charging_station import ChargingStation, SolarInstallation
 from .models.financial import FinancialProjection, YearlyProjection
 
 class FinancialProjectionForm(forms.ModelForm):
     """Form per la creazione e l'aggiornamento delle proiezioni finanziarie."""
-    
+     
     class Meta:
         model = FinancialProjection
         fields = [

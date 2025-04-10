@@ -13,7 +13,14 @@ app_name = 'cpo_core'
 
 urlpatterns = [
     # Dashboard
-    path('', views.dashboard, name='dashboard'),
+    path('', views.dashboard_simple, name='dashboard'),
+    
+    # Projects (using the same URL structure as the projects app)
+    path('projects/', ProjectListView.as_view(), name='project_list'),
+    path('projects/create/', ProjectCreateView.as_view(), name='project_create'),
+    path('projects/<int:pk>/', ProjectDetailView.as_view(), name='project_detail'),
+    path('projects/<int:pk>/update/', ProjectUpdateView.as_view(), name='project_update'),
+    path('projects/<int:pk>/delete/', ProjectDeleteView.as_view(), name='project_delete'),
     
     # Organizzazioni
     path('organizations/', OrganizationListView.as_view(), name='organization_list'),

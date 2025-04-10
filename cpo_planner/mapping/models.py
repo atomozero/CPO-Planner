@@ -5,7 +5,9 @@ from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxValueValidator
-from cpo_planner.projects.models import ChargingStation, Municipality, Project
+from cpo_core.models import Project
+from infrastructure.models import Municipality
+from cpo_core.models.charging_station import ChargingStation
 
 User = get_user_model()
 

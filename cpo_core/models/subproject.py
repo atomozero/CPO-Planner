@@ -74,8 +74,13 @@ class Charger(models.Model):
 
 class SubProject(models.Model):
     """Sotto-progetto per un comune specifico"""
-    # Relazioni
-    project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='subprojects', verbose_name=_('Progetto Principale'))
+    project = models.ForeignKey(
+        'projects.Project',
+        on_delete=models.CASCADE,
+        related_name='subprojects',
+        verbose_name=_("Progetto")
+    ) 
+
     # Modifica del riferimento al comune - ora usa il modello Municipality di Infrastructure
     municipality = models.ForeignKey('infrastructure.Municipality', on_delete=models.CASCADE, 
                                related_name='core_subprojects', 

@@ -1,5 +1,6 @@
-# cpo_planner/projects/models/__init__.py
+# projects/models/__init__.py
 from .project import Project
+from .project import project_logo_path
 
 from .subproject import SubProject
 from .municipality import Municipality

@@ -7,7 +7,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils.translation import gettext_lazy as _
 
 # Importa dai modelli consolidati
-from cpo_core.models.project import Project
+from projects.models import Project
 from cpo_core.models.subproject import SubProject
 from infrastructure.models import Municipality
 from ..forms.subproject_forms import SubProjectForm

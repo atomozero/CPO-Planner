@@ -13,7 +13,10 @@ from django.db.models import Sum, Avg, Count, Q
 from django.contrib.contenttypes.models import ContentType
 import json
 
-from cpo_planner.projects.models import Project, SubProject, ChargingStation
+from projects.models.project import Project
+from cpo_core.models.subproject import SubProject
+from cpo_core.models.charging_station import ChargingStation
+
 from .models import (
     EmissionFactor, VehicleType, EnvironmentalAnalysis, YearlyEnvironmentalData
 )

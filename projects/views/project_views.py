@@ -8,7 +8,7 @@ from django.shortcuts import redirect
 from django.db import transaction
 
 # Importa dai modelli consolidati
-from cpo_core.models.project import Project
+from projects.models import Project
 from cpo_core.models.subproject import SubProject
 from ..forms.project_forms import ProjectForm
 
@@ -60,52 +60,56 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
         context = super().get_context_data(**kwargs)
         context['title'] = _('Crea Nuovo Progetto')
         return context
-    
+
     def form_valid(self, form):
         try:
-            # Estrai il municipality dal form
-            municipality = form.cleaned_data.get('municipality')
-            
-            # Debug info
-            print(f"DEBUG: ProjectCreateView - municipality selezionato: {municipality} (ID: {municipality.id if hasattr(municipality, 'id') else 'None'})")
-            
-            # Rimuovi il campo municipality dal form
+            # Ottieni l'ID del comune dai parametri della richiesta
             municipality_id = None
-            if municipality:
-                if hasattr(municipality, 'id'):
-                    municipality_id = municipality.id
-                elif isinstance(municipality, int) or (isinstance(municipality, str) and municipality.isdigit()):
-                    municipality_id = int(municipality)
-                
-                # Rimuovi municipality per evitare problemi
+            save_mode = self.request.POST.get('save_mode', 'normal')
+            
+            if save_mode == 'normal':
+                municipality_id = self.request.POST.get('municipality')
+            elif save_mode == 'select':
+                municipality_id = self.request.POST.get('municipality') 
+            elif save_mode == 'direct':
+                municipality_id = self.request.POST.get('municipality_direct_id')
+            
+            print(f"DEBUG: Modalità di salvataggio: {save_mode}")
+            print(f"DEBUG: ID comune dai parametri POST: {municipality_id}")
+            
+            # IMPORTANTE: Rimuovi municipality da form.cleaned_data prima di salvare
+            # Questo evita che Django tenti di impostare la relazione in modo automatico
+            if 'municipality' in form.cleaned_data:
                 form.cleaned_data.pop('municipality', None)
             
-            # Salva il progetto senza municipality
+            # Salva l'oggetto senza relazioni
             self.object = form.save(commit=False)
             
-            # Imposta direttamente municipality_id
-            if municipality_id:
-                print(f"DEBUG: Impostazione diretta municipality_id={municipality_id}")
-                self.object.municipality_id = municipality_id
+            # Verifica che il comune esista nel database
+            from infrastructure.models import Municipality
+            municipality_exists = False
+            if municipality_id and municipality_id.isdigit():
+                municipality_exists = Municipality.objects.filter(id=int(municipality_id)).exists()
+                print(f"DEBUG: Il comune con ID {municipality_id} esiste nel database? {municipality_exists}")
+                
+                if municipality_exists:
+                    # Imposta manualmente l'ID del comune
+                    self.object.municipality_id = int(municipality_id)
+                    print(f"DEBUG: Impostato municipality_id = {self.object.municipality_id}")
             
             # Salva l'oggetto
             self.object.save()
             
-            # Salva i campi ManyToMany
+            # Salva eventuali campi many-to-many
             form.save_m2m()
             
-            # Debug dopo il salvataggio
-            print(f"DEBUG: Dopo salvataggio - municipality_id: {self.object.municipality_id}")
-            
-            # Se il municipio è stato impostato, forza la sincronizzazione
-            if self.object.municipality_id:
-                print(f"DEBUG: Forzatura sincronizzazione municipality per nuovo progetto {self.object.id}")
-                self.object.refresh_from_db()
-                self.object.sync_municipalities()
+            # Verifica che il salvataggio sia avvenuto correttamente
+            self.object.refresh_from_db()
+            print(f"DEBUG: Dopo salvataggio e refresh - municipality_id: {self.object.municipality_id}")
             
             messages.success(self.request, _('Progetto creato con successo!'))
             return redirect(self.get_success_url())
-            
+        
         except Exception as e:
             import traceback
             print(f"ERRORE nel salvataggio: {str(e)}")

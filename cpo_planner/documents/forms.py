@@ -2,8 +2,11 @@
 from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
-from cpo_planner.projects.models import Project, SubProject, ChargingStation
+from projects.models.project import Project
+from cpo_core.models.subproject import SubProject
+from cpo_core.models.charging_station import ChargingStation
 from .models import Document, DocumentCategory, DocumentNote, DocumentTask, ProjectDocument, DocumentTemplate
+
 class DocumentForm(forms.ModelForm):
     """Form per la creazione e modifica dei documenti"""
     

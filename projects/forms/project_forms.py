@@ -2,7 +2,7 @@
 from django import forms
 from django.utils.translation import gettext_lazy as _
 # Importa il modello consolidato
-from cpo_core.models.project import Project
+from projects.models import Project
 # Importa Municipality da infrastructure invece di cpo_core
 from infrastructure.models import Municipality
 from datetime import date

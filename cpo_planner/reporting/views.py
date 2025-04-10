@@ -24,7 +24,9 @@ from io import BytesIO
 # Configurazione del logger
 logger = logging.getLogger(__name__)
 
-from cpo_planner.projects.models import Project, SubProject, ChargingStation
+from projects.models.project import Project
+from cpo_core.models.subproject import SubProject
+from cpo_core.models.charging_station import ChargingStation
 from .models import (
     ReportTemplate, TemplatePlaceholder, Report, 
     ReportPlaceholderValue, ReportType

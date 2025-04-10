@@ -1,14 +1,14 @@
-# cpo_core/views.py
+"""Views for the CPO Core app."""
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.utils import timezone
-
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Count, Avg, F, ExpressionWrapper, DecimalField
 from django.db.models.functions import TruncMonth
+from django.utils.translation import gettext_lazy as _
 from decimal import Decimal
 from datetime import datetime, timedelta
 
@@ -22,6 +22,146 @@ from .forms import FinancialProjectionForm
 
 from django.http import JsonResponse
 import json
+
+@login_required
+def dashboard(request):
+    """Dashboard principale dell'applicazione - versione originale con problemi"""
+    # Questa funzione contiene errori e non è in uso
+    return render(request, 'cpo_core/dashboard.html', {})
+
+@login_required
+def dashboard_simple(request):
+    """Dashboard semplificata per risolvere i problemi di login"""
+    # Includi i progetti dalle app infrastructure
+    # Ora usiamo i modelli consolidati per core e CPO Planner
+    from infrastructure.models import ChargingProject, ChargingStation as InfraChargingStation
+    
+    # Conteggi core projects
+    core_projects = Project.objects.all()
+    core_projects_count = core_projects.count()
+    core_active_projects = core_projects_count  # Tutti attivi per default
+    
+    # Non abbiamo più un modello separato per cpo_planner
+    # Tutto è nel modello Project consolidato
+    pl_projects = Project.objects.all()
+    pl_projects_count = pl_projects.count()
+    pl_active_projects = pl_projects_count  # Tutti attivi per default
+    
+    # Conteggi infrastructure projects
+    infra_projects = ChargingProject.objects.all()
+    infra_projects_count = infra_projects.count()
+    # ChargingProject ha un campo status e può filtrare correttamente
+    infra_active_projects = infra_projects.exclude(status='planning').count()
+    
+    # Conteggi stazioni - ora ChargingStation è consolidata
+    core_stations = ChargingStation.objects.all()
+    pl_stations = SubProject.objects.all()  # Collegati a ChargingStation nei template
+    infra_stations = InfraChargingStation.objects.all()
+    
+    # Progetti combinati per la visualizzazione recente (ultimi 5 progetti)
+    recent_projects = []
+    
+    # Aggiungi progetti cpo_planner (stazioni di ricarica)
+    for p in pl_projects.order_by('-id')[:5]:
+        recent_projects.append({
+            'id': p.id,
+            'name': p.name,
+            'type': 'cpo_planner',
+            'created_at': p.start_date if hasattr(p, 'start_date') else datetime.now().date(),
+            'status': 'active',  # Valore predefinito poiché il modello Project non ha campo status
+            'url': f'/projects/{p.id}/'
+        })
+    
+    # Aggiungi progetti core (convertiti in dizionari)
+    for p in core_projects.order_by('-id')[:5]:
+        recent_projects.append({
+            'id': p.id,
+            'name': p.name,
+            'type': 'core',
+            'created_at': getattr(p, 'created_at', datetime.now().date()),
+            'status': 'active',  # Valore predefinito poiché il modello Project non ha campo status
+            'url': f'/projects/{p.id}/'
+        })
+    
+    # Aggiungi progetti infrastructure (convertiti in dizionari)
+    for p in infra_projects.order_by('-id')[:5]:
+        recent_projects.append({
+            'id': p.id, 
+            'name': p.name,
+            'type': 'infrastructure',
+            'created_at': p.start_date if hasattr(p, 'start_date') else datetime.now().date(),
+            'status': p.status if hasattr(p, 'status') else 'active',
+            'url': f'/infrastructure/projects/{p.id}/'
+        })
+    
+    # Ordina tutti i progetti combinati per data (decrescente) se c'è una data
+    # Converti tutte le date in str per confronto uniforme
+    recent_projects.sort(key=lambda x: str(x.get('created_at') or '2000-01-01'), reverse=True)
+    recent_projects = recent_projects[:5]  # Prendi solo i 5 più recenti
+    
+    # Dati di stato per le stazioni di ricarica
+    station_status_data = {
+        'Pianificazione': pl_stations.filter(status='planning').count(),
+        'In Corso': pl_stations.filter(status__in=['in_progress', 'construction']).count(),
+        'Operativo': pl_stations.filter(status='operational').count(),
+        'In Manutenzione': pl_stations.filter(status='maintenance').count(),
+        'Completato': pl_stations.filter(status='completed').count(),
+        'Sospeso': pl_stations.filter(status='suspended').count(),
+        'Chiuso': pl_stations.filter(status='closed').count(),
+    }
+    
+    # Calcolo previsioni finanziarie mensili (semplificato)
+    # Importiamo il modello Project dalla app projects per usare il campo total_budget
+    try:
+        from projects.models.project import Project as ProjectsModel
+        # Proviamo a calcolare il budget totale usando il modello projects.Project
+        projects_ids = [p.id for p in pl_projects]
+        projects_with_budget = ProjectsModel.objects.filter(id__in=projects_ids)
+        total_budget = projects_with_budget.aggregate(Sum('total_budget'))['total_budget__sum'] or 0
+    except (ImportError, Exception) as e:
+        # Se c'è un errore, impostiamo un valore predefinito a zero
+        print(f"Errore nel recupero del budget totale: {e}")
+        total_budget = 0
+    
+    today = datetime.now().date()
+    months = []
+    revenues = []
+    costs = []
+    margins = []
+    
+    for i in range(12):
+        month = today + timedelta(days=30 * i)
+        month_name = month.strftime('%b %Y')
+        revenue = float(total_budget) * 0.05 * (i+1) / 12
+        cost = float(total_budget) * 0.02 * (i+1) / 12
+        margin = revenue - cost
+        
+        months.append(month_name)
+        revenues.append(round(revenue, 2))
+        costs.append(round(cost, 2))
+        margins.append(round(margin, 2))
+    
+    context = {
+        'total_projects': core_projects_count + infra_projects_count + pl_projects_count,
+        'active_projects': core_active_projects + infra_active_projects + pl_active_projects,
+        'total_municipalities': Municipality.objects.count(),
+        'total_stations': core_stations.count() + infra_stations.count() + pl_stations.count(),
+        'operational_stations': (
+            core_stations.filter(status='operational').count() + 
+            infra_stations.filter(status='active').count() +
+            pl_stations.filter(status__in=['operational', 'completed']).count()
+        ),
+        'projects': recent_projects,  # Lista combinata di progetti
+        'stations': list(core_stations.order_by('-id')[:5]) + list(pl_stations.order_by('-id')[:5]),  # Ultime stazioni
+        'avg_roi': 15.0,  # Valore predefinito
+        'station_status_data': station_status_data,
+        'months': json.dumps(months),
+        'revenues': json.dumps(revenues),
+        'costs': json.dumps(costs),
+        'margins': json.dumps(margins)
+    }
+    
+    return render(request, 'cpo_core/dashboard.html', context)
 
 class MunicipalityCreateView(CreateView):
     model = Municipality
@@ -389,126 +529,6 @@ def calculate_roi_projection(data):
     
     return results
 
-@login_required
-def dashboard(request):
-    """Dashboard principale dell'applicazione"""
-    # Includi i progetti dalle app infrastructure
-    # Ora usiamo i modelli consolidati per core e CPO Planner
-    from infrastructure.models import ChargingProject, ChargingStation as InfraChargingStation
-    
-    # Conteggi core projects
-    core_projects = Project.objects.all()
-    core_projects_count = core_projects.count()
-    core_active_projects = core_projects.exclude(status__in=['closed']).count()
-    
-    # Non abbiamo più un modello separato per cpo_planner
-    # Tutto è nel modello Project consolidato
-    pl_projects = Project.objects.all()
-    pl_projects_count = pl_projects.count()
-    pl_active_projects = pl_projects.exclude(status='completed').count()
-    
-    # Conteggi infrastructure projects
-    infra_projects = ChargingProject.objects.all()
-    infra_projects_count = infra_projects.count()
-    infra_active_projects = infra_projects.exclude(status='planning').count()
-    
-    # Conteggi stazioni - ora ChargingStation è consolidata
-    core_stations = ChargingStation.objects.all()
-    pl_stations = SubProject.objects.all()  # Collegati a ChargingStation nei template
-    infra_stations = InfraChargingStation.objects.all()
-    
-    # Progetti combinati per la visualizzazione recente (ultimi 5 progetti)
-    recent_projects = []
-    
-    # Aggiungi progetti cpo_planner (stazioni di ricarica)
-    for p in pl_projects.order_by('-id')[:5]:
-        recent_projects.append({
-            'id': p.id,
-            'name': p.name,
-            'type': 'cpo_planner',
-            'created_at': p.start_date,
-            'status': p.status,
-            'url': f'/projects/{p.id}/'
-        })
-    
-    # Aggiungi progetti core (convertiti in dizionari)
-    for p in core_projects.order_by('-created_at')[:5] if hasattr(core_projects.first(), 'created_at') else []:
-        recent_projects.append({
-            'id': p.id,
-            'name': p.name,
-            'type': 'core',
-            'created_at': getattr(p, 'created_at', p.start_date),
-            'status': p.status,
-            'url': f'/projects/{p.id}/'
-        })
-    
-    # Aggiungi progetti infrastructure (convertiti in dizionari)
-    for p in infra_projects.order_by('-id')[:5]:
-        recent_projects.append({
-            'id': p.id, 
-            'name': p.name,
-            'type': 'infrastructure',
-            'created_at': p.start_date,  # Usa start_date come proxy per created_at
-            'status': p.status,
-            'url': f'/infrastructure/projects/{p.id}/'
-        })
-    
-    # Ordina tutti i progetti combinati per data (decrescente) se c'è una data
-    # Converti tutte le date in str per confronto uniforme
-    recent_projects.sort(key=lambda x: str(x.get('created_at') or '2000-01-01'), reverse=True)
-    recent_projects = recent_projects[:5]  # Prendi solo i 5 più recenti
-    
-    context = {
-        'total_projects': core_projects_count + infra_projects_count + pl_projects_count,
-        'active_projects': core_active_projects + infra_active_projects + pl_active_projects,
-        'total_municipalities': Municipality.objects.count(),
-        'total_stations': core_stations.count() + infra_stations.count() + pl_stations.count(),
-        'operational_stations': (
-            core_stations.filter(status='operational').count() + 
-            infra_stations.filter(status='active').count() +
-            pl_stations.filter(status='operational').count()
-        ),
-        'projects': recent_projects,  # Lista combinata di progetti
-        'stations': list(core_stations.order_by('-id')[:5]) + list(pl_stations.order_by('-id')[:5]),  # Ultime stazioni
-    }
-    
-    # Dati ROI
-    context['avg_roi'] = 15.0  # Valore predefinito
-    
-    # Dati per grafico stati delle stazioni
-    station_status_data = {}
-    for status_choice in pl_projects.model.STATUS_CHOICES:
-        station_status_data[status_choice[1]] = pl_stations.filter(status=status_choice[0]).count()
-    context['station_status_data'] = station_status_data
-    
-    # Calcolo previsioni finanziarie mensili (semplificato)
-    total_budget = pl_projects.aggregate(Sum('total_budget'))['total_budget__sum'] or 0
-    
-    today = datetime.now().date()
-    months = []
-    revenues = []
-    costs = []
-    margins = []
-    
-    for i in range(12):
-        month = today + timedelta(days=30 * i)
-        month_name = month.strftime('%b %Y')
-        revenue = float(total_budget) * 0.05 * (i+1) / 12
-        cost = float(total_budget) * 0.02 * (i+1) / 12
-        margin = revenue - cost
-        
-        months.append(month_name)
-        revenues.append(round(revenue, 2))
-        costs.append(round(cost, 2))
-        margins.append(round(margin, 2))
-    
-    context['months'] = json.dumps(months)
-    context['revenues'] = json.dumps(revenues)
-    context['costs'] = json.dumps(costs)
-    context['margins'] = json.dumps(margins)
-    
-    return render(request, 'cpo_core/dashboard.html', context)
-
 # Viste per Organization
 class OrganizationListView(LoginRequiredMixin, ListView):
     model = Organization
@@ -577,7 +597,7 @@ class ProjectListView(LoginRequiredMixin, ListView):
         context['total_budget'] = context['projects'].aggregate(Sum('budget'))['budget__sum'] or 0
         
         # Aggiungi scelte di stato per i filtri
-        context['status_choices'] = Project.STATUS_CHOICES
+        context['status_choices'] = getattr(Project, 'STATUS_CHOICES', [])
         return context
 
 class ProjectDetailView(LoginRequiredMixin, DetailView):
@@ -642,10 +662,11 @@ class ProjectUpdateView(LoginRequiredMixin, UpdateView):
         print(f"DEBUG: Municipality dopo salvataggio: {self.object.municipality}")
         
         # Chiama esplicitamente sync_municipalities
-        if self.object.municipality:
+        if hasattr(self.object, 'municipality') and self.object.municipality:
             print(f"DEBUG: Sincronizzazione comuni - municipality: {self.object.municipality} (ID: {self.object.municipality.id})")
-            result = self.object.sync_municipalities()
-            print(f"DEBUG: Risultato sincronizzazione: {result}")
+            if hasattr(self.object, 'sync_municipalities'):
+                result = self.object.sync_municipalities()
+                print(f"DEBUG: Risultato sincronizzazione: {result}")
         else:
             print("DEBUG: Nessun comune da sincronizzare")
         
@@ -661,9 +682,7 @@ class ProjectDeleteView(LoginRequiredMixin, DeleteView):
         messages.success(request, 'Progetto eliminato con successo.')
         return super().delete(request, *args, **kwargs)
 
-# Implementa viste simili per Municipality, SubProject, ChargingStation, etc.
-# Queste sono le viste di base, le altre seguiranno lo stesso pattern
-
+# Viste per Municipality, SubProject, ChargingStation, etc.
 class MunicipalityListView(LoginRequiredMixin, ListView):
     model = Municipality
     context_object_name = 'municipalities'
@@ -678,16 +697,19 @@ class ChargingStationDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         
         # Foto della stazione
-        station_photos = ChargingStationPhoto.objects.filter(charging_station=self.object).order_by('-date_taken', '-created_at')
-        context['station_photos'] = station_photos
-        
-        # Foto divise per fase
-        context['pre_installation_photos'] = station_photos.filter(phase='pre_installation')
-        context['during_installation_photos'] = station_photos.filter(phase='during_installation')
-        context['post_installation_photos'] = station_photos.filter(phase='post_installation')
+        context['station_photos'] = []
+        if hasattr(self.object, 'photos'):
+            station_photos = self.object.photos.all().order_by('-date_taken', '-created_at')
+            context['station_photos'] = station_photos
+            
+            # Foto divise per fase
+            context['pre_installation_photos'] = station_photos.filter(phase='pre_installation')
+            context['during_installation_photos'] = station_photos.filter(phase='during_installation')
+            context['post_installation_photos'] = station_photos.filter(phase='post_installation')
         
         # Calcoli finanziari dettagliati
-        context['annual_metrics'] = self.object.calculate_annual_metrics()
+        if hasattr(self.object, 'calculate_annual_metrics'):
+            context['annual_metrics'] = self.object.calculate_annual_metrics()
         
         # Calcoli giornalieri
         daily_revenue = self.object.charging_price_kwh * self.object.avg_kwh_session * self.object.estimated_sessions_day

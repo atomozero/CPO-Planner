@@ -6,7 +6,7 @@ from django.db.models import Sum, Count, F, Q
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 
-from cpo_planner.projects.models import Project, SubProject, ChargingStation
+from projects.models import Project, SubProject, ChargingStation
 from .models import (
     EnvironmentalAnalysis, YearlyEnvironmentalData,
     EmissionFactor, VehicleType

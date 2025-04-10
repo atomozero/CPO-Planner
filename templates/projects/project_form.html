@@ -88,11 +88,6 @@
         border: none;
         color: white;
     }
-    
-    /* Nascondi il select originale */
-    .d-none {
-        display: none;
-    }
 </style>
 {% endblock %}
 
@@ -110,6 +105,47 @@
             {{ form.non_field_errors }}
         </div>
         {% endif %}
+        
+        <!-- Debug info e modalità di salvataggio alternativa -->
+        <div class="alert alert-warning mb-4">
+            <h6><i class="fas fa-tools mr-2"></i>Strumenti per il Debugging</h6>
+            <p class="mb-2">Modalità di salvataggio:</p>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="save_mode" id="save_mode_normal" value="normal" checked>
+                <label class="form-check-label" for="save_mode_normal">
+                    Normale (usa il campo hidden)
+                </label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="save_mode" id="save_mode_select" value="select">
+                <label class="form-check-label" for="save_mode_select">
+                    Usa select visibile
+                </label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="save_mode" id="save_mode_direct" value="direct">
+                <label class="form-check-label" for="save_mode_direct">
+                    Includi municipalityId in un campo dedicato
+                </label>
+            </div>
+            <div class="mt-3" id="debug-municipality-container" style="display: none;">
+                <label for="debug_municipality_select" class="form-label">Selezione diretta comune:</label>
+                <select id="debug_municipality_select" name="debug_municipality" class="form-control">
+                    <option value="">Seleziona un comune</option>
+                    {% for municipality in form.fields.municipality.queryset %}
+                    <option value="{{ municipality.id }}">
+                        {{ municipality.name }} (ID: {{ municipality.id }})
+                    </option>
+                    {% endfor %}
+                </select>
+                <div class="mt-2">
+                    <button type="button" class="btn btn-sm btn-primary" id="apply_municipality">Applica</button>
+                </div>
+            </div>
+            
+            <!-- Campo diretto per l'ID del comune -->
+            <input type="hidden" name="municipality_direct_id" id="municipality_direct_id" value="{{ form.municipality.value|default:'' }}">
+        </div>
         
         <div class="card mb-4 shadow">
             <div class="card-header py-3">
@@ -129,7 +165,8 @@
                         <label for="id_municipality_autocomplete" class="form-label">Comune</label>
                         <input type="text" id="id_municipality_autocomplete" class="form-control" 
                                placeholder="Inizia a digitare il nome del comune...">
-                        <select name="municipality" id="id_municipality" class="form-control d-none">
+                        <!-- Select per il comune (normalmente nascosto) -->
+                        <select name="municipality" id="id_municipality" class="form-control mt-2" style="display:none;">
                             <option value="">Seleziona un comune</option>
                             {% for municipality in form.fields.municipality.queryset %}
                             <option value="{{ municipality.id }}" {% if form.municipality.value == municipality.id %}selected{% endif %}>
@@ -216,6 +253,16 @@
             Le informazioni finanziarie e l'integrazione fotovoltaica verranno gestite a livello di singola stazione di ricarica.
         </div>
         
+        <!-- Debug info per sviluppatori -->
+        <div class="alert alert-secondary mb-4 small">
+            <i class="fas fa-bug mr-2"></i>
+            <strong>Debug Info:</strong> 
+            <div>Comune selezionato: <code id="debug-info">nessuno</code></div>
+            <div>Valore campo select municipality: <code id="debug-select-value">{{ form.municipality.value|default:'nessuno' }}</code></div>
+            <div>Valore campo hidden municipality_direct_id: <code id="debug-hidden-value">{{ form.municipality.value|default:'nessuno' }}</code></div>
+            <div>Modalità di salvataggio: <code id="debug-save-mode">normale</code></div>
+        </div>
+        
         <div class="d-flex justify-content-between mb-4">
             <a href="{% url 'projects:project_list' %}" class="btn btn-secondary">Annulla</a>
             <button type="submit" class="btn btn-primary">Salva Progetto</button>
@@ -228,7 +275,49 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
 <script>
 $(document).ready(function() {
-    // Ottieni tutti i comuni dal select nascosto
+    // Gestisci i cambi di modalità di salvataggio
+    $('input[name="save_mode"]').change(function() {
+        var mode = $(this).val();
+        $("#debug-save-mode").text(mode);
+        
+        // Resetta le visualizzazioni
+        $("#id_municipality").hide();
+        $("#debug-municipality-container").hide();
+        
+        if (mode === "select") {
+            // Mostra il select normale
+            $("#id_municipality").show();
+        } else if (mode === "direct") {
+            // Mostra il container di debug
+            $("#debug-municipality-container").show();
+        }
+    });
+    
+    // Bottone per applicare il comune selezionato
+    $("#apply_municipality").click(function() {
+        var selectedId = $("#debug_municipality_select").val();
+        var selectedText = $("#debug_municipality_select option:selected").text();
+        
+        if (selectedId) {
+            // Aggiorna tutti i campi
+            $("#id_municipality").val(selectedId);
+            $("#municipality_direct_id").val(selectedId);
+            $("#id_municipality_autocomplete").val(selectedText.split(" (ID:")[0]);
+            
+            // Aggiorna debug info
+            $("#debug-info").text(selectedText);
+            $("#debug-select-value").text(selectedId);
+            $("#debug-hidden-value").text(selectedId);
+            
+            // Costruisci la card
+            buildMunicipalityCard({
+                id: selectedId,
+                name: selectedText.split(" (ID:")[0]
+            });
+        }
+    });
+    
+    // Ottieni tutti i comuni dal select
     var municipalityOptions = [];
     $("#id_municipality option").each(function() {
         if ($(this).val()) {
@@ -238,6 +327,8 @@ $(document).ready(function() {
             });
         }
     });
+    
+    console.log("Comuni disponibili:", municipalityOptions.length);
     
     // Configura l'autocompletamento
     $("#id_municipality_autocomplete").autocomplete({
@@ -257,8 +348,22 @@ $(document).ready(function() {
         },
         minLength: 2,
         select: function(event, ui) {
-            // Seleziona l'opzione corrispondente nel select nascosto
-            $("#id_municipality").val(ui.item.id).trigger('change');
+            // Aggiorna tutti i campi possibili
+            var saveMode = $('input[name="save_mode"]:checked').val();
+            
+            // Imposta il valore nel campo select normale
+            $("#id_municipality").val(ui.item.id);
+            
+            // Imposta il valore nel campo diretto
+            $("#municipality_direct_id").val(ui.item.id);
+            
+            // Seleziona anche nel select di debug
+            $("#debug_municipality_select").val(ui.item.id);
+            
+            // Aggiorna i valori di debug
+            $("#debug-info").html(ui.item.value + " (ID: " + ui.item.id + ")");
+            $("#debug-select-value").text(ui.item.id);
+            $("#debug-hidden-value").text(ui.item.id);
             
             // Costruisci la card con i dati disponibili
             buildMunicipalityCard({
@@ -266,136 +371,187 @@ $(document).ready(function() {
                 name: ui.item.value
             });
             
-            return false;
+            console.log("Comune selezionato:", ui.item.value, "ID:", ui.item.id, "Modalità:", saveMode);
+            return true;
         }
     }).autocomplete("instance")._renderItem = function(ul, item) {
         // Personalizza il rendering degli elementi nella lista di suggerimenti
         return $("<li>")
-            .append("<div><strong>" + item.label + "</strong></div>")
+            .append("<div><strong>" + item.label + "</strong> <small class='text-muted'>(ID: " + item.id + ")</small></div>")
             .appendTo(ul);
     };
     
-    // Inizializza il campo input con il valore corrente del select
-    var currentId = $("#id_municipality").val();
+    // Inizializza il campo input con il valore corrente del comune
+    var currentId = $("#id_municipality").val() || "{{ form.municipality.value|default:'' }}";
     if (currentId) {
-        var currentText = $("#id_municipality option:selected").text();
-        $("#id_municipality_autocomplete").val(currentText);
-        
-        // Costruisci la card con i dati disponibili
-        buildMunicipalityCard({
-            id: currentId,
-            name: currentText
+        // Cerca il comune corrispondente nell'elenco
+        var foundMunicipality = municipalityOptions.find(function(item) {
+            return item.id == currentId;
         });
+        
+        if (foundMunicipality) {
+            $("#id_municipality_autocomplete").val(foundMunicipality.name);
+            $("#municipality_direct_id").val(currentId);
+            $("#debug_municipality_select").val(currentId);
+            
+            // Aggiorna info debug
+            $("#debug-info").html(foundMunicipality.name + " (ID: " + foundMunicipality.id + ")");
+            $("#debug-select-value").text(currentId);
+            $("#debug-hidden-value").text(currentId);
+            
+            // Costruisci la card con i dati disponibili
+            buildMunicipalityCard({
+                id: foundMunicipality.id,
+                name: foundMunicipality.name
+            });
+        }
     }
     
-    // Funzione per costruire la card dei dettagli del comune
-function buildMunicipalityCard(data) {
-    // Ottieni i dati dal database tramite una chiamata AJAX
-    $.ajax({
-        url: '/infrastructure/municipalities/' + data.id + '/details/',
-        type: 'GET',
-        success: function(response) {
-            console.log("Dati dettaglio comune:", response);
-            
-            // Estrai le informazioni dal response
-            var population = response.population || 'N/D';
-            
-            // Gestisci il caso in cui provincia e regione siano oggetti JSON
-            var province = 'N/D';
-            var region = 'Veneto';
-            
-            try {
-                if (response.province) {
-                    // Se è una stringa che contiene un JSON
-                    if (typeof response.province === 'string' && response.province.includes("'nome':")) {
-                        var provinceMatch = response.province.match(/'nome':\s*'([^']+)'/);
-                        if (provinceMatch && provinceMatch.length > 1) {
-                            province = provinceMatch[1];
-                        }
-                    } 
-                    // Se è un oggetto con proprietà 'nome'
-                    else if (response.province.nome) {
-                        province = response.province.nome;
-                    }
-                }
-                
-                if (response.region) {
-                    // Se è una stringa che contiene un JSON
-                    if (typeof response.region === 'string' && response.region.includes("'nome':")) {
-                        var regionMatch = response.region.match(/'nome':\s*'([^']+)'/);
-                        if (regionMatch && regionMatch.length > 1) {
-                            region = regionMatch[1];
-                        }
-                    } 
-                    // Se è un oggetto con proprietà 'nome'
-                    else if (response.region.nome) {
-                        region = response.region.nome;
-                    }
-                }
-            } catch (e) {
-                console.error("Errore nel parsing dei dati:", e);
-            }
-            
-            var html = `
-                <div class="comune-card">
-                    <div class="comune-header">
-                        <h5 class="comune-name">${data.name}</h5>
-                        <span class="comune-id">ID: ${data.id}</span>
-                    </div>
-                    <ul class="comune-info-list">
-                        <li class="comune-info-item">
-                            <div class="comune-info-icon">
-                                <i class="fas fa-info-circle"></i>
-                            </div>
-                            <div class="comune-info-content">
-                                <span class="comune-info-label">INFORMAZIONI COMUNE</span>
-                                <div class="comune-info-value">
-                                    <span><i class="fas fa-users mr-1"></i> ${population !== 'N/D' ? population.toLocaleString() : 'N/D'} abitanti</span>
-                                    <span class="mx-2">•</span>
-                                    <span><i class="fas fa-map-marker-alt mr-1"></i> ${province}, ${region}</span>
-                                </div>
-                            </div>
-                        </li>
-                    </ul>
-                </div>`;
-            
-            $('#municipality-details').html(html);
-            
-            // Aggiorna anche il campo nascosto della regione
-            $('#id_region').val(region);
-        },
-        error: function() {
-            // In caso di errore, mostra la card con dati minimi
-            var html = `
-                <div class="comune-card">
-                    <div class="comune-header">
-                        <h5 class="comune-name">${data.name}</h5>
-                        <span class="comune-id">ID: ${data.id}</span>
-                    </div>
-                    <ul class="comune-info-list">
-                        <li class="comune-info-item">
-                            <div class="comune-info-icon">
-                                <i class="fas fa-info-circle"></i>
-                            </div>
-                            <div class="comune-info-content">
-                                <span class="comune-info-label">INFORMAZIONI COMUNE</span>
-                                <div class="comune-info-value">
-                                    <span><i class="fas fa-users mr-1"></i> N/D abitanti</span>
-                                    <span class="mx-2">•</span>
-                                    <span><i class="fas fa-map-marker-alt mr-1"></i> N/D, Veneto</span>
-                                </div>
-                            </div>
-                        </li>
-                    </ul>
-                </div>`;
-            
-            $('#municipality-details').html(html);
-            
-            // Aggiorna anche il campo nascosto della regione
-            $('#id_region').val('Veneto');
+    // Verifica prima della sottomissione che il comune sia stato selezionato
+    $("#project-form").on("submit", function(e) {
+        var saveMode = $('input[name="save_mode"]:checked').val();
+        var municipalityId = null;
+        
+        if (saveMode === "normal") {
+            municipalityId = $("#id_municipality").val();
+        } else if (saveMode === "select") {
+            municipalityId = $("#id_municipality").val();
+        } else if (saveMode === "direct") {
+            municipalityId = $("#municipality_direct_id").val();
+        }
+        
+        console.log("Submit form - Modalità:", saveMode, "Comune selezionato:", municipalityId);
+        
+        if (!municipalityId) {
+            e.preventDefault();
+            alert("Seleziona un comune prima di salvare il progetto");
+            $("#id_municipality_autocomplete").focus();
+            return false;
+        }
+        
+        // Verifica che l'ID del comune sia valido
+        var isValid = municipalityOptions.some(function(item) {
+            return item.id == municipalityId;
+        });
+        
+        if (!isValid) {
+            e.preventDefault();
+            alert("Il comune selezionato non è valido. Seleziona un comune dalla lista.");
+            $("#id_municipality_autocomplete").val('').focus();
+            return false;
         }
     });
-}
+    
+    // Funzione per costruire la card dei dettagli del comune
+    function buildMunicipalityCard(data) {
+        // Ottieni i dati dal database tramite una chiamata AJAX
+        $.ajax({
+            url: '/infrastructure/municipalities/' + data.id + '/details/',
+            type: 'GET',
+            success: function(response) {
+                console.log("Dati dettaglio comune:", response);
+                
+                // Estrai le informazioni dal response
+                var population = response.population || 'N/D';
+                
+                // Gestisci il caso in cui provincia e regione siano oggetti JSON
+                var province = 'N/D';
+                var region = 'Veneto';
+                
+                try {
+                    if (response.province) {
+                        // Se è una stringa che contiene un JSON
+                        if (typeof response.province === 'string' && response.province.includes("'nome':")) {
+                            var provinceMatch = response.province.match(/'nome':\s*'([^']+)'/);
+                            if (provinceMatch && provinceMatch.length > 1) {
+                                province = provinceMatch[1];
+                            }
+                        } 
+                        // Se è un oggetto con proprietà 'nome'
+                        else if (response.province.nome) {
+                            province = response.province.nome;
+                        }
+                    }
+                    
+                    if (response.region) {
+                        // Se è una stringa che contiene un JSON
+                        if (typeof response.region === 'string' && response.region.includes("'nome':")) {
+                            var regionMatch = response.region.match(/'nome':\s*'([^']+)'/);
+                            if (regionMatch && regionMatch.length > 1) {
+                                region = regionMatch[1];
+                            }
+                        } 
+                        // Se è un oggetto con proprietà 'nome'
+                        else if (response.region.nome) {
+                            region = response.region.nome;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Errore nel parsing dei dati:", e);
+                }
+                
+                var html = `
+                    <div class="comune-card">
+                        <div class="comune-header">
+                            <h5 class="comune-name">${data.name}</h5>
+                            <span class="comune-id">ID: ${data.id}</span>
+                        </div>
+                        <ul class="comune-info-list">
+                            <li class="comune-info-item">
+                                <div class="comune-info-icon">
+                                    <i class="fas fa-info-circle"></i>
+                                </div>
+                                <div class="comune-info-content">
+                                    <span class="comune-info-label">INFORMAZIONI COMUNE</span>
+                                    <div class="comune-info-value">
+                                        <span><i class="fas fa-users mr-1"></i> ${population !== 'N/D' ? population.toLocaleString() : 'N/D'} abitanti</span>
+                                        <span class="mx-2">•</span>
+                                        <span><i class="fas fa-map-marker-alt mr-1"></i> ${province}, ${region}</span>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>`;
+                
+                $('#municipality-details').html(html);
+                
+                // Aggiorna anche il campo nascosto della regione
+                $('#id_region').val(region);
+            },
+            error: function(xhr, status, error) {
+                console.error("Errore nel caricamento dei dettagli del comune:", status, error);
+                
+                // In caso di errore, mostra la card con dati minimi
+                var html = `
+                    <div class="comune-card">
+                        <div class="comune-header">
+                            <h5 class="comune-name">${data.name}</h5>
+                            <span class="comune-id">ID: ${data.id}</span>
+                        </div>
+                        <ul class="comune-info-list">
+                            <li class="comune-info-item">
+                                <div class="comune-info-icon">
+                                    <i class="fas fa-info-circle"></i>
+                                </div>
+                                <div class="comune-info-content">
+                                    <span class="comune-info-label">INFORMAZIONI COMUNE</span>
+                                    <div class="comune-info-value">
+                                        <span><i class="fas fa-users mr-1"></i> N/D abitanti</span>
+                                        <span class="mx-2">•</span>
+                                        <span><i class="fas fa-map-marker-alt mr-1"></i> N/D, Veneto</span>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>`;
+                
+                $('#municipality-details').html(html);
+                
+                // Aggiorna anche il campo nascosto della regione
+                $('#id_region').val('Veneto');
+            }
+        });
+    }
 });
 </script>
 {% endblock %}

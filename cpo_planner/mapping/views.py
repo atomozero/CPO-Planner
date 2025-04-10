@@ -13,7 +13,7 @@ from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from django.core.serializers import serialize
 
-from cpo_planner.projects.models import Project, SubProject, ChargingStation
+from projects.models import Project, SubProject, ChargingStation
 from .models import MapSettings, CustomMarker, SavedMap
 from .forms import (
     MapSettingsForm, CustomMarkerForm, SavedMapForm,

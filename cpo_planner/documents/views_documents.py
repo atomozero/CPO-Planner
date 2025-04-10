@@ -9,7 +9,7 @@ from django.utils.translation import gettext_lazy as _
 # Importa tutti i possibili modelli di documenti
 from cpo_planner.documents.models import Document, ProjectDocument
 try:
-    from cpo_planner.projects.models.document import ProjectDocument as ProjectsProjectDocument
+    from projects.models.document import ProjectDocument as ProjectsProjectDocument
 except ImportError:
     ProjectsProjectDocument = None
 

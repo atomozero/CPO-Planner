@@ -49,7 +49,8 @@ from .services import PunDataService
 from .reports import MunicipalityReportGenerator, ChargingProjectReportGenerator, ChargingStationSheetGenerator
 
 # Related application imports
-from cpo_core.models import Project, SubProject
+from projects.models import Project
+from cpo_core.models import SubProject
 from cpo_core.models.subproject import Charger
 
 # Funzione per aggiornare l'avanzamento dell'importazione
@@ -438,11 +439,9 @@ class MunicipalityDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         
         # Ottieni i sottoprogetti associati a questo comune usando l'ID del comune
-        from cpo_core.models.subproject import SubProject
         subprojects = SubProject.objects.filter(municipality_id=self.object.id)
         
         # Ottieni i progetti associati a questi sottoprogetti
-        from cpo_core.models.project import Project
         project_ids = subprojects.values_list('project_id', flat=True).distinct()
         projects = Project.objects.filter(id__in=project_ids)
         

@@ -2,7 +2,7 @@
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Sum, Count, Q
-from cpo_core.models.project import Project
+from projects.models import Project
 from ..models.charging_station import ChargingStation
 
 class DashboardView(LoginRequiredMixin, TemplateView):

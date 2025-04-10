@@ -1,7 +1,7 @@
 from django.test import TestCase
 from decimal import Decimal
 from cpo_core.models.charging_station import ChargingStation
-from cpo_core.models.project import Project
+from projects.models import Project
 from cpo_core.models.subproject import SubProject
 from infrastructure.models import Municipality
 from cpo_core.models.organization import Organization
@@ -59,13 +59,6 @@ class ChargingStationCalculationTest(TestCase):
     
     def test_calculate_annual_metrics(self):
         """Verifica se il calcolo dei ricavi annuali è corretto"""
-        # Ricavi giornalieri = 0.45 € * 15 kWh * 5 sessioni = 33.75 €
-        # Ricavi annuali = 33.75 € * 365 = 12,318.75 €
-        # Costi energia giornalieri = 0.25 € * 15 kWh * 5 sessioni = 18.75 €
-        # Costi energia annuali = 18.75 € * 365 = 6,843.75 €
-        # Costi manutenzione annuali = 10,000 € * 0.05 = 500 €
-        # Costi totali annuali = 6,843.75 € + 500 € = 7,343.75 €
-        # Profitto annuale = 12,318.75 € - 7,343.75 € = 4,975 €
         
         metrics = self.charging_station.calculate_annual_metrics()
         

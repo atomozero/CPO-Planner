@@ -12,8 +12,7 @@ class OrganizationAdmin(admin.ModelAdmin):
 
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
-    list_display = ('name', 'organization', 'status', 'start_date', 'expected_completion_date', 'total_budget')
-    list_filter = ('status', 'organization')
+    list_display = ('name', 'organization')
     search_fields = ('name', 'description')
 
 #@admin.register(Municipality)

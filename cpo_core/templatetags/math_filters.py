@@ -36,6 +36,14 @@ def div(value, arg):
         return float(value) / float(arg)
     except (ValueError, TypeError, ZeroDivisionError):
         return ''
+
+@register.filter
+def multiply(value, arg):
+    """Multiplies the value by the arg (alias of mul)."""
+    try:
+        return float(value) * float(arg)
+    except (ValueError, TypeError):
+        return ''
         
 @register.filter
 def get_item(dictionary, key):

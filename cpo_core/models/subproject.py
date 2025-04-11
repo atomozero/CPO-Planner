@@ -212,10 +212,10 @@ class SubProject(models.Model):
         available_days = total_days - unavailable_days
         base_availability_factor = available_days / total_days if total_days > 0 else 1.0
         
-        # Calcolo dell'impatto dei giorni di pioggia (riduzione del 30%)
+        # Calcolo dell'impatto dei giorni di pioggia (riduzione del 70%)
         rainy_days_impact = 0
         if self.rainy_days:
-            rainy_days_impact = (self.rainy_days * 0.3) / total_days if total_days > 0 else 0
+            rainy_days_impact = (self.rainy_days * 0.7) / total_days if total_days > 0 else 0
         
         # Fattore di disponibilità finale considerando anche i giorni di pioggia
         availability_factor = base_availability_factor * (1 - rainy_days_impact)

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% load humanize %}
+{% load math_filters %}
 
 {% block title %}Calcoli Dettagliati - {{ station.name }}{% endblock %}
 
@@ -125,12 +126,20 @@
                     <table class="table table-striped">
                         <tbody>
                             <tr>
-                                <th>Ricavi Annuali:</th>
-                                <td class="text-end">{{ daily_revenue|floatformat:2 }} € × 365 giorni = {{ annual_revenue|floatformat:2 }} €</td>
+                                <th>Ricavi Base (Giorni disponibili):</th>
+                                <td class="text-end">{{ daily_revenue|floatformat:2 }} € × {{ available_days }} giorni = {{ base_annual_revenue|floatformat:2 }} €</td>
+                            </tr>
+                            <tr>
+                                <th>Riduzione per Giorni di Pioggia ({{ rainy_days }} giorni):</th>
+                                <td class="text-end text-danger">- {{ rainy_days_reduction|floatformat:2 }} € ({{ rainy_impact|floatformat:4 }} × 100% = {{ rainy_impact|mul:100|floatformat:2 }}%)</td>
+                            </tr>
+                            <tr class="table-success">
+                                <th>Ricavi Annuali Netti:</th>
+                                <td class="text-end font-weight-bold">{{ annual_revenue|floatformat:2 }} €</td>
                             </tr>
                             <tr>
                                 <th>Costi Energia Annuali:</th>
-                                <td class="text-end">{{ daily_energy_cost|floatformat:2 }} € × 365 giorni = {{ annual_energy_cost|floatformat:2 }} €</td>
+                                <td class="text-end">{{ daily_energy_cost|floatformat:2 }} € × {{ available_days }} giorni, ridotti pioggia = {{ annual_energy_cost|floatformat:2 }} €</td>
                             </tr>
                             <tr>
                                 <th>Costi Manutenzione Annuali (5% del costo stazione):</th>
@@ -140,7 +149,7 @@
                                 <th>Costi Totali Annuali:</th>
                                 <td class="text-end">{{ annual_energy_cost|floatformat:2 }} € + {{ annual_maintenance_cost|floatformat:2 }} € = {{ total_annual_cost|floatformat:2 }} €</td>
                             </tr>
-                            <tr>
+                            <tr class="table-primary">
                                 <th>Profitto Annuale:</th>
                                 <td class="text-end font-weight-bold">{{ annual_revenue|floatformat:2 }} € - {{ total_annual_cost|floatformat:2 }} € = {{ annual_profit|floatformat:2 }} €</td>
                             </tr>

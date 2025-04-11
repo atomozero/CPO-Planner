@@ -124,11 +124,7 @@ class ChargingStation(models.Model):
         
         # Applica fattore disponibilità se richiesto
         if include_availability and hasattr(self, 'subproject') and self.subproject:
-            # Usa il metodo calculate_availability_factor che include i giorni di pioggia
-            availability_factor = self.subproject.calculate_availability_factor()
-            annual_revenue *= Decimal(str(availability_factor))
-            
-            # Debug info
+            # Calcola i giorni di indisponibilità
             unavailable_days = 0
             if self.subproject.weekly_market_day is not None:
                 unavailable_days += 52  # 52 settimane
@@ -137,8 +133,26 @@ class ChargingStation(models.Model):
                 
             rainy_days = self.subproject.rainy_days or 0
             
+            # Calcola i giorni disponibili
+            total_days = 365
+            available_days = total_days - unavailable_days
+            
+            # Usa il metodo calculate_availability_factor che include i giorni di pioggia
+            availability_factor = self.subproject.calculate_availability_factor()
+            
+            # Ricalcola considerando solo i giorni disponibili invece di moltiplicare per il fattore
+            daily_revenue = price_per_kwh * kwh_per_session * daily_sessions
+            annual_revenue = daily_revenue * Decimal(str(available_days))
+            
+            # Applica l'impatto dei giorni di pioggia
+            rainy_impact = Decimal('0')
+            if rainy_days > 0:
+                rainy_impact = (Decimal(str(rainy_days)) * Decimal('0.7')) / Decimal(str(total_days))
+                annual_revenue *= (Decimal('1') - rainy_impact)
+            
             print(f"DEBUG - Calcolo ricavi: giorni indisponibili={unavailable_days}, "
-                f"giorni pioggia={rainy_days}, fattore disponibilità={availability_factor:.4f}, "
+                f"giorni disponibili={available_days}, giorni pioggia={rainy_days}, "
+                f"impatto pioggia={rainy_impact:.4f}, fattore disponibilità={availability_factor:.4f}, "
                 f"ricavi={annual_revenue:.2f}")
         
         # Applica fattori stagionali se richiesto

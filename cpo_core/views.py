@@ -940,16 +940,62 @@ def charging_station_calculations_subproject(request, subproject_id):
             print(f"DEBUG - Errore nel calcolo ricavi in charging_station_calculations_subproject: {e}")
             # Fallback in caso di errore: calcolo più semplice
             daily_revenue = station.charging_price_kwh * station.avg_kwh_session * station.estimated_sessions_day
-            annual_revenue = daily_revenue * Decimal('365')
+            
+            # Calcola il fattore di disponibilità includendo giorni di indisponibilità e pioggia
+            total_days = 365
+            unavailable_days = 0
+            
+            if subproject.weekly_market_day is not None:
+                unavailable_days += 52
+            if subproject.local_festival_days:
+                unavailable_days += subproject.local_festival_days
+                
+            available_days = total_days - unavailable_days
+            base_availability_factor = Decimal(str(available_days)) / Decimal(str(total_days))
+            
+            rainy_impact = Decimal('0')
+            if hasattr(subproject, 'rainy_days') and subproject.rainy_days:
+                rainy_days = subproject.rainy_days
+                rainy_impact = (Decimal(str(rainy_days)) * Decimal('0.7')) / Decimal(str(total_days))
+            
+            availability_factor = base_availability_factor * (Decimal('1') - rainy_impact)
+            # Calcola i ricavi considerando solo i giorni effettivamente disponibili
+            annual_revenue = daily_revenue * Decimal(str(available_days)) * (Decimal('1') - rainy_impact)
+            
+            print(f"DEBUG - Fallback calcolo ricavi: disponibilità={availability_factor:.4f}, ricavi={annual_revenue:.2f}")
         
-        # Calcoli giornalieri
+        # Calcoli giornalieri (per un giorno standard)
         daily_revenue = station.charging_price_kwh * station.avg_kwh_session * station.estimated_sessions_day
         daily_energy_cost = station.energy_cost_kwh * station.avg_kwh_session * station.estimated_sessions_day
         
-        # Costi operativi annuali - assicuriamo coerenza di tipi
-        annual_energy_cost = daily_energy_cost * Decimal('365')
+        # Calcola i giorni di disponibilità per i ricavi e i costi
+        total_days = 365
+        unavailable_days = 0
+        if subproject.weekly_market_day is not None:
+            unavailable_days += 52
+        if subproject.local_festival_days:
+            unavailable_days += subproject.local_festival_days
+        available_days = total_days - unavailable_days
+        
+        # Calcola l'impatto dei giorni di pioggia
+        rainy_days = subproject.rainy_days or 0
+        rainy_impact = Decimal('0')
+        if rainy_days > 0:
+            rainy_impact = (Decimal(str(rainy_days)) * Decimal('0.7')) / Decimal(str(total_days))
+        
+        # Costi operativi annuali considerando solo i giorni disponibili
+        annual_energy_cost = daily_energy_cost * Decimal(str(available_days)) * (Decimal('1') - rainy_impact)
         annual_maintenance_cost = station.station_cost * Decimal('0.05')
         total_annual_cost = annual_energy_cost + annual_maintenance_cost
+        
+        # Calcoli ricavi con dettagli per la visualizzazione
+        base_daily_revenue = daily_revenue
+        base_annual_revenue = base_daily_revenue * Decimal(str(available_days))
+        rainy_days_reduction = base_annual_revenue * rainy_impact
+        final_annual_revenue = base_annual_revenue - rainy_days_reduction
+        
+        # Assicuriamoci che annual_revenue sia impostato correttamente
+        annual_revenue = final_annual_revenue
         
         # Conversione esplicita per evitare errori di tipo
         annual_revenue_decimal = Decimal(str(annual_revenue)) if not isinstance(annual_revenue, Decimal) else annual_revenue
@@ -1017,26 +1063,48 @@ def charging_station_calculations_subproject(request, subproject_id):
         # Applica fattore di disponibilità ai calcoli mensili se ci sono giorni di indisponibilità
         availability_factor = Decimal('1.0')
         unavailable_days = 0
+        rainy_days = 0
         
+        # Giorni di mercato settimanale
         if subproject.weekly_market_day is not None:
             unavailable_days += 52  # 52 settimane
+            
+        # Giorni di festa locale
         if subproject.local_festival_days:
             unavailable_days += subproject.local_festival_days
             
-        # Fattore disponibilità
-        if unavailable_days > 0:
-            total_days = 365
-            available_days = total_days - unavailable_days
-            # Converte esplicitamente in Decimal usando stringhe per evitare errori di precisione
-            availability_factor = Decimal(str(available_days)) / Decimal(str(total_days))
+        # Giorni di pioggia (impatto diverso - riduzione del 70%)
+        if hasattr(subproject, 'rainy_days') and subproject.rainy_days:
+            rainy_days = subproject.rainy_days
             
-            # Aggiorniamo i valori mensili
-            for month_calc in monthly_calculations:
-                month_calc['revenue'] *= availability_factor
-                month_calc['profit'] = month_calc['revenue'] - (month_calc['energy_cost'] + month_calc['maintenance_cost'])
-            
-            # Aggiorniamo anche il totale per verifica
-            monthly_revenue_total *= availability_factor
+        # Fattore disponibilità base
+        total_days = 365
+        available_days = total_days - unavailable_days
+        
+        # Calcolo del fattore di disponibilità base (considerando giorni completamente indisponibili)
+        base_availability_factor = Decimal(str(available_days)) / Decimal(str(total_days))
+        
+        # Calcolo dell'impatto dei giorni di pioggia
+        rainy_impact = Decimal('0')
+        if rainy_days > 0:
+            # I giorni di pioggia riducono l'utilizzo del 70%
+            rainy_impact = (Decimal(str(rainy_days)) * Decimal('0.7')) / Decimal(str(total_days))
+        
+        # Fattore di disponibilità finale che include sia i giorni indisponibili che i giorni di pioggia
+        availability_factor = base_availability_factor * (Decimal('1') - rainy_impact)
+        
+        # Aggiorniamo i valori mensili
+        for month_calc in monthly_calculations:
+            month_calc['revenue'] *= availability_factor
+            month_calc['profit'] = month_calc['revenue'] - (month_calc['energy_cost'] + month_calc['maintenance_cost'])
+        
+        # Aggiorniamo anche il totale per verifica
+        monthly_revenue_total *= availability_factor
+        
+        # Debug per il calcolo del fattore di disponibilità
+        print(f"DEBUG - Fattore disponibilità: giorni indisponibili={unavailable_days}, "
+              f"giorni pioggia={rainy_days}, fattore base={base_availability_factor:.4f}, "
+              f"impatto pioggia={rainy_impact:.4f}, fattore finale={availability_factor:.4f}")
         
         # Debug per verifica coerenza
         print(f"DEBUG - SubProject {subproject_id} - Controllo coerenza ricavi: annual_revenue={annual_revenue:.2f}, "
@@ -1067,6 +1135,14 @@ def charging_station_calculations_subproject(request, subproject_id):
             'payback_years': payback_years,
             'monthly_calculations': monthly_calculations,
             'availability_factor': availability_factor,
+            # Aggiungiamo i nuovi dati per la visualizzazione dettagliata
+            'total_days': total_days,
+            'unavailable_days': unavailable_days,
+            'available_days': available_days,
+            'rainy_days': rainy_days,
+            'rainy_impact': rainy_impact,
+            'base_annual_revenue': base_annual_revenue,
+            'rainy_days_reduction': rainy_days_reduction,
             'unavailable_days': unavailable_days,
         }
         

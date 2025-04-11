@@ -19,10 +19,14 @@
         {% include "components/stats_card.html" with title="Stazioni di Ricarica" value=total_stations icon="fas fa-charging-station" color="info" %}
     </div>
 
-    <!-- ROI Medio Card -->
-    <div class="col-xl-3 col-md-6 mb-4">
+<!-- ROI Medio Card -->
+<div class="col-xl-3 col-md-6 mb-4">
+    {% if avg_roi == 'ND' %}
+        {% include "components/stats_card.html" with title="ROI Medio" value="N/D" icon="fas fa-percentage" color="warning" %}
+    {% else %}
         {% include "components/stats_card.html" with title="ROI Medio" value=avg_roi|floatformat:2|add:"%" icon="fas fa-percentage" color="warning" %}
-    </div>
+    {% endif %}
+</div>
 {% endblock %}
 
 {% block charts %}

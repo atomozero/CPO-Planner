@@ -23,11 +23,11 @@ from .forms import FinancialProjectionForm
 from django.http import JsonResponse
 import json
 
-@login_required
-def dashboard(request):
-    """Dashboard principale dell'applicazione - versione originale con problemi"""
-    # Questa funzione contiene errori e non è in uso
-    return render(request, 'cpo_core/dashboard.html', {})
+#@login_required
+#def dashboard(request):
+#    """Dashboard principale dell'applicazione - versione originale con problemi"""
+#    # Questa funzione contiene errori e non è in uso
+#    return render(request, 'cpo_core/dashboard.html', {})
 
 @login_required
 def dashboard_simple(request):
@@ -141,9 +141,23 @@ def dashboard_simple(request):
         costs.append(round(cost, 2))
         margins.append(round(margin, 2))
     
+    # Calcola il ROI medio se ci sono progetti con proiezioni finanziarie
+    try:
+        from projects.models.financial import FinancialAnalysis
+        # Cerca analisi finanziarie dalle altre app
+        financial_analyses = FinancialAnalysis.objects.all()
+        if financial_analyses.exists():
+            avg_roi = financial_analyses.aggregate(Avg('roi'))['roi__avg'] or 0
+        else:
+            # Se non ci sono analisi finanziarie, imposta 'ND'
+            avg_roi = 'ND'
+    except (ImportError, Exception) as e:
+        print(f"Errore nel recupero del ROI medio: {e}")
+        avg_roi = 'ND'
+    
     context = {
-        'total_projects': core_projects_count + infra_projects_count + pl_projects_count,
-        'active_projects': core_active_projects + infra_active_projects + pl_active_projects,
+        'total_projects': pl_projects.count(),  # Usa solo i progetti effettivi dal modello Project consolidato
+        'active_projects': pl_projects.count(),  # Usa solo i progetti attivi dal modello Project consolidato
         'total_municipalities': Municipality.objects.count(),
         'total_stations': core_stations.count() + infra_stations.count() + pl_stations.count(),
         'operational_stations': (
@@ -153,7 +167,7 @@ def dashboard_simple(request):
         ),
         'projects': recent_projects,  # Lista combinata di progetti
         'stations': list(core_stations.order_by('-id')[:5]) + list(pl_stations.order_by('-id')[:5]),  # Ultime stazioni
-        'avg_roi': 15.0,  # Valore predefinito
+        'avg_roi': avg_roi,  # Valore calcolato o 'ND'
         'station_status_data': station_status_data,
         'months': json.dumps(months),
         'revenues': json.dumps(revenues),

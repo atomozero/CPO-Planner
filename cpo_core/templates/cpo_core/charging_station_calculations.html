@@ -320,16 +320,15 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // IMPORTANTE: Ignora le variabili di Django e usa valori fissi
-    // Basati sui dati che hai mostrato nell'immagine 2
+    // Usa i valori calcolati dal backend
     var values = [
-        12352.50,  // Ricavi Annuali
-        6843.75,   // Costi Energia
-        0.00,      // Costi Manutenzione 
-        5508.75    // Profitto
+        {{ annual_revenue|floatformat:2 }},  // Ricavi Annuali
+        {{ annual_energy_cost|floatformat:2 }},   // Costi Energia
+        {{ annual_maintenance_cost|floatformat:2 }},      // Costi Manutenzione 
+        {{ annual_profit|floatformat:2 }}    // Profitto
     ];
     
-    console.log("Usando valori fissi:", values);
+    console.log("Usando valori calcolati:", values);
     
     var financialData = {
         labels: ['Ricavi', 'Costi Energia', 'Costi Manutenz.', 'Profitto'],

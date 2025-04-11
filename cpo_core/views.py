@@ -917,8 +917,8 @@ def charging_station_calculations_subproject(request, subproject_id):
             station_cost=subproject.equipment_cost or Decimal("0"),
             installation_cost=subproject.installation_cost or Decimal("0"),
             connection_cost=subproject.connection_cost or Decimal("0"),
-            energy_cost_kwh=Decimal("0.25"),      # valore predefinito
-            charging_price_kwh=Decimal("0.45"),   # valore predefinito
+            energy_cost_kwh=subproject.energy_cost_kwh or Decimal("0.25"),
+            charging_price_kwh=subproject.charging_price_kwh or Decimal("0.45"),
             estimated_sessions_day=Decimal("5.0"), # valore predefinito 
             avg_kwh_session=Decimal("15.0")       # valore predefinito
         )

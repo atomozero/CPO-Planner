@@ -1727,3 +1727,41 @@ def station_from_template(request, template_id, project_id=None):
     }
     
     return render(request, 'infrastructure/station_from_template.html', context)
+def management_fee_api(request, pk):
+    """
+    API per ottenere i dettagli di una tariffa di gestione in formato JSON.
+    Utilizzato dal form delle stazioni di ricarica per impostare automaticamente i prezzi.
+    """
+    from django.http import JsonResponse
+    from django.shortcuts import get_object_or_404
+    from .models import ManagementFee
+    from decimal import Decimal
+    import json
+    
+    # Definizione di un encoder JSON per gestire i Decimal
+    class DecimalEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, Decimal):
+                return float(obj)
+            return super(DecimalEncoder, self).default(obj)
+    
+    # Ottieni la tariffa
+    fee = get_object_or_404(ManagementFee, pk=pk)
+    
+    # Prepara i dati da restituire
+    data = {
+        'id': fee.id,
+        'name': fee.name,
+        'active': fee.active,
+        'session_fee': float(fee.session_fee),
+        'percentage_fee': float(fee.percentage_fee),
+        'monthly_fee': float(fee.monthly_fee),
+        'customer_price_tier1': float(fee.customer_price_tier1),
+        'customer_price_tier2': float(fee.customer_price_tier2),
+        'customer_price_tier3': float(fee.customer_price_tier3),
+        'customer_price_tier4': float(fee.customer_price_tier4),
+        'customer_price_tier5': float(fee.customer_price_tier5),
+    }
+    
+    # Restituisci i dati in formato JSON
+    return JsonResponse(data)

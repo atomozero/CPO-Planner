@@ -160,6 +160,15 @@ class SubProject(models.Model):
     modem_4g_cost = models.DecimalField(_("Costo Modem 4G"), max_digits=10, decimal_places=2, null=True, blank=True)
     other_costs = models.DecimalField(_("Altri Costi"), max_digits=10, decimal_places=2, null=True, blank=True)
     
+    # Parametri operativi e tariffe
+    energy_cost_kwh = models.DecimalField(_("Costo Energia (EUR/kWh)"), max_digits=6, decimal_places=4, default=0.25)
+    charging_price_kwh = models.DecimalField(_("Prezzo Ricarica (EUR/kWh)"), max_digits=6, decimal_places=4, default=0.45)
+    management_fee = models.ForeignKey('infrastructure.ManagementFee', on_delete=models.SET_NULL, 
+                                     null=True, blank=True, 
+                                     verbose_name=_('Tariffa di Ricarica'),
+                                     related_name='subprojects',
+                                     help_text=_('Seleziona la tariffa da applicare per questa stazione'))
+    
     # Personale
     responsible_person = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='responsible_for_subprojects', blank=True)
     
@@ -219,6 +228,21 @@ class SubProject(models.Model):
             if self.municipality_id != self.project.municipality_id:
                 print(f"DEBUG - SubProject save - Allineamento municipio da {self.municipality_id} a {self.project.municipality_id}")
                 self.municipality = self.project.municipality
+                
+        # Aggiorna il prezzo di ricarica basato sulla tariffa selezionata se presente
+        if self.management_fee and self.power_kw:
+            # Seleziona il prezzo corretto in base al tier di potenza
+            if self.power_kw <= 7:
+                self.charging_price_kwh = self.management_fee.customer_price_tier1
+            elif self.power_kw <= 22:
+                self.charging_price_kwh = self.management_fee.customer_price_tier2
+            elif self.power_kw <= 50:
+                self.charging_price_kwh = self.management_fee.customer_price_tier3
+            elif self.power_kw <= 150:
+                self.charging_price_kwh = self.management_fee.customer_price_tier4
+            else:
+                self.charging_price_kwh = self.management_fee.customer_price_tier5
+            print(f"DEBUG - SubProject save - Aggiornato prezzo ricarica a {self.charging_price_kwh} da tariffa {self.management_fee}")
         
         # Debug: mostra i valori dei costi prima del salvataggio
         print("DEBUG - SubProject save - Prima del calcolo budget:", {

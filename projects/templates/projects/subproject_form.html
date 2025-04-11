@@ -400,6 +400,16 @@
                             </div>
                             {% endif %}
                         </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_ground_area_sqm" class="form-label">Area Occupata (m²)</label>
+                            {{ form.ground_area_sqm }}
+                            {% if form.ground_area_sqm.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.ground_area_sqm.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
                     
                     <div class="row">
@@ -411,6 +421,47 @@
                                 {{ form.connector_types.errors }}
                             </div>
                             {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Parametri Operativi e Tariffe -->
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="id_energy_cost_kwh" class="form-label">Costo Energia (€/kWh)</label>
+                            {{ form.energy_cost_kwh }}
+                            {% if form.energy_cost_kwh.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.energy_cost_kwh.errors }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Costo dell'energia da pagare al fornitore</small>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="id_charging_price_kwh" class="form-label">Prezzo Ricarica (€/kWh)</label>
+                            {{ form.charging_price_kwh }}
+                            {% if form.charging_price_kwh.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.charging_price_kwh.errors }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Prezzo di ricarica da applicare ai clienti</small>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="id_management_fee" class="form-label">Tariffa di Ricarica</label>
+                            <select name="management_fee" id="id_management_fee" class="form-control">
+                                <option value="">-- Seleziona una tariffa --</option>
+                                {% for fee in form.fields.management_fee.queryset %}
+                                <option value="{{ fee.id }}" {% if form.instance.management_fee_id == fee.id %}selected{% endif %}>{{ fee.name }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.management_fee.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.management_fee.errors }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Selezionando una tariffa, il prezzo di ricarica verrà impostato automaticamente</small>
                         </div>
                     </div>
                 </div>
@@ -740,6 +791,48 @@ $(document).ready(function() {
         $('#calculated_budget').val(totalBudget.toFixed(2));
         return totalBudget;
     }
+    
+    // Gestisci il cambiamento della tariffa selezionata
+    $('#id_management_fee').change(function() {
+        let feeId = $(this).val();
+        if (!feeId) return;
+        
+        // Recupera i dati della tariffa selezionata via AJAX
+        $.ajax({
+            url: `/infrastructure/api/fees/${feeId}/`,
+            method: 'GET',
+            dataType: 'json',
+            success: function(feeData) {
+                console.log("Dati tariffa recuperati:", feeData);
+                
+                // Ottieni la potenza della stazione per scegliere il tier corretto
+                let power = parseFloat(formatNumber($('#id_power_kw').val())) || 0;
+                let price = 0.45; // Valore di default
+                
+                // Seleziona il prezzo corretto in base al tier di potenza
+                if (power <= 7) {
+                    price = feeData.customer_price_tier1 || 0.40;
+                } else if (power <= 22) {
+                    price = feeData.customer_price_tier2 || 0.50;
+                } else if (power <= 50) {
+                    price = feeData.customer_price_tier3 || 0.60;
+                } else if (power <= 150) {
+                    price = feeData.customer_price_tier4 || 0.70;
+                } else {
+                    price = feeData.customer_price_tier5 || 0.80;
+                }
+                
+                // Imposta il prezzo di ricarica
+                $('#id_charging_price_kwh').val(price.toFixed(4));
+                
+                // Ricalcola i ricavi attesi
+                calculateExpectedRevenue();
+            },
+            error: function(xhr, status, error) {
+                console.error("Errore nel recupero dati tariffa:", error);
+            }
+        });
+    });
     
     // Funzione per calcolare i ricavi attesi basandosi sul profilo di utilizzo selezionato
 function calculateExpectedRevenue() {

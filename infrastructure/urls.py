@@ -69,6 +69,7 @@ urlpatterns = [
     path('fees/<int:pk>/', views.ManagementFeeDetailView.as_view(), name='fee-detail'),
     path('fees/add/', views.ManagementFeeCreateView.as_view(), name='fee-create'),
     path('fees/<int:pk>/edit/', views.ManagementFeeUpdateView.as_view(), name='fee-update'),
+    path('api/fees/<int:pk>/', views.management_fee_api, name='fee-api'),
     
     # Rotte per i profili di utilizzo delle stazioni
     path('profiles/', views.StationUsageProfileListView.as_view(), name='profile-list'),

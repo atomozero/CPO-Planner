@@ -52,6 +52,9 @@ class SubProjectForm(forms.ModelForm):
             'equipment_cost', 'installation_cost', 'connection_cost',
             'permit_cost', 'modem_4g_cost', 'other_costs',
             
+            # Parametri operativi e tariffe
+            'energy_cost_kwh', 'charging_price_kwh', 'management_fee',
+            
             # Finanziari e stato
             'budget', 'expected_revenue', 'roi', 'status'
         ]
@@ -76,6 +79,9 @@ class SubProjectForm(forms.ModelForm):
             'permit_cost': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
             'modem_4g_cost': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
             'other_costs': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+            'energy_cost_kwh': forms.NumberInput(attrs={'step': '0.0001', 'min': '0'}),
+            'charging_price_kwh': forms.NumberInput(attrs={'step': '0.0001', 'min': '0'}),
+            'management_fee': forms.Select(attrs={'class': 'form-control'}),
         }
         
     # Campo nascosto per il project
@@ -137,6 +143,11 @@ class SubProjectForm(forms.ModelForm):
         
         # Popola i profili di utilizzo
         self.fields['usage_profile'].queryset = StationUsageProfile.objects.all().order_by('name')
+        
+        # Popola le tariffe di ricarica
+        from infrastructure.models import ManagementFee
+        self.fields['management_fee'].queryset = ManagementFee.objects.filter(active=True).order_by('name')
+        self.fields['management_fee'].help_text = _('Seleziona la tariffa di ricarica da applicare, che determinerà il prezzo di ricarica')
         
         # Rendi i campi di ricavo e ROI non richiesti e di sola lettura
         self.fields['expected_revenue'].required = False

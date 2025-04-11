@@ -986,7 +986,54 @@ def charging_station_calculations_subproject(request, subproject_id):
         # Costi operativi annuali considerando solo i giorni disponibili
         annual_energy_cost = daily_energy_cost * Decimal(str(available_days)) * (Decimal('1') - rainy_impact)
         annual_maintenance_cost = station.station_cost * Decimal('0.05')
-        total_annual_cost = annual_energy_cost + annual_maintenance_cost
+        
+        # Costo annuale SIM dati se la colonnina ha connettività 4G
+        annual_sim_cost = Decimal('0')
+        from infrastructure.models import GlobalSettings
+        try:
+            global_settings = GlobalSettings.get_active()
+            has_4g_connectivity = False
+            
+            # Verifica se la stazione ha connettività 4G
+            if hasattr(station, 'has_4g') and station.has_4g:
+                has_4g_connectivity = True
+            elif subproject.modem_4g_cost and subproject.modem_4g_cost > 0:
+                has_4g_connectivity = True
+                
+            if has_4g_connectivity:
+                annual_sim_cost = global_settings.sim_data_cost_monthly * Decimal('12')
+                print(f"DEBUG - Costo SIM annuale: {annual_sim_cost:.2f} (costo mensile: {global_settings.sim_data_cost_monthly:.2f})")
+        except Exception as e:
+            print(f"DEBUG - Errore nel calcolo costo SIM: {e}")
+        
+        # Calcola le commissioni di gestione se è selezionata una tariffa
+        annual_management_fees = Decimal('0')
+        monthly_fee = Decimal('0')
+        session_fee = Decimal('0')
+        percentage_fee = Decimal('0')
+        
+        if hasattr(subproject, 'management_fee') and subproject.management_fee:
+            # Commissione mensile
+            monthly_fee = subproject.management_fee.monthly_fee * Decimal('12')
+            
+            # Commissione per sessione
+            base_annual_sessions = station.estimated_sessions_day * Decimal(str(available_days)) * (Decimal('1') - rainy_impact)
+            session_fee = subproject.management_fee.session_fee * base_annual_sessions
+            
+            # Commissione percentuale sui ricavi
+            base_daily_revenue = daily_revenue
+            base_annual_revenue = base_daily_revenue * Decimal(str(available_days))
+            final_annual_revenue = base_annual_revenue * (Decimal('1') - rainy_impact)
+            percentage_fee = final_annual_revenue * (subproject.management_fee.percentage_fee / Decimal('100'))
+            
+            # Totale commissioni
+            annual_management_fees = monthly_fee + session_fee + percentage_fee
+            
+            print(f"DEBUG - Commissioni gestione: mensile={monthly_fee:.2f}, sessione={session_fee:.2f}, "
+                  f"percentuale={percentage_fee:.2f}, totale={annual_management_fees:.2f}")
+        
+        # Totale costi annuali
+        total_annual_cost = annual_energy_cost + annual_maintenance_cost + annual_management_fees + annual_sim_cost
         
         # Calcoli ricavi con dettagli per la visualizzazione
         base_daily_revenue = daily_revenue
@@ -1143,6 +1190,12 @@ def charging_station_calculations_subproject(request, subproject_id):
             'rainy_impact': rainy_impact,
             'base_annual_revenue': base_annual_revenue,
             'rainy_days_reduction': rainy_days_reduction,
+            'monthly_fee': monthly_fee,
+            'session_fee': session_fee,
+            'percentage_fee': percentage_fee,
+            'annual_management_fees': annual_management_fees,
+            'annual_sim_cost': annual_sim_cost,
+            'has_4g_connectivity': has_4g_connectivity,
             'unavailable_days': unavailable_days,
         }
         

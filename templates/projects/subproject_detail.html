@@ -245,6 +245,21 @@
                                 <th width="40%">Ricavi Previsti</th>
                                 <td>€ {{ subproject.expected_revenue|floatformat:2 }}</td>
                             </tr>
+                            {% if subproject.rainy_days %}
+                            <tr>
+                                <th>Considera Giorni Pioggia</th>
+                                <td>{{ subproject.rainy_days }} giorni (riduzione 70%)</td>
+                            </tr>
+                            {% endif %}
+                            {% if subproject.weekly_market_day is not None or subproject.local_festival_days %}
+                            <tr>
+                                <th>Giorni Indisponibili</th>
+                                <td>
+                                    {% if subproject.weekly_market_day is not None %}52 (mercato){% endif %}
+                                    {% if subproject.local_festival_days %} + {{ subproject.local_festival_days }} (feste){% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
                             <tr>
                                 <th>ROI</th>
                                 <td>{{ subproject.roi|floatformat:2 }}%</td>

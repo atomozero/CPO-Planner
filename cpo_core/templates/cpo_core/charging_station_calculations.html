@@ -101,20 +101,40 @@
         <div class="col-md-6 mb-4">
             <div class="card h-100">
                 <div class="card-header bg-success text-white">
-                    <h5>Calcoli Giornalieri e Annuali</h5>
+                    <h5>Calcoli Economici</h5>
                 </div>
                 <div class="card-body">
-                    <h6 class="card-subtitle mb-3 text-muted">Calcoli Giornalieri</h6>
-                    <table class="table table-striped">
+                    <!-- Giorni Disponibili / Indisponibili -->
+                    <div class="alert alert-info mb-3">
+                        <h6 class="font-weight-bold mb-2"><i class="fas fa-calendar-alt"></i> Disponibilità Annuale</h6>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <strong>Giorni Totali:</strong> {{ total_days }}
+                            </div>
+                            <div class="col-md-4">
+                                <strong>Giorni Indisponibili:</strong> {{ unavailable_days }}
+                                {% if subproject.weekly_market_day is not None %}<br><small>- Mercato: 52 giorni</small>{% endif %}
+                                {% if subproject.local_festival_days %}<br><small>- Feste: {{ subproject.local_festival_days }} giorni</small>{% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <strong>Giorni Disponibili:</strong> {{ available_days }}<br>
+                                <strong>Giorni di Pioggia:</strong> {{ rainy_days }} <small>(riduzione del 70%)</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Calcoli Giornalieri -->
+                    <h6 class="card-subtitle mb-3 text-muted bg-light p-2 rounded"><i class="fas fa-calculator"></i> Calcoli Base Giornalieri</h6>
+                    <table class="table table-sm table-bordered">
                         <tbody>
                             <tr>
-                                <th>Calcolo Ricavi Giornalieri:</th>
+                                <th style="width: 30%;">Ricavi Giornalieri:</th>
                                 <td class="text-end">
                                     {{ station.charging_price_kwh|floatformat:4 }} € × {{ station.avg_kwh_session|floatformat:2 }} kWh × {{ station.estimated_sessions_day|floatformat:2 }} sessioni = {{ daily_revenue|floatformat:2 }} €
                                 </td>
                             </tr>
                             <tr>
-                                <th>Calcolo Costi Energia Giornalieri:</th>
+                                <th>Costi Energia Giornalieri:</th>
                                 <td class="text-end">
                                     {{ station.energy_cost_kwh|floatformat:4 }} € × {{ station.avg_kwh_session|floatformat:2 }} kWh × {{ station.estimated_sessions_day|floatformat:2 }} sessioni = {{ daily_energy_cost|floatformat:2 }} €
                                 </td>
@@ -122,35 +142,85 @@
                         </tbody>
                     </table>
 
-                    <h6 class="card-subtitle mb-3 mt-4 text-muted">Calcoli Annuali</h6>
-                    <table class="table table-striped">
+                    <!-- Calcoli Annuali di Ricavi -->
+                    <h6 class="card-subtitle mb-3 mt-4 text-muted bg-light p-2 rounded"><i class="fas fa-money-bill-wave"></i> Ricavi Annuali</h6>
+                    <table class="table table-bordered">
                         <tbody>
                             <tr>
-                                <th>Ricavi Base (Giorni disponibili):</th>
+                                <th style="width: 40%;">Ricavi Base (considerando solo giorni disponibili):</th>
                                 <td class="text-end">{{ daily_revenue|floatformat:2 }} € × {{ available_days }} giorni = {{ base_annual_revenue|floatformat:2 }} €</td>
                             </tr>
                             <tr>
-                                <th>Riduzione per Giorni di Pioggia ({{ rainy_days }} giorni):</th>
-                                <td class="text-end text-danger">- {{ rainy_days_reduction|floatformat:2 }} € ({{ rainy_impact|floatformat:4 }} × 100% = {{ rainy_impact|mul:100|floatformat:2 }}%)</td>
+                                <th>Riduzione per Giorni di Pioggia:</th>
+                                <td class="text-end text-danger">- {{ rainy_days_reduction|floatformat:2 }} € <small>({{ rainy_days }} giorni × riduzione 70% = {{ rainy_impact|mul:100|floatformat:1 }}% sul totale)</small></td>
                             </tr>
                             <tr class="table-success">
-                                <th>Ricavi Annuali Netti:</th>
+                                <th>Ricavi Annuali Totali:</th>
                                 <td class="text-end font-weight-bold">{{ annual_revenue|floatformat:2 }} €</td>
                             </tr>
+                        </tbody>
+                    </table>
+                    
+                    <!-- Calcoli Annuali di Costi -->
+                    <h6 class="card-subtitle mb-3 mt-4 text-muted bg-light p-2 rounded"><i class="fas fa-file-invoice-dollar"></i> Costi Annuali</h6>
+                    <table class="table table-bordered">
+                        <tbody>
                             <tr>
-                                <th>Costi Energia Annuali:</th>
-                                <td class="text-end">{{ daily_energy_cost|floatformat:2 }} € × {{ available_days }} giorni, ridotti pioggia = {{ annual_energy_cost|floatformat:2 }} €</td>
+                                <th style="width: 40%;">Costi Energia (considerando disponibilità):</th>
+                                <td class="text-end">{{ daily_energy_cost|floatformat:2 }} € × {{ available_days }} giorni - riduzione per pioggia = {{ annual_energy_cost|floatformat:2 }} €</td>
                             </tr>
                             <tr>
-                                <th>Costi Manutenzione Annuali (5% del costo stazione):</th>
+                                <th>Costi Manutenzione (5% del costo stazione):</th>
                                 <td class="text-end">{{ station.station_cost|floatformat:2 }} € × 0.05 = {{ annual_maintenance_cost|floatformat:2 }} €</td>
                             </tr>
+                            
+                            {% if has_4g_connectivity and annual_sim_cost > 0 %}
                             <tr>
-                                <th>Costi Totali Annuali:</th>
-                                <td class="text-end">{{ annual_energy_cost|floatformat:2 }} € + {{ annual_maintenance_cost|floatformat:2 }} € = {{ total_annual_cost|floatformat:2 }} €</td>
+                                <th>Costo SIM dati 4G (annuale):</th>
+                                <td class="text-end">{{ annual_sim_cost|div:12|floatformat:2 }} € × 12 mesi = {{ annual_sim_cost|floatformat:2 }} €</td>
                             </tr>
+                            {% endif %}
+                            
+                            {% if subproject.management_fee %}
+                            <tr>
+                                <th colspan="2" class="bg-light text-center">Commissioni di Gestione ({{ subproject.management_fee.name }})</th>
+                            </tr>
+                            <tr>
+                                <th style="padding-left: 20px;">- Canone Mensile:</th>
+                                <td class="text-end">{{ subproject.management_fee.monthly_fee|floatformat:2 }} € × 12 mesi = {{ monthly_fee|floatformat:2 }} €</td>
+                            </tr>
+                            <tr>
+                                <th style="padding-left: 20px;">- Commissione per Sessione:</th>
+                                <td class="text-end">{{ subproject.management_fee.session_fee|floatformat:2 }} € × sessioni annuali = {{ session_fee|floatformat:2 }} €</td>
+                            </tr>
+                            <tr>
+                                <th style="padding-left: 20px;">- Commissione Percentuale ({{ subproject.management_fee.percentage_fee }}%):</th>
+                                <td class="text-end">{{ subproject.management_fee.percentage_fee }}% sui ricavi = {{ percentage_fee|floatformat:2 }} €</td>
+                            </tr>
+                            <tr class="table-info">
+                                <th style="padding-left: 20px;">Totale Commissioni:</th>
+                                <td class="text-end">{{ annual_management_fees|floatformat:2 }} €</td>
+                            </tr>
+                            {% endif %}
+                            
+                            <tr class="table-warning">
+                                <th>Costi Totali Annuali:</th>
+                                <td class="text-end font-weight-bold">
+                                    {{ annual_energy_cost|floatformat:2 }} € + {{ annual_maintenance_cost|floatformat:2 }} € 
+                                    {% if has_4g_connectivity and annual_sim_cost > 0 %} + {{ annual_sim_cost|floatformat:2 }} € (SIM) {% endif %}
+                                    {% if annual_management_fees %} + {{ annual_management_fees|floatformat:2 }} € (Commissioni) {% endif %}
+                                    = {{ total_annual_cost|floatformat:2 }} €
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <!-- Profitto Annuale -->
+                    <h6 class="card-subtitle mb-3 mt-4 text-muted bg-light p-2 rounded"><i class="fas fa-chart-line"></i> Risultato Annuale</h6>
+                    <table class="table table-bordered">
+                        <tbody>
                             <tr class="table-primary">
-                                <th>Profitto Annuale:</th>
+                                <th style="width: 40%;">Profitto Annuale:</th>
                                 <td class="text-end font-weight-bold">{{ annual_revenue|floatformat:2 }} € - {{ total_annual_cost|floatformat:2 }} € = {{ annual_profit|floatformat:2 }} €</td>
                             </tr>
                         </tbody>

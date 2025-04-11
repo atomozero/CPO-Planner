@@ -137,7 +137,7 @@ class ChargingStation(models.Model):
             total_days = 365
             available_days = total_days - unavailable_days
             
-            # Usa il metodo calculate_availability_factor che include i giorni di pioggia
+            # Calcola il fattore di disponibilità (non usato direttamente, ma per debug)
             availability_factor = self.subproject.calculate_availability_factor()
             
             # Ricalcola considerando solo i giorni disponibili invece di moltiplicare per il fattore

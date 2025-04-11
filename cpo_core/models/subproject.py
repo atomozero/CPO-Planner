@@ -330,9 +330,24 @@ class SubProject(models.Model):
                 # Fallback in caso di errore: calcolo più semplice
                 daily_revenue = temp_station.charging_price_kwh * temp_station.avg_kwh_session * temp_station.estimated_sessions_day
                 
-                # Considera il fattore di disponibilità che ora include i giorni di pioggia
-                availability_factor = self.calculate_availability_factor()
-                annual_revenue = daily_revenue * Decimal('365') * Decimal(str(availability_factor))
+                # Calcola i giorni disponibili
+                total_days = 365
+                unavailable_days = 0
+                
+                if self.weekly_market_day is not None:
+                    unavailable_days += 52
+                if self.local_festival_days:
+                    unavailable_days += self.local_festival_days
+                    
+                available_days = total_days - unavailable_days
+                
+                # Calcola l'impatto dei giorni di pioggia
+                rainy_days_impact = Decimal('0')
+                if self.rainy_days:
+                    rainy_days_impact = (Decimal(str(self.rainy_days)) * Decimal('0.7')) / Decimal(str(total_days))
+                
+                # Calcola i ricavi considerando solo i giorni disponibili e l'impatto pioggia
+                annual_revenue = daily_revenue * Decimal(str(available_days)) * (Decimal('1') - rainy_days_impact)
             
             # Aggiorna i campi nel modello
             self.expected_revenue = annual_revenue
